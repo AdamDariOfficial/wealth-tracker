@@ -1,6 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
+import { useHoldings, useAccounts, useAssets } from "@/hooks/use-ledger";
+import { useUserTable } from "@/hooks/use-user-table";
 
 export type PortfolioAggregates = {
   netWorth: number;
@@ -17,78 +19,82 @@ export type PortfolioAggregates = {
   weeklyDca: number;
 };
 
-const ZERO: PortfolioAggregates = {
-  netWorth: 0, invested: 0, cashReserve: 0, tradingCapital: 0, tradingReserve: 0,
-  investmentsValue: 0, etfsValue: 0, cryptoValue: 0, pnl: 0, pnlPct: 0,
-  allocation: [], weeklyDca: 0,
-};
-
+/**
+ * Single source of truth: derive every aggregate from the transaction ledger
+ * (via useHoldings) + the DB-trigger-maintained account balances. Reading
+ * the legacy holding tables (investments/etfs/crypto_holdings/cash_reserves)
+ * caused the dashboard, accounts page and analytics to disagree.
+ */
 export function usePortfolio() {
-  const { user } = useAuth();
-  const [agg, setAgg] = useState<PortfolioAggregates>(ZERO);
-  const [loading, setLoading] = useState(true);
+  const { rows: accounts } = useAccounts();
+  const { rows: assets } = useAssets();
+  const { holdings, accountValue, totals } = useHoldings();
+  const { rows: etfs } = useUserTable<{ monthly_contribution: number }>("etfs", { col: "created_at", asc: true });
 
-  const refresh = useCallback(async () => {
-    if (!user) return;
-    const [inv, etf, cry, cash, ta] = await Promise.all([
-      supabase.from("investments").select("quantity,avg_cost,current_price").eq("user_id", user.id),
-      supabase.from("etfs").select("quantity,avg_cost,current_price,monthly_contribution").eq("user_id", user.id),
-      supabase.from("crypto_holdings").select("quantity,avg_cost,current_price").eq("user_id", user.id),
-      supabase.from("cash_reserves").select("balance").eq("user_id", user.id),
-      supabase.from("trading_account").select("balance,reserve").eq("user_id", user.id).maybeSingle(),
-    ]);
+  const agg = useMemo<PortfolioAggregates & { loading: boolean }>(() => {
+    const assetById = new Map(assets.map((a) => [a.id, a]));
 
-    const sum = (rows: any[] | null, k: "value" | "cost") =>
-      (rows ?? []).reduce((s, r) => s + Number(r.quantity ?? 0) * Number(k === "value" ? r.current_price : r.avg_cost), 0);
+    let etfsValue = 0, cryptoValue = 0, investmentsValue = 0, costBasis = 0;
+    for (const h of holdings) {
+      const a = assetById.get(h.assetId);
+      costBasis += h.costBasis;
+      const cls = a?.asset_class;
+      if (cls === "etf") etfsValue += h.marketValue;
+      else if (cls === "crypto" || cls === "stablecoin") cryptoValue += h.marketValue;
+      else if (cls === "stock" || cls === "commodity" || cls === "custom") investmentsValue += h.marketValue;
+    }
 
-    const invVal = sum(inv.data, "value");
-    const etfVal = sum(etf.data, "value");
-    const cryVal = sum(cry.data, "value");
-    const investmentsValue = invVal;
-    const etfsValue = etfVal;
-    const cryptoValue = cryVal;
+    // Cash split: accounts marked as bank/cash/savings → cashReserve.
+    // Broker/exchange/investment accounts → tradingCapital (their cash float).
+    let cashReserve = 0, tradingCapital = 0;
+    for (const acc of accounts) {
+      if (!acc.include_in_net_worth || acc.archived_at) continue;
+      const cash = Number(acc.current_balance ?? 0);
+      if (acc.type === "bank" || acc.type === "cash" || acc.type === "savings") cashReserve += cash;
+      else if (acc.type === "broker" || acc.type === "exchange" || acc.type === "investment") tradingCapital += cash;
+      else {
+        // crypto_wallet, cold_wallet, external — count as part of "invested" cash float
+        tradingCapital += cash;
+      }
+      // positions on this account are already counted by totals.netWorth
+      void accountValue;
+    }
 
-    const invCost = sum(inv.data, "cost") + sum(etf.data, "cost") + sum(cry.data, "cost");
-    const totalAssetsValue = invVal + etfVal + cryVal;
-    const cashReserve = (cash.data ?? []).reduce((s, r) => s + Number(r.balance ?? 0), 0);
-    const tradingCapital = Number(ta.data?.balance ?? 0);
-    const tradingReserve = Number(ta.data?.reserve ?? 0);
-    const netWorth = totalAssetsValue + cashReserve + tradingCapital + tradingReserve;
-    const pnl = totalAssetsValue - invCost;
-    const pnlPct = invCost > 0 ? (pnl / invCost) * 100 : 0;
-    const weeklyDca = (etf.data ?? []).reduce((s, r) => s + Number(r.monthly_contribution ?? 0) / 4, 0);
+    const netWorth = totals.netWorth;
+    const pnl = totals.unrealized + totals.realized;
+    const pnlPct = costBasis > 0 ? (totals.unrealized / costBasis) * 100 : 0;
+    const weeklyDca = etfs.reduce((s, r) => s + Number(r.monthly_contribution ?? 0) / 4, 0);
 
-    const allocation = [
-      { name: "ETFs", value: etfVal },
-      { name: "Investments", value: invVal },
-      { name: "Crypto", value: cryVal },
-      { name: "Trading", value: tradingCapital + tradingReserve },
+    const allocationRaw = [
+      { name: "ETFs", value: etfsValue },
+      { name: "Investments", value: investmentsValue },
+      { name: "Crypto", value: cryptoValue },
+      { name: "Trading", value: tradingCapital },
       { name: "Cash", value: cashReserve },
     ].filter((a) => a.value > 0);
-    const total = allocation.reduce((s, a) => s + a.value, 0) || 1;
-    const allocationPct = allocation.map((a) => ({ name: a.name, value: +(a.value / total * 100).toFixed(1) }));
+    const total = allocationRaw.reduce((s, a) => s + a.value, 0) || 1;
+    const allocation = allocationRaw.map((a) => ({ name: a.name, value: +(a.value / total * 100).toFixed(1) }));
 
-    setAgg({
-      netWorth, invested: invCost, cashReserve, tradingCapital, tradingReserve,
-      investmentsValue, etfsValue, cryptoValue, pnl, pnlPct,
-      allocation: allocationPct, weeklyDca,
-    });
-    setLoading(false);
-  }, [user]);
+    return {
+      netWorth,
+      invested: costBasis,
+      cashReserve,
+      tradingCapital,
+      tradingReserve: 0,
+      investmentsValue,
+      etfsValue,
+      cryptoValue,
+      pnl,
+      pnlPct,
+      allocation,
+      weeklyDca,
+      loading: false,
+    };
+  }, [accounts, assets, holdings, accountValue, totals, etfs]);
 
-  useEffect(() => {
-    if (!user) return;
-    refresh();
-    const tables = ["investments", "etfs", "crypto_holdings", "cash_reserves", "trading_account"];
-    const channels = tables.map((t) =>
-      supabase.channel(`agg-${t}-${user.id}`)
-        .on("postgres_changes" as any, { event: "*", schema: "public", table: t, filter: `user_id=eq.${user.id}` }, () => refresh())
-        .subscribe()
-    );
-    return () => { channels.forEach((c) => supabase.removeChannel(c)); };
-  }, [user, refresh]);
-
-  return { ...agg, loading, refresh };
+  // refresh is a no-op now: subscriptions on accounts/assets/transactions drive updates.
+  const refresh = useCallback(() => {}, []);
+  return { ...agg, refresh };
 }
 
 export type TradingAccount = {
