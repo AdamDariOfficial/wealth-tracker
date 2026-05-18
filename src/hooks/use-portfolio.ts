@@ -29,7 +29,7 @@ export function usePortfolio() {
   const { rows: accounts } = useAccounts();
   const { rows: assets } = useAssets();
   const { holdings, accountValue, totals } = useHoldings();
-  const { rows: etfs } = useUserTable<{ monthly_contribution: number }>("etfs", { col: "created_at", asc: true });
+  const { rows: etfs } = useUserTable<{ id: string; monthly_contribution: number }>("etfs", { col: "created_at", asc: true });
 
   const agg = useMemo<PortfolioAggregates & { loading: boolean }>(() => {
     const assetById = new Map(assets.map((a) => [a.id, a]));
