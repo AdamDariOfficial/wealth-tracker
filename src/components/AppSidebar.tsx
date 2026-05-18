@@ -31,6 +31,7 @@ const planning = [
 ];
 const system = [
   { title: "Settings",        url: "/settings",        icon: Settings },
+  { title: "Dev Tools",       url: "/dev-tools",       icon: FlaskConical },
 ];
 
 function Section({ label, items, current }: { label: string; items: typeof main; current: string }) {
