@@ -185,7 +185,13 @@ export function useHoldings() {
     let netWorth = 0, liquid = 0, invested = 0, realized = 0, unrealized = 0;
     for (const acc of accounts) {
       if (!acc.include_in_net_worth || acc.archived_at) continue;
-      const v = accountValue.get(acc.id) ?? Number(acc.current_balance ?? 0);
+      // Cash side comes from the DB-recomputed account balance (ledger trigger).
+      // Holdings market value is additive — buy/sell only move cash on one side
+      // so the two never overlap. Avoids the previous bug where accounts holding
+      // both cash and positions only counted positions.
+      const cash = Number(acc.current_balance ?? 0);
+      const positions = accountValue.get(acc.id) ?? 0;
+      const v = cash + positions;
       netWorth += v;
       if (acc.type === "bank" || acc.type === "cash" || acc.type === "savings") liquid += v;
       else invested += v;
