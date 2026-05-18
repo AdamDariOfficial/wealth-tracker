@@ -51,16 +51,44 @@ export function useUserTable<T extends { id: string }>(
 
   const insert = async (payload: Record<string, any>) => {
     if (!user) return;
-    const { error } = await (supabase as any).from(table).insert({ ...payload, user_id: user.id });
-    if (error) throw error;
+    // Optimistic insert — instantly add a temp row so dashboard/holdings/charts
+    // recompute without waiting for the round-trip. Realtime subscription will
+    // reconcile with the real row when it lands.
+    const tempId = `__optim_${Math.random().toString(36).slice(2)}`;
+    const optimistic = {
+      id: tempId,
+      user_id: user.id,
+      created_at: new Date().toISOString(),
+      ...payload,
+    } as unknown as T;
+    setRows((prev) => [optimistic, ...prev]);
+    try {
+      const { data, error } = await (supabase as any)
+        .from(table).insert({ ...payload, user_id: user.id }).select("*").single();
+      if (error) throw error;
+      setRows((prev) => prev.map((r) => (r.id === tempId ? (data as T) : r)));
+    } catch (e) {
+      setRows((prev) => prev.filter((r) => r.id !== tempId));
+      throw e;
+    }
   };
   const update = async (id: string, payload: Record<string, any>) => {
+    const prevRows = rows;
+    setRows((rs) => rs.map((r) => (r.id === id ? ({ ...r, ...payload } as T) : r)));
     const { error } = await (supabase as any).from(table).update(payload).eq("id", id);
-    if (error) throw error;
+    if (error) {
+      setRows(prevRows);
+      throw error;
+    }
   };
   const remove = async (id: string) => {
+    const prevRows = rows;
+    setRows((rs) => rs.filter((r) => r.id !== id));
     const { error } = await (supabase as any).from(table).delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+      setRows(prevRows);
+      throw error;
+    }
   };
 
   return { rows, loading, insert, update, remove, refresh };

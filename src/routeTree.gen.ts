@@ -20,6 +20,7 @@ import { Route as JournalRouteImport } from './routes/journal'
 import { Route as InvestmentsRouteImport } from './routes/investments'
 import { Route as GoalsRouteImport } from './routes/goals'
 import { Route as EtfRouteImport } from './routes/etf'
+import { Route as DevToolsRouteImport } from './routes/dev-tools'
 import { Route as CryptoRouteImport } from './routes/crypto'
 import { Route as CashRouteImport } from './routes/cash'
 import { Route as AuditRouteImport } from './routes/audit'
@@ -83,6 +84,11 @@ const EtfRoute = EtfRouteImport.update({
   path: '/etf',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevToolsRoute = DevToolsRouteImport.update({
+  id: '/dev-tools',
+  path: '/dev-tools',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CryptoRoute = CryptoRouteImport.update({
   id: '/crypto',
   path: '/crypto',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/audit': typeof AuditRoute
   '/cash': typeof CashRoute
   '/crypto': typeof CryptoRoute
+  '/dev-tools': typeof DevToolsRoute
   '/etf': typeof EtfRoute
   '/goals': typeof GoalsRoute
   '/investments': typeof InvestmentsRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/audit': typeof AuditRoute
   '/cash': typeof CashRoute
   '/crypto': typeof CryptoRoute
+  '/dev-tools': typeof DevToolsRoute
   '/etf': typeof EtfRoute
   '/goals': typeof GoalsRoute
   '/investments': typeof InvestmentsRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/audit': typeof AuditRoute
   '/cash': typeof CashRoute
   '/crypto': typeof CryptoRoute
+  '/dev-tools': typeof DevToolsRoute
   '/etf': typeof EtfRoute
   '/goals': typeof GoalsRoute
   '/investments': typeof InvestmentsRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/cash'
     | '/crypto'
+    | '/dev-tools'
     | '/etf'
     | '/goals'
     | '/investments'
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/cash'
     | '/crypto'
+    | '/dev-tools'
     | '/etf'
     | '/goals'
     | '/investments'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/cash'
     | '/crypto'
+    | '/dev-tools'
     | '/etf'
     | '/goals'
     | '/investments'
@@ -250,6 +262,7 @@ export interface RootRouteChildren {
   AuditRoute: typeof AuditRoute
   CashRoute: typeof CashRoute
   CryptoRoute: typeof CryptoRoute
+  DevToolsRoute: typeof DevToolsRoute
   EtfRoute: typeof EtfRoute
   GoalsRoute: typeof GoalsRoute
   InvestmentsRoute: typeof InvestmentsRoute
@@ -342,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EtfRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dev-tools': {
+      id: '/dev-tools'
+      path: '/dev-tools'
+      fullPath: '/dev-tools'
+      preLoaderRoute: typeof DevToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/crypto': {
       id: '/crypto'
       path: '/crypto'
@@ -413,6 +433,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuditRoute: AuditRoute,
   CashRoute: CashRoute,
   CryptoRoute: CryptoRoute,
+  DevToolsRoute: DevToolsRoute,
   EtfRoute: EtfRoute,
   GoalsRoute: GoalsRoute,
   InvestmentsRoute: InvestmentsRoute,
@@ -428,13 +449,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

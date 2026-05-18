@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, TrendingUp, PieChart, Bitcoin, Briefcase,
-  BookOpen, Wallet, Target, BarChart3, Settings, Sparkles, ArrowLeftRight, Activity, ShieldCheck,
+  BookOpen, Wallet, Target, BarChart3, Settings, Sparkles, ArrowLeftRight, Activity, ShieldCheck, FlaskConical,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -31,6 +31,7 @@ const planning = [
 ];
 const system = [
   { title: "Settings",        url: "/settings",        icon: Settings },
+  { title: "Dev Tools",       url: "/dev-tools",       icon: FlaskConical },
 ];
 
 function Section({ label, items, current }: { label: string; items: typeof main; current: string }) {
