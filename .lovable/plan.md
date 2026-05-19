@@ -1,104 +1,87 @@
-# Phase 3 — Full Ledger Migration
+# Ledger Stabilization & UX Consistency Plan
 
-The transaction ledger (`accounts`, `assets`, `transactions`) becomes the single source of truth. All modules read derived state via `useHoldings()` and write via `TransactionModal` / typed helpers. Legacy balance tables (`investments`, `etfs`, `crypto_holdings`, `cash_reserves`, `trading_account.balance`) are kept read-only during migration, then hidden once parity is confirmed.
+This is a large structural pass (11 areas). Shipping all of it in a single batch would produce regressions everywhere and be impossible to verify. I'll execute in **5 sequential phases**, each independently shippable and testable. After each phase you confirm before I start the next.
 
-## Scope
+---
 
-Migrate: Investments, ETF, Crypto, Trading Capital, Goals, Dashboard, Analytics, Weekly Reports. Add a global Timeline. Add ledger integrity helpers.
+## Phase 1 — Financial Core (foundation, blocking everything else)
 
-## Architecture
+The calculation engine and currency model must be right before UI/UX work, otherwise we re-fix the same bugs later.
 
-```text
-TransactionModal ──▶ transactions table
-                         │
-                         ▼
-               useHoldings() (replay)
-                ├─ per-account value
-                ├─ per-asset position (qty, avg cost, P&L)
-                └─ totals (net worth, liquid, invested, realized, unrealized)
-                         │
-        ┌────────────────┼─────────────────┐
-        ▼                ▼                 ▼
-   Module pages     Dashboard         Analytics + Snapshots
-```
+**1a. Base currency + FX engine**
+- Add `base_currency` to `profiles` (default `USD`, options: `USD`, `EUR`, `JOD`, extensible).
+- New `fx_rates` table: `(base, quote, rate, as_of timestamptz)`, unique `(base, quote, date_trunc('day', as_of))`.
+- `src/lib/fx.ts`: `convert(amount, from, to, at?)` with daily cache + fallback chain (direct → via USD → 1:1 if same).
+- `src/lib/format-currency.ts`: locale-aware `Intl.NumberFormat` formatter driven by the user's base currency. Replace hardcoded `$`/`€` formatters.
 
-Helper layer in `src/lib/ledger-actions.ts`:
-- `recordBuy({ accountId, assetId, qty, price, fee, ts })` — emits one `buy` transaction (debits cash account, credits asset to broker/wallet account).
-- `recordSell(...)` — `sell`, realizes P&L.
-- `recordTransfer({ from, to, assetId, qty, ts })` — owned-account transfer, preserves cost basis (engine already handles).
-- `recordDeposit / recordWithdrawal / recordFee / recordDividend / recordWeeklyPnl`.
-- `recordRecurringDCA(planId)` — generates buy txs from a DCA plan.
+**1b. Transaction model extension** (additive — no breaking changes)
+- Migration adds columns to `transactions`: `asset_price numeric`, `asset_currency text`, `base_currency text`, `base_value numeric`, `fee_asset_id uuid` (already exists), `fee_base_value numeric`. Keep `quantity`, `fiat_value`, `fee_amount` for back-compat; new code reads new columns, falls back to old.
+- Backfill: `base_value = fiat_value`, `base_currency = profiles.currency`, `asset_price = fiat_value / NULLIF(quantity,0)`, `asset_currency = base_currency`.
+- Update `recompute_account_balance` to prefer `base_value` when present.
 
-All module CRUD is rewritten to call these helpers. No module touches `current_balance` directly.
+**1c. Centralized calculation engine**
+- New `src/lib/ledger-engine.ts`: pure functions taking `transactions[] + accounts[] + assets[] + fxRates + baseCurrency` → derived holdings, balances, P&L, net worth, allocation. Decimal-safe via a tiny `Dec` wrapper (string-based) for sums; `Number` only at format boundaries.
+- Refactor `use-portfolio.ts`, `use-ledger.ts`, `use-positions.ts` to call the engine — no inline aggregations elsewhere.
+- Fix: transfer double-count, missing `user_id` filter, UTC day grouping (`date_trunc('day', execution_timestamp AT TIME ZONE 'UTC')`), rounding drift.
 
-## Schema additions (one migration)
+**1d. Reconciliation**
+- Extend `/dev-tools` with a "Verify integrity" action: compares `accounts.current_balance` vs engine-recomputed balance, lists drift, offers one-click reconcile (calls `recompute_account_balance` per account).
 
-- `dca_plans` (id, user_id, account_id, asset_id, amount_fiat, frequency, next_run_at, active).
-- `goals.kind` enum (`net_worth | liquid | account_balance | asset_quantity | asset_value`), `goals.target_account_id`, `goals.target_asset_id`. Drop hand-edited `current_amount` (compute from ledger).
-- `weekly_reports.posted_transaction_id` (nullable FK) — link the auto-generated `profit_realization` tx so edits/deletes can reverse it.
-- Indexes: `transactions(user_id, execution_timestamp desc)`, `(user_id, asset_id)`, `(user_id, source_account_id)`, `(user_id, destination_account_id)`.
-- Trigger `tg_transactions_update_balance`: on insert/update/delete of a transaction, recompute affected `accounts.current_balance` (cash side) so legacy reads stay coherent. Keeps double-entry consistent.
-- Integrity view `v_ledger_integrity` (per user: txs without account on cash legs, negative balances, orphan transfer pairs).
+---
 
-## Module-by-module changes
+## Phase 2 — Universal CRUD + Inline Entity Creation
 
-### Investments / ETF / Crypto (`src/routes/{investments,etf,crypto}.tsx`)
-- Replace direct table CRUD with:
-  - List = `useHoldings()` filtered by `asset_class` (`stock`, `etf`, `crypto`).
-  - "Add position" → opens `TransactionModal` preset to `buy` for that asset class.
-  - Row actions: Buy more, Sell, Transfer (crypto only), View history (filtered timeline).
-- Asset auto-create: if user types a new ticker, create `assets` row inline then emit `buy`.
-- ETF page adds "DCA Plans" panel (CRUD on `dca_plans`) and a "Run now" button.
-- Crypto page adds Wallet Allocation donut and Transfer flow showing `from → to` per asset (uses `transactions.transaction_type='transfer'`).
+**2a. Inline create-in-place**
+- New `<InlineCreatePicker>` primitive wrapping `Select` with a "+ Create new" footer item that opens a nested `Modal` (modal-in-modal supported — already used in `AccountPicker`). Generalize the AccountPicker pattern to: `AssetPicker`, `TagPicker` (new), `GoalPicker` (new), `CategoryPicker` (new).
+- After create: optimistic insert via `useUserTable`, auto-select new id, preserve parent form state (no remount).
+- Apply across `TransactionModal`, `HoldingActionModal`, buy/transfer flows.
 
-### Trading Capital (`src/routes/trading-capital.tsx`)
-- Page becomes a broker-account view: pick a broker `account` (type `broker`), show derived equity (= account_value from ledger), deposits, withdrawals, weekly P&L stream, drawdown, equity curve from snapshots filtered to that account.
-- Risk parameters stay on `trading_account` (config only — no balance writes).
-- "Record weekly P&L" CTA opens the weekly report modal.
+**2b. Full edit/delete coverage**
+- Audit every entity (`accounts`, `assets`, `goals`, `transactions`, `tags`, notes). For each missing edit path: add edit modal reusing the create form in "edit" mode.
+- Soft delete: add `archived_at` where missing (accounts has it; add to `assets`, `goals`). Hard delete only for transactions (with confirm + undo toast via sonner, 5s window using cached row).
+- "Correct transaction" flow: edit modal pre-fills, on save runs as UPDATE (trigger re-recomputes balances).
 
-### Weekly Reports (`src/routes/journal.tsx`)
-- On save with non-zero `pnl`, create a `profit_realization` tx on the selected broker account, store id in `posted_transaction_id`. On edit, reverse + re-post. On delete, reverse.
-- Screenshots already wired.
+---
 
-### Goals (`src/routes/goals.tsx`)
-- Form: choose `kind` + (account or asset) + target value/qty.
-- `current_amount` is computed live from `useHoldings()` / account values; remove +/- buttons.
-- Historical progress chart from `portfolio_snapshots_v2`.
+## Phase 3 — Trading Workspace Unification
 
-### Dashboard (`src/routes/index.tsx`)
-- KPIs from `useHoldings().totals`. Add: Account Allocation (donut by account), Asset Allocation (donut by asset_class), Monthly Cash Flow (deposits − withdrawals from txs grouped by month), Rolling 30d P&L, Recent Activity (last 8 txs).
-- Animated balance transitions via framer-motion `animate` on numeric values.
+- Merge `/trading-capital`, `/journal`, weekly reports into single `/trading` route with tabs: **Overview · Weekly · Journal · Calendar**.
+- Shared header: broker account selector, equity curve, current week P&L, drawdown, consistency score.
+- Keep old routes as redirects for 1 release so deep links don't break.
+- Weekly report remains the primary entry; trade-by-trade is secondary.
 
-### Analytics (`src/routes/analytics.tsx`)
-- Period selector: 24h / 7d / 30d / 90d / YTD / ALL — drives a single `useSnapshots(range)` hook.
-- Charts: Net Worth history, Liquidity evolution, Cumulative deposits vs withdrawals, Realized P&L curve, Allocation drift (stacked area by asset_class over time), Per-asset and Per-account performance tables.
-- Capital Flow visualization: simple Sankey (custom SVG) of deposits → accounts → assets over the selected range.
+---
 
-### Timeline (`src/routes/timeline.tsx` — new)
-- Global chronological feed with exact `YYYY-MM-DD HH:mm:ss`.
-- Day-grouped, expandable cards. Linked transfer pairs share an icon + hover highlight. Filter by type, account, asset. Paginated (50/page) with infinite scroll.
+## Phase 4 — Goals Engine
 
-## Performance
+- Extend `goals` with: `contribution_frequency`, `contribution_amount`, `linked_account_id`, `linked_asset_id` (some exist).
+- `src/lib/goals-engine.ts`: auto-progress from linked account/asset balance; projection = `(target - current) / contribution_per_period` → ETA date; milestone markers at 25/50/75%.
+- Contribution history derived from transactions tagged to goal (new optional `goal_id` on transactions, or via tag).
+- Goals page: progress timeline chart, projection card, milestone list.
 
-- `useHoldings` becomes selector-driven: memoized by `txs.length + last updated_at` so it doesn't re-replay on unrelated state.
-- Snapshot writer: batch + only when net worth delta > 0.5% or once/day.
-- Realtime: a single `transactions` channel that invalidates derived selectors (no per-page subscription churn).
-- Add table indexes listed above.
+---
 
-## Migration safety
+## Phase 5 — UX Consistency & Performance Pass
 
-1. Ship schema migration + helpers + Timeline + Dashboard rewrite first.
-2. Migrate Investments → ETF → Crypto pages to ledger-driven UI.
-3. Migrate Trading Capital + Weekly Reports posting.
-4. Migrate Goals.
-5. Add Analytics rewrite + integrity view.
-6. After 1 full session of parity verification, hide legacy tables from the Settings → Data panel (kept in DB for rollback).
+- Spacing/typography audit using existing tokens in `src/styles.css`; no new design language.
+- Dedupe buttons, normalize modal headers (`PageHeader`-style), consistent naming (Account vs Wallet → pick one per surface).
+- Realtime: consolidate channel subscriptions in `realtime-store.ts`, single channel per table, reference-counted teardown.
+- Cache: standardize React Query keys `[table, userId, ...filters]`; invalidate engine-derived queries on any transaction mutation.
+- Timezone: all display via `formatInTimeZone(user.timezone)`, all grouping in UTC.
 
-## Files
+---
 
-New: `src/lib/ledger-actions.ts`, `src/hooks/use-snapshots.ts`, `src/hooks/use-timeline.ts`, `src/components/AssetPicker.tsx`, `src/components/AccountPicker.tsx`, `src/components/SankeyFlow.tsx`, `src/routes/timeline.tsx`, one migration file.
-Edited: `src/routes/{index,investments,etf,crypto,trading-capital,journal,goals,analytics}.tsx`, `src/components/TransactionModal.tsx` (presets + asset autocreate), `src/components/AppSidebar.tsx` (add Timeline).
+## Technical notes
 
-## Out of scope (deferred)
+- Migrations are additive in Phase 1 — no data loss, old code keeps working during rollout.
+- New engine is pure & unit-testable; I'll add `src/lib/__tests__/ledger-engine.test.ts` with synthetic ledgers covering: buy, sell, transfer, fee, multi-currency, dividend, reconciliation drift.
+- No UI redesign. No module removal. Trading consolidation is a route-level merge of existing components, not a rebuild.
+- FX rates seeded from a free source on demand (manual entry in dev-tools for now; live fetch can be added later as a server fn — out of scope for this pass).
 
-Broker/exchange API sync, tax engine, staking yield automation, liabilities, multi-user — schema stays compatible but no UI.
+---
+
+## Deliverable cadence
+
+I'll start with **Phase 1** end-to-end (migration + engine + reconciliation + dev-tools verify), then stop and let you validate against your real data before moving to Phase 2. Each subsequent phase same pattern.
+
+**Confirm to start Phase 1**, or tell me to re-scope / re-order.
