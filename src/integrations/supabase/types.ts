@@ -305,6 +305,39 @@ export type Database = {
         }
         Relationships: []
       }
+      fx_rates: {
+        Row: {
+          as_of: string
+          as_of_date: string | null
+          base: string
+          created_at: string
+          id: string
+          quote: string
+          rate: number
+          source: string
+        }
+        Insert: {
+          as_of?: string
+          as_of_date?: string | null
+          base: string
+          created_at?: string
+          id?: string
+          quote: string
+          rate: number
+          source?: string
+        }
+        Update: {
+          as_of?: string
+          as_of_date?: string | null
+          base?: string
+          created_at?: string
+          id?: string
+          quote?: string
+          rate?: number
+          source?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           category: string | null
@@ -616,13 +649,18 @@ export type Database = {
       }
       transactions: {
         Row: {
+          asset_currency: string | null
           asset_id: string | null
+          asset_price: number | null
+          base_currency: string | null
+          base_value: number | null
           created_at: string
           destination_account_id: string | null
           exchange_rate: number | null
           execution_timestamp: string
           fee_amount: number
           fee_asset_id: string | null
+          fee_base_value: number | null
           fiat_value: number
           id: string
           note: string | null
@@ -634,13 +672,18 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asset_currency?: string | null
           asset_id?: string | null
+          asset_price?: number | null
+          base_currency?: string | null
+          base_value?: number | null
           created_at?: string
           destination_account_id?: string | null
           exchange_rate?: number | null
           execution_timestamp?: string
           fee_amount?: number
           fee_asset_id?: string | null
+          fee_base_value?: number | null
           fiat_value?: number
           id?: string
           note?: string | null
@@ -652,13 +695,18 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asset_currency?: string | null
           asset_id?: string | null
+          asset_price?: number | null
+          base_currency?: string | null
+          base_value?: number | null
           created_at?: string
           destination_account_id?: string | null
           exchange_rate?: number | null
           execution_timestamp?: string
           fee_amount?: number
           fee_asset_id?: string | null
+          fee_base_value?: number | null
           fiat_value?: number
           id?: string
           note?: string | null
