@@ -18,6 +18,13 @@ type AuthState = {
 
 let initialized = false;
 
+function getFallbackDisplayName(user: User) {
+  return (
+    (user.user_metadata?.display_name as string | undefined) ??
+    (user.email ? user.email.split("@")[0] : null)
+  );
+}
+
 export const useAuth = create<AuthState>((set, get) => ({
   user: null,
   session: null,
@@ -41,8 +48,28 @@ export const useAuth = create<AuthState>((set, get) => ({
   refreshProfile: async () => {
     const u = get().user;
     if (!u) return;
-    const { data } = await supabase.from("profiles").select("*").eq("id", u.id).maybeSingle();
-    if (data) set({ profile: data as Profile });
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", u.id).maybeSingle();
+    if (data) {
+      set({ profile: data as Profile });
+      return;
+    }
+    if (error) throw error;
+
+    // Existing/remixed projects can have valid auth sessions without a matching
+    // profile row. Create the missing profile immediately so protected routes
+    // don't wait forever on a blank shell.
+    const fallbackProfile = {
+      id: u.id,
+      display_name: getFallbackDisplayName(u),
+    };
+    const { data: created, error: createError } = await supabase
+      .from("profiles")
+      .insert(fallbackProfile)
+      .select("*")
+      .single();
+
+    if (createError) throw createError;
+    set({ profile: created as Profile });
   },
   signIn: async (email, password) => {
     const maxAttempts = 3;
