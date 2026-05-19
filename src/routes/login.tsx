@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Lock, Mail, ArrowRight, Sparkles } from "lucide-react";
+import { Lock, Mail, ArrowRight, Sparkles, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -10,22 +10,39 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
+function formatAuthError(err: any): string {
+  const status = err?.status;
+  const msg = err?.message ?? "Sign in failed";
+  if (status === 404) {
+    return "Auth endpoint returned 404. This usually happens inside the Lovable preview's fetch proxy — try again, or test on the published URL.";
+  }
+  if (/failed to fetch|networkerror|fetch/i.test(msg)) {
+    return `Network error reaching auth service: ${msg}`;
+  }
+  if (status) return `[${status}] ${msg}`;
+  return msg;
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg(null);
     try {
       await signIn(email, password);
       toast.success("Welcome back");
       navigate({ to: "/" });
     } catch (err: any) {
-      toast.error(err.message ?? "Sign in failed");
+      const message = formatAuthError(err);
+      setErrorMsg(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -43,6 +60,16 @@ function LoginPage() {
         </div>
         <h1 className="font-display text-3xl font-semibold mt-6">Welcome back</h1>
         <p className="text-sm text-muted-foreground mt-1">Sign in to your wealth operating system.</p>
+
+        {errorMsg && (
+          <div
+            role="alert"
+            className="mt-6 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span className="leading-snug">{errorMsg}</span>
+          </div>
+        )}
 
         <form onSubmit={onSubmit} className="space-y-4 mt-8">
           <div>
