@@ -45,8 +45,40 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (data) set({ profile: data as Profile });
   },
   signIn: async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    const maxAttempts = 3;
+    let lastError: any = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          lastError = error;
+          // Don't retry on real auth failures (bad credentials, etc.)
+          const status = (error as any).status;
+          const isTransient = !status || status === 404 || status === 0 || status >= 500;
+          if (!isTransient) throw error;
+          // Clear potentially stale session before retry
+          try { await supabase.auth.signOut({ scope: "local" } as any); } catch {}
+          if (attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 400 * attempt));
+            continue;
+          }
+          throw error;
+        }
+        if (data?.session) return;
+        lastError = new Error("No session returned");
+      } catch (err: any) {
+        lastError = err;
+        const status = err?.status;
+        const isTransient =
+          err?.name === "AuthRetryableFetchError" ||
+          /fetch|network|failed to fetch|404/i.test(err?.message ?? "") ||
+          status === 404 || status === 0 || (typeof status === "number" && status >= 500);
+        if (!isTransient || attempt === maxAttempts) throw err;
+        try { await supabase.auth.signOut({ scope: "local" } as any); } catch {}
+        await new Promise((r) => setTimeout(r, 400 * attempt));
+      }
+    }
+    throw lastError ?? new Error("Sign in failed");
   },
   signUp: async (email, password, displayName) => {
     const redirectUrl = `${window.location.origin}/`;
