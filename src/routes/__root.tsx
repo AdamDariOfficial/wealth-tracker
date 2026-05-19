@@ -86,11 +86,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Wealth Tracker — Modern Portfolio & Trading Intelligence" },
       { name: "description", content: "Premium dark-mode dashboard for ETFs, crypto, trading capital and long-term wealth." },
       { name: "author", content: "Wealth Tracker" },
-      { property: "og:title", content: "Wealth Tracker" },
+      { property: "og:title", content: "Wealth Tracker — Modern Portfolio & Trading Intelligence" },
       { property: "og:description", content: "Premium dark-mode dashboard for ETFs, crypto, trading capital and long-term wealth." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Wealth Tracker — Modern Portfolio & Trading Intelligence" },
+      { name: "twitter:description", content: "Premium dark-mode dashboard for ETFs, crypto, trading capital and long-term wealth." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/429e2a8a-cdc5-4242-bf7f-4cd51893da42/id-preview-fe07af36--8adb20eb-ab1d-4518-b794-299f09610365.lovable.app-1779190663058.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/429e2a8a-cdc5-4242-bf7f-4cd51893da42/id-preview-fe07af36--8adb20eb-ab1d-4518-b794-299f09610365.lovable.app-1779190663058.png" },
     ],
     links: [
       {
