@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import { dec } from "@/lib/decimal";
 
 type ID = string;
+
 
 async function uid() {
   const { data } = await supabase.auth.getUser();
@@ -53,7 +55,7 @@ export async function recordWithdrawal(p: {
 export async function recordTransfer(p: {
   sourceAccountId: ID; destinationAccountId: ID;
   assetId: ID; quantity: number; fiatValue?: number;
-  ts?: string; note?: string;
+  ts?: string; note?: string; transferGroupId?: ID;
 }) {
   return insertTx({
     transaction_type: "transfer",
@@ -62,9 +64,40 @@ export async function recordTransfer(p: {
     asset_id: p.assetId,
     quantity: p.quantity,
     fiat_value: p.fiatValue ?? 0,
+    base_value: p.fiatValue ?? 0,
+    transfer_group_id: p.transferGroupId ?? null,
     execution_timestamp: p.ts ?? new Date().toISOString(),
     note: p.note ?? null,
   });
+}
+
+/**
+ * Two-leg paired transfer for cross-asset / cross-currency moves. Both legs
+ * share a `transfer_group_id` so reconciliation can match them up.
+ */
+export async function recordPairedTransfer(p: {
+  sourceAccountId: ID; destinationAccountId: ID;
+  outAssetId: ID; outQuantity: number; outFiatValue: number;
+  inAssetId: ID;  inQuantity: number;  inFiatValue: number;
+  ts?: string; note?: string;
+}) {
+  const groupId = crypto.randomUUID();
+  const ts = p.ts ?? new Date().toISOString();
+  await insertTx({
+    transaction_type: "transfer",
+    source_account_id: p.sourceAccountId, destination_account_id: null,
+    asset_id: p.outAssetId, quantity: p.outQuantity,
+    fiat_value: p.outFiatValue, base_value: p.outFiatValue,
+    transfer_group_id: groupId, execution_timestamp: ts, note: p.note ?? null,
+  });
+  await insertTx({
+    transaction_type: "transfer",
+    source_account_id: null, destination_account_id: p.destinationAccountId,
+    asset_id: p.inAssetId, quantity: p.inQuantity,
+    fiat_value: p.inFiatValue, base_value: p.inFiatValue,
+    transfer_group_id: groupId, execution_timestamp: ts, note: p.note ?? null,
+  });
+  return groupId;
 }
 
 export async function recordBuy(p: {
@@ -72,7 +105,7 @@ export async function recordBuy(p: {
   quantity: number; price: number; fee?: number;
   ts?: string; note?: string;
 }) {
-  const fiat = p.quantity * p.price;
+  const fiat = dec.mul(p.quantity, p.price);
   return insertTx({
     transaction_type: "buy",
     source_account_id: p.cashAccountId,
@@ -80,6 +113,8 @@ export async function recordBuy(p: {
     asset_id: p.assetId,
     quantity: p.quantity,
     fiat_value: fiat,
+    base_value: fiat,
+    asset_price: p.price,
     fee_amount: p.fee ?? 0,
     exchange_rate: p.price,
     execution_timestamp: p.ts ?? new Date().toISOString(),
@@ -92,7 +127,7 @@ export async function recordSell(p: {
   quantity: number; price: number; fee?: number;
   ts?: string; note?: string;
 }) {
-  const fiat = p.quantity * p.price;
+  const fiat = dec.mul(p.quantity, p.price);
   return insertTx({
     transaction_type: "sell",
     source_account_id: p.brokerAccountId,
@@ -100,12 +135,15 @@ export async function recordSell(p: {
     asset_id: p.assetId,
     quantity: p.quantity,
     fiat_value: fiat,
+    base_value: fiat,
+    asset_price: p.price,
     fee_amount: p.fee ?? 0,
     exchange_rate: p.price,
     execution_timestamp: p.ts ?? new Date().toISOString(),
     note: p.note ?? null,
   });
 }
+
 
 export async function recordWeeklyPnl(p: {
   brokerAccountId: ID; pnl: number; ts?: string; note?: string;
@@ -122,12 +160,18 @@ export async function recordWeeklyPnl(p: {
   });
 }
 
-export async function reverseTransaction(txId: ID) {
+/**
+ * Soft-void a transaction (financial history is never hard-deleted).
+ * Sets `voided_at` so the trigger re-runs `recompute_account_balance` —
+ * which now ignores voided rows — and balances are restored automatically.
+ */
+export async function reverseTransaction(txId: ID, reason?: string) {
   const user_id = await uid();
-  // Snapshot before so we can log accurate before/after balances per account.
   const { data: tx } = await (supabase as any)
     .from("transactions").select("*").eq("id", txId).maybeSingle();
-  const affected: string[] = [tx?.source_account_id, tx?.destination_account_id].filter(Boolean);
+  if (!tx) throw new Error("Transaction not found");
+  if (tx.voided_at) return; // already voided — no-op
+  const affected: string[] = [tx.source_account_id, tx.destination_account_id].filter(Boolean);
   const before = new Map<string, number>();
   if (affected.length) {
     const { data: accts } = await (supabase as any)
@@ -135,7 +179,9 @@ export async function reverseTransaction(txId: ID) {
     for (const a of accts ?? []) before.set(a.id, Number(a.current_balance));
   }
 
-  const { error } = await (supabase as any).from("transactions").delete().eq("id", txId);
+  const { error } = await (supabase as any).from("transactions")
+    .update({ voided_at: new Date().toISOString(), voided_reason: reason ?? null })
+    .eq("id", txId);
   if (error) {
     await (supabase as any).from("audit_log").insert({
       user_id, event_type: "failed_reconciliation", transaction_id: txId,
@@ -144,7 +190,6 @@ export async function reverseTransaction(txId: ID) {
     throw error;
   }
 
-  // Trigger has already recomputed balances; record explicit reversal audit.
   if (affected.length) {
     const { data: after } = await (supabase as any)
       .from("accounts").select("id,current_balance").in("id", affected);
@@ -155,12 +200,20 @@ export async function reverseTransaction(txId: ID) {
       after_balance: Number(a.current_balance),
       delta: Number(a.current_balance) - (before.get(a.id) ?? 0),
       source: "client",
-      message: `Reversed ${tx?.transaction_type ?? "transaction"}`,
-      metadata: { reversed_tx: tx },
+      message: `Voided ${tx.transaction_type}${reason ? ` — ${reason}` : ""}`,
+      metadata: { voided_tx: tx, reason: reason ?? null },
     }));
     if (rows.length) await (supabase as any).from("audit_log").insert(rows);
   }
 }
+
+/** Restore a previously-voided transaction. Trigger re-runs reconciliation. */
+export async function restoreTransaction(txId: ID) {
+  const { error } = await (supabase as any).from("transactions")
+    .update({ voided_at: null, voided_reason: null }).eq("id", txId);
+  if (error) throw error;
+}
+
 
 export async function recordManualAdjustment(p: {
   accountId: ID; newBalance: number; note?: string;

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Filter, ArrowUpDown, Trash2, Download, X } from "lucide-react";
+import { Plus, Search, Filter, ArrowUpDown, Trash2, Download, X, Pencil } from "lucide-react";
+
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,11 +30,13 @@ function TransactionsPage() {
   const { rows: accounts } = useAccounts();
   const { rows: assets } = useAssets();
   const [open, setOpen] = useState(false);
+  const [editTx, setEditTx] = useState<Transaction | null>(null);
   const [q, setQ] = useState("");
   const [type, setType] = useState("all");
   const [acct, setAcct] = useState("all");
   const [sortAsc, setSortAsc] = useState(false);
   const [detail, setDetail] = useState<Transaction | null>(null);
+
   const [debouncedQ, setDebouncedQ] = useState("");
   const [assetSym, setAssetSym] = useState("all");
   const [currency, setCurrency] = useState("all");
@@ -169,11 +172,17 @@ function TransactionsPage() {
   const handleDelete = async () => {
     if (!detail) return;
     try {
-      await reverseTransaction(detail.id);
-      toast.success("Transaction deleted; balances reconciled");
+      await reverseTransaction(detail.id, "Voided from transactions detail");
+      toast.success("Transaction voided · balances reconciled");
       setDetail(null);
     } catch (e: any) { toast.error(e.message); }
   };
+  const handleEdit = () => {
+    if (!detail) return;
+    setEditTx(detail);
+    setDetail(null);
+  };
+
 
   return (
     <div className="space-y-6">
@@ -286,14 +295,17 @@ function TransactionsPage() {
       </div>
 
       <TransactionModal open={open} onClose={() => setOpen(false)} />
+      <TransactionModal open={!!editTx} onClose={() => setEditTx(null)} edit={editTx} />
 
       <Modal open={!!detail} onClose={() => setDetail(null)} title="Transaction detail"
         footer={detail && (
           <>
             <Button variant="outline" onClick={() => setDetail(null)}>Close</Button>
-            <Button variant="destructive" onClick={handleDelete}><Trash2 className="h-3.5 w-3.5 mr-1" /> Delete & reconcile</Button>
+            <Button variant="outline" onClick={handleEdit}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+            <Button variant="destructive" onClick={handleDelete}><Trash2 className="h-3.5 w-3.5 mr-1" /> Void & reconcile</Button>
           </>
         )}>
+
         {detail && (
           <div className="space-y-2 text-xs font-mono">
             {([

@@ -70,6 +70,7 @@ export type Database = {
       }
       assets: {
         Row: {
+          archived_at: string | null
           asset_class: Database["public"]["Enums"]["asset_class"]
           color: string | null
           created_at: string
@@ -84,6 +85,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           asset_class?: Database["public"]["Enums"]["asset_class"]
           color?: string | null
           created_at?: string
@@ -98,6 +100,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           asset_class?: Database["public"]["Enums"]["asset_class"]
           color?: string | null
           created_at?: string
@@ -120,6 +123,9 @@ export type Database = {
           before_balance: number | null
           created_at: string
           delta: number | null
+          diff: Json | null
+          entity_id: string | null
+          entity_type: string | null
           event_type: string
           id: string
           message: string | null
@@ -134,6 +140,9 @@ export type Database = {
           before_balance?: number | null
           created_at?: string
           delta?: number | null
+          diff?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
           event_type: string
           id?: string
           message?: string | null
@@ -148,6 +157,9 @@ export type Database = {
           before_balance?: number | null
           created_at?: string
           delta?: number | null
+          diff?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
           event_type?: string
           id?: string
           message?: string | null
@@ -340,6 +352,7 @@ export type Database = {
       }
       goals: {
         Row: {
+          archived_at: string | null
           category: string | null
           created_at: string
           current_amount: number
@@ -355,6 +368,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           category?: string | null
           created_at?: string
           current_amount?: number
@@ -370,6 +384,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           category?: string | null
           created_at?: string
           current_amount?: number
@@ -668,8 +683,11 @@ export type Database = {
           source_account_id: string | null
           tags: string[]
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_group_id: string | null
           updated_at: string
           user_id: string
+          voided_at: string | null
+          voided_reason: string | null
         }
         Insert: {
           asset_currency?: string | null
@@ -691,8 +709,11 @@ export type Database = {
           source_account_id?: string | null
           tags?: string[]
           transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_group_id?: string | null
           updated_at?: string
           user_id: string
+          voided_at?: string | null
+          voided_reason?: string | null
         }
         Update: {
           asset_currency?: string | null
@@ -714,8 +735,11 @@ export type Database = {
           source_account_id?: string | null
           tags?: string[]
           transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          transfer_group_id?: string | null
           updated_at?: string
           user_id?: string
+          voided_at?: string | null
+          voided_reason?: string | null
         }
         Relationships: [
           {

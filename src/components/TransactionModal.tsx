@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAccounts, useAssets, useTransactions, type Transaction } from "@/hooks/use-ledger";
+import { AccountPicker } from "@/components/AccountPicker";
+import { TagPicker } from "@/components/TagPicker";
+import { dec } from "@/lib/decimal";
+import { useAuth } from "@/lib/auth-store";
 import { toast } from "sonner";
 
 type TxType = Transaction["transaction_type"];
@@ -29,14 +33,27 @@ const NEEDS_DEST: TxType[] = ["deposit", "transfer", "buy", "convert", "dividend
 const NEEDS_ASSET: TxType[] = ["buy", "sell", "convert", "transfer", "dividend", "staking_reward"];
 
 export function TransactionModal({
-  open, onClose, defaultType = "deposit", defaultAccountId,
-}: { open: boolean; onClose: () => void; defaultType?: TxType; defaultAccountId?: string }) {
+  open, onClose, defaultType = "deposit", defaultAccountId, edit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  defaultType?: TxType;
+  defaultAccountId?: string;
+  /** When set, modal opens in edit mode and updates the existing row. */
+  edit?: Transaction | null;
+}) {
   const { rows: accounts } = useAccounts();
   const { rows: assets } = useAssets();
-  const { insert } = useTransactions();
+  const { insert, update } = useTransactions();
+  const { profile } = useAuth();
+  const baseCurrency = profile?.currency ?? "USD";
 
   const nowLocal = () => {
     const d = new Date(); d.setSeconds(0, 0);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+  const toLocal = (iso: string) => {
+    const d = new Date(iso);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   };
 
@@ -45,45 +62,84 @@ export function TransactionModal({
   const [dst, setDst] = useState<string>(defaultAccountId ?? "");
   const [assetId, setAssetId] = useState<string>("");
   const [qty, setQty] = useState<string>("");
+  const [price, setPrice] = useState<string>("");
   const [fiat, setFiat] = useState<string>("");
   const [fee, setFee] = useState<string>("");
   const [ts, setTs] = useState<string>(nowLocal());
   const [note, setNote] = useState<string>("");
+  const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    if (edit) {
+      setType(edit.transaction_type);
+      setSrc(edit.source_account_id ?? "");
+      setDst(edit.destination_account_id ?? "");
+      setAssetId(edit.asset_id ?? "");
+      setQty(String(edit.quantity ?? ""));
+      setFiat(String(edit.fiat_value ?? ""));
+      setPrice(edit.quantity ? String(dec.div(edit.fiat_value, edit.quantity)) : "");
+      setFee(String(edit.fee_amount ?? ""));
+      setTs(toLocal(edit.execution_timestamp));
+      setNote(edit.note ?? "");
+      setTags(edit.tags ?? []);
+    } else {
       setType(defaultType);
       setDst(defaultAccountId ?? "");
       setSrc("");
       setAssetId("");
-      setQty(""); setFiat(""); setFee("");
-      setTs(nowLocal()); setNote("");
+      setQty(""); setFiat(""); setPrice(""); setFee("");
+      setTs(nowLocal()); setNote(""); setTags([]);
     }
-  }, [open, defaultType, defaultAccountId]);
+  }, [open, edit, defaultType, defaultAccountId]);
 
-  // auto-default fiat asset for cash flows
+  // Auto-default fiat asset for cash flows
   useEffect(() => {
-    if (!NEEDS_ASSET.includes(type) && assets.length && !assetId) {
+    if (!edit && !NEEDS_ASSET.includes(type) && assets.length && !assetId) {
       const usd = assets.find((a) => a.symbol === "USD") ?? assets[0];
       setAssetId(usd.id);
     }
-  }, [type, assets, assetId]);
+  }, [type, assets, assetId, edit]);
+
+  // Decimal-safe derived fiat for asset trades: qty * price
+  const derivedFiat = useMemo(() => {
+    const q = parseFloat(qty || "0");
+    const p = parseFloat(price || "0");
+    if (!q || !p) return null;
+    return dec.mul(q, p);
+  }, [qty, price]);
+
+  const effectiveFiat = useMemo(() => {
+    if (fiat) return parseFloat(fiat) || 0;
+    return derivedFiat ?? 0;
+  }, [fiat, derivedFiat]);
 
   const submit = async () => {
     try {
+      const q = parseFloat(qty || "0") || 0;
+      const f = effectiveFiat;
       const payload: any = {
         transaction_type: type,
         source_account_id: NEEDS_SOURCE.includes(type) && src ? src : null,
         destination_account_id: NEEDS_DEST.includes(type) && dst ? dst : null,
         asset_id: assetId || null,
-        quantity: parseFloat(qty || "0") || 0,
-        fiat_value: parseFloat(fiat || "0") || 0,
+        quantity: q,
+        fiat_value: f,
+        base_value: f,
+        base_currency: baseCurrency,
+        asset_price: q ? dec.div(f, q) : null,
         fee_amount: parseFloat(fee || "0") || 0,
         execution_timestamp: new Date(ts).toISOString(),
         note: note || null,
+        tags,
       };
-      await insert(payload);
-      toast.success("Transaction recorded");
+      if (edit) {
+        await update(edit.id, payload);
+        toast.success("Transaction updated · balances reconciled");
+      } else {
+        await insert(payload);
+        toast.success("Transaction recorded");
+      }
       onClose();
     } catch (e: any) {
       toast.error(e.message ?? "Failed");
@@ -91,9 +147,9 @@ export function TransactionModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="New Transaction"
+    <Modal open={open} onClose={onClose} title={edit ? "Edit transaction" : "New Transaction"}
       footer={<><Button variant="outline" onClick={onClose}>Cancel</Button>
-      <Button className="bg-cyan text-background hover:bg-cyan/90" onClick={submit}>Record</Button></>}>
+      <Button className="bg-cyan text-background hover:bg-cyan/90" onClick={submit}>{edit ? "Save changes" : "Record"}</Button></>}>
       <div>
         <Label className="text-xs">Type</Label>
         <Select value={type} onValueChange={(v) => setType(v as TxType)}>
@@ -104,22 +160,10 @@ export function TransactionModal({
 
       <div className="grid grid-cols-2 gap-3">
         {NEEDS_SOURCE.includes(type) && (
-          <div>
-            <Label className="text-xs">From</Label>
-            <Select value={src} onValueChange={setSrc}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Source account" /></SelectTrigger>
-              <SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
+          <AccountPicker value={src} onChange={setSrc} label="From" />
         )}
         {NEEDS_DEST.includes(type) && (
-          <div>
-            <Label className="text-xs">To</Label>
-            <Select value={dst} onValueChange={setDst}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Destination account" /></SelectTrigger>
-              <SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
+          <AccountPicker value={dst} onChange={setDst} label="To" />
         )}
       </div>
 
@@ -137,11 +181,17 @@ export function TransactionModal({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <div><Label className="text-xs">Quantity</Label><Input type="number" step="any" value={qty} onChange={(e) => setQty(e.target.value)} className="mt-1" /></div>
-        <div><Label className="text-xs">Fiat value</Label><Input type="number" step="any" value={fiat} onChange={(e) => setFiat(e.target.value)} className="mt-1" /></div>
+        <div><Label className="text-xs">Price</Label><Input type="number" step="any" value={price} onChange={(e) => setPrice(e.target.value)} className="mt-1" placeholder="per unit" /></div>
+        <div>
+          <Label className="text-xs">Fiat value</Label>
+          <Input type="number" step="any" value={fiat} onChange={(e) => setFiat(e.target.value)} className="mt-1" placeholder={derivedFiat != null ? derivedFiat.toFixed(2) : ""} />
+        </div>
         <div><Label className="text-xs">Fee</Label><Input type="number" step="any" value={fee} onChange={(e) => setFee(e.target.value)} className="mt-1" /></div>
       </div>
+
+      <TagPicker value={tags} onChange={setTags} />
 
       <div>
         <Label className="text-xs">Note</Label>

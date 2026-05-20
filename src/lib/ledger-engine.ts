@@ -101,10 +101,14 @@ export function computeLedger(input: EngineInput): EngineOutput {
     return b;
   };
 
-  // chronological UTC order — date_trunc on display side, never here
-  const sorted = [...transactions].sort(
-    (a, b) => +new Date(a.execution_timestamp) - +new Date(b.execution_timestamp),
-  );
+  // chronological UTC order; skip voided rows defensively (the query layer
+  // already filters them, but the engine is the authoritative gate).
+  const sorted = [...transactions]
+    .filter((t) => !(t as any).voided_at)
+    .sort(
+      (a, b) => +new Date(a.execution_timestamp) - +new Date(b.execution_timestamp),
+    );
+
 
   const cash = new Map<string, number>();
   const addCash = (id: string | null | undefined, delta: number) => {
