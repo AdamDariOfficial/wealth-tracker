@@ -30,11 +30,13 @@ function TransactionsPage() {
   const { rows: accounts } = useAccounts();
   const { rows: assets } = useAssets();
   const [open, setOpen] = useState(false);
+  const [editTx, setEditTx] = useState<Transaction | null>(null);
   const [q, setQ] = useState("");
   const [type, setType] = useState("all");
   const [acct, setAcct] = useState("all");
   const [sortAsc, setSortAsc] = useState(false);
   const [detail, setDetail] = useState<Transaction | null>(null);
+
   const [debouncedQ, setDebouncedQ] = useState("");
   const [assetSym, setAssetSym] = useState("all");
   const [currency, setCurrency] = useState("all");
