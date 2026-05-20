@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import { dec } from "@/lib/decimal";
 
 type ID = string;
+
 
 async function uid() {
   const { data } = await supabase.auth.getUser();
