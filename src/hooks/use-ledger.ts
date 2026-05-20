@@ -51,7 +51,11 @@ export type Transaction = {
   tags: string[];
   execution_timestamp: string;
   created_at: string;
+  voided_at?: string | null;
+  voided_reason?: string | null;
+  transfer_group_id?: string | null;
 };
+
 
 export type Holding = {
   accountId: string;
