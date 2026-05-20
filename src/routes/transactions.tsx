@@ -295,14 +295,17 @@ function TransactionsPage() {
       </div>
 
       <TransactionModal open={open} onClose={() => setOpen(false)} />
+      <TransactionModal open={!!editTx} onClose={() => setEditTx(null)} edit={editTx} />
 
       <Modal open={!!detail} onClose={() => setDetail(null)} title="Transaction detail"
         footer={detail && (
           <>
             <Button variant="outline" onClick={() => setDetail(null)}>Close</Button>
-            <Button variant="destructive" onClick={handleDelete}><Trash2 className="h-3.5 w-3.5 mr-1" /> Delete & reconcile</Button>
+            <Button variant="outline" onClick={handleEdit}><Pencil className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+            <Button variant="destructive" onClick={handleDelete}><Trash2 className="h-3.5 w-3.5 mr-1" /> Void & reconcile</Button>
           </>
         )}>
+
         {detail && (
           <div className="space-y-2 text-xs font-mono">
             {([
