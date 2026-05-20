@@ -172,11 +172,17 @@ function TransactionsPage() {
   const handleDelete = async () => {
     if (!detail) return;
     try {
-      await reverseTransaction(detail.id);
-      toast.success("Transaction deleted; balances reconciled");
+      await reverseTransaction(detail.id, "Voided from transactions detail");
+      toast.success("Transaction voided · balances reconciled");
       setDetail(null);
     } catch (e: any) { toast.error(e.message); }
   };
+  const handleEdit = () => {
+    if (!detail) return;
+    setEditTx(detail);
+    setDetail(null);
+  };
+
 
   return (
     <div className="space-y-6">
