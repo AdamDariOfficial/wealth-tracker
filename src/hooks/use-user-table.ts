@@ -10,6 +10,19 @@ type TableName =
   | "accounts" | "assets" | "transactions" | "portfolio_snapshots_v2" | "dca_plans"
   | "audit_log";
 
+/**
+ * Financial-history tables are never hard-deleted. Removing a row sets the
+ * appropriate soft-delete column instead so the ledger stays event-source
+ * complete and the trigger-driven reconciliation reruns (it already ignores
+ * voided/archived rows).
+ */
+const SOFT_DELETE_COLUMN: Partial<Record<TableName, string>> = {
+  transactions: "voided_at",
+  assets: "archived_at",
+  goals: "archived_at",
+  accounts: "archived_at",
+};
+
 export function useUserTable<T extends { id: string }>(
   table: TableName,
   orderBy: { col: string; asc?: boolean } = { col: "created_at", asc: false },
@@ -19,16 +32,19 @@ export function useUserTable<T extends { id: string }>(
   const [loading, setLoading] = useState(true);
   const notifyNewItem = useRealtimeStore((s) => s.notifyNewItem);
 
+  const softCol = SOFT_DELETE_COLUMN[table];
+
   const refresh = useCallback(async () => {
     if (!user) return;
-    const { data } = await (supabase as any)
+    let q = (supabase as any)
       .from(table)
       .select("*")
-      .eq("user_id", user.id)
-      .order(orderBy.col, { ascending: orderBy.asc ?? false });
+      .eq("user_id", user.id);
+    if (softCol) q = q.is(softCol, null);
+    const { data } = await q.order(orderBy.col, { ascending: orderBy.asc ?? false });
     setRows((data ?? []) as T[]);
     setLoading(false);
-  }, [user, table, orderBy.col, orderBy.asc]);
+  }, [user, table, orderBy.col, orderBy.asc, softCol]);
 
   useEffect(() => {
     if (!user) return;
@@ -51,9 +67,6 @@ export function useUserTable<T extends { id: string }>(
 
   const insert = async (payload: Record<string, any>) => {
     if (!user) return;
-    // Optimistic insert — instantly add a temp row so dashboard/holdings/charts
-    // recompute without waiting for the round-trip. Realtime subscription will
-    // reconcile with the real row when it lands.
     const tempId = `__optim_${Math.random().toString(36).slice(2)}`;
     const optimistic = {
       id: tempId,
@@ -72,6 +85,7 @@ export function useUserTable<T extends { id: string }>(
       throw e;
     }
   };
+
   const update = async (id: string, payload: Record<string, any>) => {
     const prevRows = rows;
     setRows((rs) => rs.map((r) => (r.id === id ? ({ ...r, ...payload } as T) : r)));
@@ -81,15 +95,38 @@ export function useUserTable<T extends { id: string }>(
       throw error;
     }
   };
-  const remove = async (id: string) => {
+
+  /**
+   * For ledger-relevant tables this is a SOFT delete — sets `voided_at` or
+   * `archived_at`. The `tg_tx_recompute` trigger + voided-aware
+   * `recompute_account_balance` keep derived balances correct automatically.
+   * For non-financial tables this still hard-deletes.
+   */
+  const remove = async (id: string, reason?: string) => {
     const prevRows = rows;
     setRows((rs) => rs.filter((r) => r.id !== id));
-    const { error } = await (supabase as any).from(table).delete().eq("id", id);
+    let error;
+    if (softCol) {
+      const patch: Record<string, any> = { [softCol]: new Date().toISOString() };
+      if (softCol === "voided_at" && reason) patch.voided_reason = reason;
+      ({ error } = await (supabase as any).from(table).update(patch).eq("id", id));
+    } else {
+      ({ error } = await (supabase as any).from(table).delete().eq("id", id));
+    }
     if (error) {
       setRows(prevRows);
       throw error;
     }
   };
 
-  return { rows, loading, insert, update, remove, refresh };
+  /** Restore a soft-deleted row (no-op for hard-delete tables). */
+  const restore = async (id: string) => {
+    if (!softCol) return;
+    const { error } = await (supabase as any)
+      .from(table).update({ [softCol]: null, voided_reason: null }).eq("id", id);
+    if (error) throw error;
+    await refresh();
+  };
+
+  return { rows, loading, insert, update, remove, restore, refresh };
 }
