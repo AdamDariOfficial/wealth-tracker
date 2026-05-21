@@ -54,6 +54,11 @@ export type Transaction = {
   voided_at?: string | null;
   voided_reason?: string | null;
   transfer_group_id?: string | null;
+  base_value?: number | null;
+  base_currency?: string | null;
+  asset_price?: number | null;
+  asset_currency?: string | null;
+  fee_base_value?: number | null;
 };
 
 
