@@ -22,8 +22,7 @@ const portfolio = [
   { title: "Crypto",          url: "/crypto",          icon: Bitcoin },
 ];
 const trading = [
-  { title: "Trading Capital", url: "/trading-capital", icon: Briefcase },
-  { title: "Weekly Reports",  url: "/journal",         icon: BookOpen },
+  { title: "Trading Workspace", url: "/trading", icon: Briefcase },
 ];
 const planning = [
   { title: "Goals",           url: "/goals",           icon: Target },

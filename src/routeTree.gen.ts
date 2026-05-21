@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as TradingCapitalRouteImport } from './routes/trading-capital'
+import { Route as TradingRouteImport } from './routes/trading'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -37,6 +38,11 @@ const TransactionsRoute = TransactionsRouteImport.update({
 const TradingCapitalRoute = TradingCapitalRouteImport.update({
   id: '/trading-capital',
   path: '/trading-capital',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradingRoute = TradingRouteImport.update({
+  id: '/trading',
+  path: '/trading',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TimelineRoute = TimelineRouteImport.update({
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/timeline': typeof TimelineRoute
+  '/trading': typeof TradingRoute
   '/trading-capital': typeof TradingCapitalRoute
   '/transactions': typeof TransactionsRoute
   '/accounts/$id': typeof AccountsIdRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/timeline': typeof TimelineRoute
+  '/trading': typeof TradingRoute
   '/trading-capital': typeof TradingCapitalRoute
   '/transactions': typeof TransactionsRoute
   '/accounts/$id': typeof AccountsIdRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/timeline': typeof TimelineRoute
+  '/trading': typeof TradingRoute
   '/trading-capital': typeof TradingCapitalRoute
   '/transactions': typeof TransactionsRoute
   '/accounts/$id': typeof AccountsIdRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/timeline'
+    | '/trading'
     | '/trading-capital'
     | '/transactions'
     | '/accounts/$id'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/timeline'
+    | '/trading'
     | '/trading-capital'
     | '/transactions'
     | '/accounts/$id'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/timeline'
+    | '/trading'
     | '/trading-capital'
     | '/transactions'
     | '/accounts/$id'
@@ -272,6 +284,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   TimelineRoute: typeof TimelineRoute
+  TradingRoute: typeof TradingRoute
   TradingCapitalRoute: typeof TradingCapitalRoute
   TransactionsRoute: typeof TransactionsRoute
 }
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       path: '/trading-capital'
       fullPath: '/trading-capital'
       preLoaderRoute: typeof TradingCapitalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trading': {
+      id: '/trading'
+      path: '/trading'
+      fullPath: '/trading'
+      preLoaderRoute: typeof TradingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/timeline': {
@@ -443,6 +463,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   TimelineRoute: TimelineRoute,
+  TradingRoute: TradingRoute,
   TradingCapitalRoute: TradingCapitalRoute,
   TransactionsRoute: TransactionsRoute,
 }

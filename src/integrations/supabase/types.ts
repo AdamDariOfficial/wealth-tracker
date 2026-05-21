@@ -779,6 +779,7 @@ export type Database = {
           consistency_score: number
           created_at: string
           discipline_score: number
+          finalized_at: string | null
           id: string
           is_draft: boolean
           lessons: string | null
@@ -800,6 +801,7 @@ export type Database = {
           consistency_score?: number
           created_at?: string
           discipline_score?: number
+          finalized_at?: string | null
           id?: string
           is_draft?: boolean
           lessons?: string | null
@@ -821,6 +823,7 @@ export type Database = {
           consistency_score?: number
           created_at?: string
           discipline_score?: number
+          finalized_at?: string | null
           id?: string
           is_draft?: boolean
           lessons?: string | null
