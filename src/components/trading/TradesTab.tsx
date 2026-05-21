@@ -27,7 +27,7 @@ type Trade = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 const blank = {
-  trade_date: today(), asset: "", direction: "Long" as const,
+  trade_date: today(), asset: "", direction: "Long" as "Long" | "Short",
   entry: 0, stop_loss: 0, take_profit: 0, pnl: 0, rr: 0, rating: 3,
   setup: "", session: "", notes: "",
 };
