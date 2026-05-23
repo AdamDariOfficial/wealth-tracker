@@ -26,6 +26,7 @@ import { Route as CryptoRouteImport } from './routes/crypto'
 import { Route as CashRouteImport } from './routes/cash'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountsIdRouteImport } from './routes/accounts.$id'
@@ -115,6 +116,11 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccountsRoute = AccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
@@ -134,6 +140,7 @@ const AccountsIdRoute = AccountsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRouteWithChildren
+  '/activity': typeof ActivityRoute
   '/analytics': typeof AnalyticsRoute
   '/audit': typeof AuditRoute
   '/cash': typeof CashRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRouteWithChildren
+  '/activity': typeof ActivityRoute
   '/analytics': typeof AnalyticsRoute
   '/audit': typeof AuditRoute
   '/cash': typeof CashRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRouteWithChildren
+  '/activity': typeof ActivityRoute
   '/analytics': typeof AnalyticsRoute
   '/audit': typeof AuditRoute
   '/cash': typeof CashRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/accounts'
+    | '/activity'
     | '/analytics'
     | '/audit'
     | '/cash'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/accounts'
+    | '/activity'
     | '/analytics'
     | '/audit'
     | '/cash'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/accounts'
+    | '/activity'
     | '/analytics'
     | '/audit'
     | '/cash'
@@ -270,6 +282,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountsRoute: typeof AccountsRouteWithChildren
+  ActivityRoute: typeof ActivityRoute
   AnalyticsRoute: typeof AnalyticsRoute
   AuditRoute: typeof AuditRoute
   CashRoute: typeof CashRoute
@@ -410,6 +423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/accounts': {
       id: '/accounts'
       path: '/accounts'
@@ -449,6 +469,7 @@ const AccountsRouteWithChildren = AccountsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountsRoute: AccountsRouteWithChildren,
+  ActivityRoute: ActivityRoute,
   AnalyticsRoute: AnalyticsRoute,
   AuditRoute: AuditRoute,
   CashRoute: CashRoute,
