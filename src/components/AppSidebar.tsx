@@ -11,9 +11,10 @@ import {
 
 const main = [
   { title: "Dashboard",            url: "/",              icon: LayoutDashboard },
+  { title: "Activity",             url: "/activity",      icon: Activity },
   { title: "Liquidity & Accounts", url: "/accounts",      icon: Wallet },
   { title: "Transactions",         url: "/transactions",  icon: ArrowLeftRight },
-  { title: "Timeline",             url: "/timeline",      icon: Activity },
+  { title: "Timeline",             url: "/timeline",      icon: BookOpen },
   { title: "Audit Log",            url: "/audit",         icon: ShieldCheck },
 ];
 const portfolio = [

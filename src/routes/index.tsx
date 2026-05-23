@@ -14,6 +14,7 @@ import { usePortfolio, useSnapshots } from "@/hooks/use-portfolio";
 import { useUserTable } from "@/hooks/use-user-table";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
+import { ActivityFeed } from "@/components/ActivityFeed";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
 
@@ -197,6 +198,14 @@ function Dashboard() {
             </div>
           )}
         </ChartCard>
+      </div>
+
+      <div>
+        <div className="flex items-baseline justify-between mb-3 px-1">
+          <h3 className="font-display font-semibold">Recent activity</h3>
+          <p className="text-xs text-muted-foreground">All events across treasury, trading, goals & reconciliation</p>
+        </div>
+        <ActivityFeed compact limit={6} showAdvancedToggle={false} />
       </div>
     </div>
   );
