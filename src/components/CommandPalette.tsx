@@ -19,6 +19,7 @@ export function CommandPalette() {
   const open = useUI((s) => s.paletteOpen);
   const toggle = useUI((s) => s.togglePalette);
   const openTxModal = useUI((s) => s.openTxModal);
+  const navigate = useNavigate();
   const nav = (to: string) => navigate({ to } as never);
   const { rows: accounts } = useAccounts();
   const { rows: assets } = useAssets();
