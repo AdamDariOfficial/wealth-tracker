@@ -78,7 +78,7 @@ export function CommandPalette() {
           <CommandItem onSelect={() => run(() => openTxModal({ type: "sell" }))}>
             <Plus /> Sell asset
           </CommandItem>
-          <CommandItem onSelect={() => run(() => navigate({ to: "/trading" }))}>
+          <CommandItem onSelect={() => run(() => nav("/trading"))}>
             <Briefcase /> Open trading workspace
           </CommandItem>
         </CommandGroup>
@@ -87,7 +87,7 @@ export function CommandPalette() {
 
         <CommandGroup heading="Navigate">
           {navItems.map((n) => (
-            <CommandItem key={n.to} onSelect={() => run(() => navigate({ to: n.to }))}>
+            <CommandItem key={n.to} onSelect={() => run(() => nav(n.to))}>
               <n.icon /> {n.label}
             </CommandItem>
           ))}
@@ -101,7 +101,7 @@ export function CommandPalette() {
                 <CommandItem
                   key={a.id}
                   value={`account ${a.name} ${a.type} ${a.provider ?? ""}`}
-                  onSelect={() => run(() => navigate({ to: "/accounts/$id", params: { id: a.id } }))}
+                  onSelect={() => run(() => navigate({ to: "/accounts/$id", params: { id: a.id } } as never))}
                 >
                   <Wallet /> {a.name}
                   <span className="ml-auto text-xs text-muted-foreground">{a.currency}</span>
@@ -119,7 +119,7 @@ export function CommandPalette() {
                 <CommandItem
                   key={a.id}
                   value={`asset ${a.symbol} ${a.name}`}
-                  onSelect={() => run(() => navigate({ to: "/transactions", search: { asset: a.symbol } as never }))}
+                  onSelect={() => run(() => navigate({ to: "/transactions", search: { asset: a.symbol } } as never))}
                 >
                   <TrendingUp /> {a.symbol}
                   <span className="ml-auto text-xs text-muted-foreground">{a.name}</span>
@@ -137,7 +137,7 @@ export function CommandPalette() {
                 <CommandItem
                   key={g.id}
                   value={`goal ${g.name}`}
-                  onSelect={() => run(() => navigate({ to: "/goals" }))}
+                  onSelect={() => run(() => nav("/goals"))}
                 >
                   <Target /> {g.name}
                 </CommandItem>
