@@ -205,7 +205,7 @@ function Dashboard() {
           <h3 className="font-display font-semibold">Recent activity</h3>
           <p className="text-xs text-muted-foreground">All events across treasury, trading, goals & reconciliation</p>
         </div>
-        <ActivityFeed compact limit={6} showAdvancedToggle={false} />
+        <ActivityFeed compact limit={6} />
       </div>
     </div>
   );
