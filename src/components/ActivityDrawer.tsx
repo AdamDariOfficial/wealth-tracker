@@ -15,7 +15,7 @@ import {
 import type { ActivityEvent, ActivityKind } from "@/hooks/use-activity-feed";
 import { useActivityFeed } from "@/hooks/use-activity-feed";
 import { useAccounts, useAssets } from "@/hooks/use-ledger";
-import { fmtMoney } from "@/lib/format-currency";
+import { formatMoney } from "@/lib/format-currency";
 
 const ICON: Record<ActivityKind, typeof ActivityIcon> = {
   transaction: ArrowLeftRight,
@@ -118,7 +118,7 @@ export function ActivityDrawer({
 
           {event.amount != null && (
             <div className={cn("text-2xl font-display font-bold", TONE_RING[event.tone ?? "neutral"].split(" ").pop())}>
-              {event.amount >= 0 ? "+" : ""}{fmtMoney(event.amount, event.currency ?? undefined)}
+              {event.amount >= 0 ? "+" : ""}{formatMoney(event.amount, event.currency ?? undefined)}
             </div>
           )}
 
@@ -157,8 +157,8 @@ export function ActivityDrawer({
               {r.assetId && <Field label="Asset" value={assName(r.assetId)} />}
               {m.quantity != null && <Field label="Quantity" value={Number(m.quantity).toLocaleString(undefined, { maximumFractionDigits: 8 })} mono />}
               {m.asset_price != null && <Field label="Price" value={`${Number(m.asset_price).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${m.asset_currency ?? ""}`} mono />}
-              {m.fiat_value != null && <Field label="Fiat value" value={fmtMoney(Number(m.fiat_value))} mono />}
-              {m.fee_amount != null && Number(m.fee_amount) !== 0 && <Field label="Fee" value={fmtMoney(Number(m.fee_amount))} mono />}
+              {m.fiat_value != null && <Field label="Fiat value" value={formatMoney(Number(m.fiat_value))} mono />}
+              {m.fee_amount != null && Number(m.fee_amount) !== 0 && <Field label="Fee" value={formatMoney(Number(m.fee_amount))} mono />}
             </Section>
           )}
 
@@ -166,7 +166,7 @@ export function ActivityDrawer({
           {(event.kind === "transaction" || event.kind === "transfer") &&
             (m.base_value != null || m.exchange_rate != null) && (
               <Section title="FX normalization">
-                {m.base_value != null && <Field label="Base value" value={`${fmtMoney(Number(m.base_value))} ${m.base_currency ?? ""}`} mono />}
+                {m.base_value != null && <Field label="Base value" value={`${formatMoney(Number(m.base_value))} ${m.base_currency ?? ""}`} mono />}
                 {m.exchange_rate != null && <Field label="Rate" value={Number(m.exchange_rate).toLocaleString(undefined, { maximumFractionDigits: 6 })} mono />}
                 {m.asset_currency && m.base_currency && (
                   <Field label="Chain" value={`${m.asset_currency} → ${m.base_currency}`} mono />
@@ -178,9 +178,9 @@ export function ActivityDrawer({
           {(event.kind === "reconciliation" || event.kind === "audit") &&
             (m.before_balance != null || m.after_balance != null || m.delta != null) && (
               <Section title="Balance impact">
-                {m.before_balance != null && <Field label="Before" value={fmtMoney(Number(m.before_balance))} mono />}
-                {m.after_balance != null && <Field label="After" value={fmtMoney(Number(m.after_balance))} mono />}
-                {m.delta != null && <Field label="Delta" value={fmtMoney(Number(m.delta))} mono />}
+                {m.before_balance != null && <Field label="Before" value={formatMoney(Number(m.before_balance))} mono />}
+                {m.after_balance != null && <Field label="After" value={formatMoney(Number(m.after_balance))} mono />}
+                {m.delta != null && <Field label="Delta" value={formatMoney(Number(m.delta))} mono />}
               </Section>
             )}
 
@@ -198,8 +198,8 @@ export function ActivityDrawer({
           {/* Goal */}
           {event.kind === "goal" && (
             <Section title="Goal progress">
-              <Field label="Current" value={fmtMoney(Number(m.current_amount))} mono />
-              <Field label="Target" value={fmtMoney(Number(m.target_amount))} mono />
+              <Field label="Current" value={formatMoney(Number(m.current_amount))} mono />
+              <Field label="Target" value={formatMoney(Number(m.target_amount))} mono />
               <Field label="Progress" value={`${Math.round(Number(m.pct) * 100)}%`} mono />
             </Section>
           )}
