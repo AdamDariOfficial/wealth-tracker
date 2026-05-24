@@ -118,7 +118,7 @@ export function ActivityDrawer({
 
           {event.amount != null && (
             <div className={cn("text-2xl font-display font-bold", TONE_RING[event.tone ?? "neutral"].split(" ").pop())}>
-              {event.amount >= 0 ? "+" : ""}{formatMoney(event.amount, event.currency ?? undefined)}
+              {event.amount >= 0 ? "+" : ""}{formatMoney(event.amount, { currency: event.currency ?? undefined })}
             </div>
           )}
 
