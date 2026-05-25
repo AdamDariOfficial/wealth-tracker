@@ -29,7 +29,7 @@ export function useFxRates(): { table: FxTable; loading: boolean } {
   }, [load, user?.id]);
 
   useRealtimeSubscription({
-    table: "fx_rates" as any,
+    table: "fx_rates",
     enabled: !!user,
     channelKey: "fx-rates",
     onChange: () => { void load(); },
