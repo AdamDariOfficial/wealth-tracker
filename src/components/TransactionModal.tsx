@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAccounts, useAssets, useTransactions, type Transaction } from "@/hooks/use-ledger";
 import { AccountPicker } from "@/components/AccountPicker";
+import { AssetPicker } from "@/components/AssetPicker";
 import { TagPicker } from "@/components/TagPicker";
 import { dec } from "@/lib/decimal";
 import { useAuth } from "@/lib/auth-store";
