@@ -12,14 +12,14 @@ import { useUserTable } from "@/hooks/use-user-table";
 export const Route = createFileRoute("/analytics")({ component: Analytics });
 
 function Analytics() {
-  const { rows: snaps } = useSnapshots(365);
+  const { points: snaps } = useNetWorthSeries({ days: 365, forwardFill: false });
   const { rows: weekly } = useUserTable<any>("weekly_reports", { col: "week_start", asc: true });
   const portfolio = usePortfolio();
 
   const series = useMemo(() => snaps.map((s) => ({
-    m: new Date(s.snapshot_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    value: Number(s.net_worth),
-    bench: Number(s.investments_value) + Number(s.cash_value),
+    m: new Date(s.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    value: s.netWorth,
+    bench: s.invested + s.liquid,
   })), [snaps]);
 
   // Returns by snapshot diffs
@@ -27,10 +27,10 @@ function Analytics() {
     if (snaps.length < 2) return [];
     const byMonth = new Map<string, { first: number; last: number }>();
     snaps.forEach((s) => {
-      const key = s.snapshot_date.slice(0, 7);
+      const key = s.date.slice(0, 7);
       const cur = byMonth.get(key);
-      if (!cur) byMonth.set(key, { first: Number(s.net_worth), last: Number(s.net_worth) });
-      else cur.last = Number(s.net_worth);
+      if (!cur) byMonth.set(key, { first: s.netWorth, last: s.netWorth });
+      else cur.last = s.netWorth;
     });
     return Array.from(byMonth.entries()).slice(-12).map(([k, v]) => ({
       m: new Date(k + "-01").toLocaleDateString("en-US", { month: "short" }),
@@ -41,10 +41,10 @@ function Analytics() {
   // Risk metrics from snapshots
   const cagr = useMemo(() => {
     if (snaps.length < 2) return 0;
-    const first = Number(snaps[0].net_worth);
-    const last = Number(snaps[snaps.length - 1].net_worth);
+    const first = snaps[0].netWorth;
+    const last = snaps[snaps.length - 1].netWorth;
     if (!first) return 0;
-    const days = Math.max(1, (new Date(snaps[snaps.length - 1].snapshot_date).getTime() - new Date(snaps[0].snapshot_date).getTime()) / 86400000);
+    const days = Math.max(1, (new Date(snaps[snaps.length - 1].date).getTime() - new Date(snaps[0].date).getTime()) / 86400000);
     return (Math.pow(last / first, 365 / days) - 1) * 100;
   }, [snaps]);
 
@@ -52,8 +52,8 @@ function Analytics() {
     if (snaps.length < 3) return 0;
     const returns: number[] = [];
     for (let i = 1; i < snaps.length; i++) {
-      const a = Number(snaps[i - 1].net_worth);
-      const b = Number(snaps[i].net_worth);
+      const a = snaps[i - 1].netWorth;
+      const b = snaps[i].netWorth;
       if (a > 0) returns.push((b - a) / a);
     }
     if (returns.length === 0) return 0;
@@ -66,7 +66,7 @@ function Analytics() {
   const maxDD = useMemo(() => {
     let peak = 0, dd = 0;
     snaps.forEach((s) => {
-      const v = Number(s.net_worth);
+      const v = s.netWorth;
       peak = Math.max(peak, v);
       if (peak > 0) dd = Math.max(dd, (peak - v) / peak);
     });
