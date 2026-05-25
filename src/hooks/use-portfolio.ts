@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { useHoldings, useAccounts, useAssets } from "@/hooks/use-ledger";
 import { useUserTable } from "@/hooks/use-user-table";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 export type PortfolioAggregates = {
   netWorth: number;
@@ -122,11 +123,15 @@ export function useTradingAccount() {
   useEffect(() => {
     if (!user) return;
     refresh();
-    const ch = supabase.channel(`ta-${user.id}`)
-      .on("postgres_changes" as any, { event: "*", schema: "public", table: "trading_account", filter: `user_id=eq.${user.id}` }, () => refresh())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
   }, [user, refresh]);
+
+  useRealtimeSubscription({
+    table: "trading_account",
+    filter: user ? `user_id=eq.${user.id}` : undefined,
+    enabled: !!user,
+    channelKey: "trading-account",
+    onChange: () => { void refresh(); },
+  });
 
   const update = async (patch: Partial<TradingAccount>) => {
     if (!user) return;
@@ -164,11 +169,15 @@ export function useSnapshots(limit = 180) {
   useEffect(() => {
     if (!user) return;
     refresh();
-    const ch = supabase.channel(`snap-${user.id}`)
-      .on("postgres_changes" as any, { event: "*", schema: "public", table: "performance_snapshots", filter: `user_id=eq.${user.id}` }, () => refresh())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
   }, [user, refresh]);
+
+  useRealtimeSubscription({
+    table: "performance_snapshots",
+    filter: user ? `user_id=eq.${user.id}` : undefined,
+    enabled: !!user,
+    channelKey: "performance-snapshots",
+    onChange: () => { void refresh(); },
+  });
 
   /** Insert today's snapshot (idempotent: replaces today's row). */
   const captureToday = async (vals: Omit<Snapshot, "id" | "snapshot_date">) => {
