@@ -169,13 +169,11 @@ export function TransactionModal({
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label className="text-xs">Asset</Label>
-          <Select value={assetId} onValueChange={setAssetId}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder="Asset" /></SelectTrigger>
-            <SelectContent>{assets.map((a) => <SelectItem key={a.id} value={a.id}>{a.symbol} — {a.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
+        <AssetPicker
+          value={assetId}
+          onChange={setAssetId}
+          assetClass={NEEDS_ASSET.includes(type) ? "crypto" : "fiat"}
+        />
         <div>
           <Label className="text-xs">Timestamp</Label>
           <Input type="datetime-local" value={ts} onChange={(e) => setTs(e.target.value)} className="mt-1" />
