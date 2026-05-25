@@ -11,6 +11,7 @@ import {
 import { StatCard } from "@/components/StatCard";
 import { PageHeader } from "@/components/PageHeader";
 import { usePortfolio, useSnapshots } from "@/hooks/use-portfolio";
+import { useNetWorthSeries } from "@/hooks/use-networth-series";
 import { useUserTable } from "@/hooks/use-user-table";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
