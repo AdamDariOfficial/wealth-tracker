@@ -43,7 +43,8 @@ function ChartCard({ title, subtitle, children, className }: any) {
 function Dashboard() {
   const { profile } = useAuth();
   const p = usePortfolio();
-  const { rows: snaps, captureToday } = useSnapshots(365);
+  const { captureToday } = useSnapshots(365);
+  const { points } = useNetWorthSeries({ days: 365, forwardFill: false });
   const { rows: goals } = useUserTable<any>("goals");
   const { rows: weekly } = useUserTable<any>("weekly_reports", { col: "week_start", asc: true });
 
@@ -62,13 +63,13 @@ function Dashboard() {
   }, [p.loading, Math.round(p.netWorth)]);
 
   const series = useMemo(() => {
-    if (snaps.length === 0) return [{ month: "Today", value: p.netWorth, invested: p.invested }];
-    return snaps.map((s) => ({
-      month: new Date(s.snapshot_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      value: Number(s.net_worth),
-      invested: Number(s.investments_value) + Number(s.cash_value),
+    if (points.length === 0) return [{ month: "Today", value: p.netWorth, invested: p.invested }];
+    return points.map((pt) => ({
+      month: new Date(pt.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      value: pt.netWorth,
+      invested: pt.invested + pt.liquid,
     }));
-  }, [snaps, p.netWorth, p.invested]);
+  }, [points, p.netWorth, p.invested]);
 
   const weeklyFlow = useMemo(() => {
     return weekly.slice(-12).map((w: any) => ({
