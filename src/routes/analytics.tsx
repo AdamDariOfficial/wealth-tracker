@@ -5,7 +5,8 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, RadarChart
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
 import { TrendingUp, Activity, Gauge, Target, Award, Brain } from "lucide-react";
-import { useSnapshots, usePortfolio } from "@/hooks/use-portfolio";
+import { usePortfolio } from "@/hooks/use-portfolio";
+import { useNetWorthSeries } from "@/hooks/use-networth-series";
 import { useUserTable } from "@/hooks/use-user-table";
 
 export const Route = createFileRoute("/analytics")({ component: Analytics });
