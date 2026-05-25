@@ -123,11 +123,15 @@ export function useTradingAccount() {
   useEffect(() => {
     if (!user) return;
     refresh();
-    const ch = supabase.channel(`ta-${user.id}`)
-      .on("postgres_changes" as any, { event: "*", schema: "public", table: "trading_account", filter: `user_id=eq.${user.id}` }, () => refresh())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
   }, [user, refresh]);
+
+  useRealtimeSubscription({
+    table: "trading_account",
+    filter: user ? `user_id=eq.${user.id}` : undefined,
+    enabled: !!user,
+    channelKey: "trading-account",
+    onChange: () => { void refresh(); },
+  });
 
   const update = async (patch: Partial<TradingAccount>) => {
     if (!user) return;
