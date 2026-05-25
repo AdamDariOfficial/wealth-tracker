@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { useHoldings, useAccounts, useAssets } from "@/hooks/use-ledger";
 import { useUserTable } from "@/hooks/use-user-table";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 export type PortfolioAggregates = {
   netWorth: number;
