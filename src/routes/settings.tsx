@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { User, Globe, Bell, Database, Download, LogOut, Upload, Save } from "lucide-react";
+import { User, Globe, Bell, Database, Download, LogOut, Upload, Save, ShieldCheck, Sliders, Palette } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-store";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -148,92 +149,129 @@ function Settings() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" subtitle="Account, preferences and data management."
+      <PageHeader title="Workspace Settings" subtitle="Profile, preferences, trading defaults and data management."
         action={<Button variant="outline" onClick={signOut}><LogOut className="h-4 w-4 mr-2" /> Sign out</Button>} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Section icon={User} title="Profile" desc="Your personal information">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full glass-strong overflow-hidden flex items-center justify-center text-cyan font-display text-xl">
-              {profileForm.avatar_url
-                ? <img src={profileForm.avatar_url} alt="" className="h-full w-full object-cover" />
-                : (profileForm.display_name?.[0]?.toUpperCase() ?? "?")}
+      <Tabs defaultValue="profile">
+        <TabsList className="bg-muted/40 border border-border/40 h-10 flex-wrap">
+          <TabsTrigger value="profile" className="px-4">Profile</TabsTrigger>
+          <TabsTrigger value="preferences" className="px-4">Currency & Locale</TabsTrigger>
+          <TabsTrigger value="trading" className="px-4">Trading</TabsTrigger>
+          <TabsTrigger value="notifications" className="px-4">Notifications</TabsTrigger>
+          <TabsTrigger value="data" className="px-4">Data</TabsTrigger>
+          <TabsTrigger value="security" className="px-4">Security</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="profile" className="mt-6">
+          <Section icon={User} title="Profile" desc="Your personal information">
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-full glass-strong overflow-hidden flex items-center justify-center text-cyan font-display text-xl">
+                {profileForm.avatar_url
+                  ? <img src={profileForm.avatar_url} alt="" className="h-full w-full object-cover" />
+                  : (profileForm.display_name?.[0]?.toUpperCase() ?? "?")}
+              </div>
+              <div>
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={onAvatarChange} />
+                <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                  <Upload className="h-3 w-3 mr-2" /> {uploading ? "Uploading…" : "Change avatar"}
+                </Button>
+              </div>
             </div>
             <div>
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={onAvatarChange} />
-              <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
-                <Upload className="h-3 w-3 mr-2" /> {uploading ? "Uploading…" : "Change avatar"}
-              </Button>
+              <Label className="text-xs">Display name</Label>
+              <Input value={profileForm.display_name} onChange={(e) => setProfileForm({ ...profileForm, display_name: e.target.value })} className="mt-1" />
             </div>
-          </div>
-          <div>
-            <Label className="text-xs">Display name</Label>
-            <Input value={profileForm.display_name} onChange={(e) => setProfileForm({ ...profileForm, display_name: e.target.value })} className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs">Email</Label>
-            <Input value={user?.email ?? ""} disabled className="mt-1" />
-          </div>
-          <Button onClick={saveProfile} disabled={saving} className="bg-cyan text-background hover:bg-cyan/90"><Save className="h-4 w-4 mr-2" /> Save profile</Button>
-        </Section>
-
-        <Section icon={Globe} title="Preferences" desc="Currency and locale">
-          <div>
-            <Label className="text-xs">Base currency</Label>
-            <select value={profileForm.currency} onChange={(e) => setProfileForm({ ...profileForm, currency: e.target.value })}
-              className="mt-1 w-full bg-background border border-border rounded-md px-3 py-2 text-sm">
-              {["USD", "EUR", "GBP", "CHF", "JPY"].map((c) => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <Label className="text-xs">Locale</Label>
-            <Input value={profileForm.locale} onChange={(e) => setProfileForm({ ...profileForm, locale: e.target.value })} className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs">Monthly income</Label>
-            <Input type="number" value={onboarding.financial?.monthly_income ?? 0} onChange={(e) => setFin("monthly_income", +e.target.value)} className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs">Weekly contribution</Label>
-            <Input type="number" value={onboarding.financial?.weekly_income ?? 0} onChange={(e) => setFin("weekly_income", +e.target.value)} className="mt-1" />
-          </div>
-          <Button onClick={async () => { await saveProfile(); await saveOnboarding(); }} disabled={saving} className="bg-cyan text-background hover:bg-cyan/90"><Save className="h-4 w-4 mr-2" /> Save preferences</Button>
-        </Section>
-
-        <Section icon={Bell} title="Notifications" desc="Alerts and weekly digests">
-          {NOTIF_KEYS.map((n) => (
-            <div key={n.key} className="flex items-center justify-between">
-              <span className="text-sm">{n.label}</span>
-              <Switch checked={!!notifs[n.key]} onCheckedChange={(v) => setNotifs((p) => ({ ...p, [n.key]: v }))} />
+            <div>
+              <Label className="text-xs">Email</Label>
+              <Input value={user?.email ?? ""} disabled className="mt-1" />
             </div>
-          ))}
-          <Button onClick={saveProfile} disabled={saving} className="bg-cyan text-background hover:bg-cyan/90"><Save className="h-4 w-4 mr-2" /> Save notifications</Button>
-        </Section>
+            <Button onClick={saveProfile} disabled={saving} className="bg-cyan text-background hover:bg-cyan/90"><Save className="h-4 w-4 mr-2" /> Save profile</Button>
+          </Section>
+        </TabsContent>
 
-        <Section icon={User} title="Investor profile" desc="From onboarding — editable here">
-          <div>
-            <Label className="text-xs">Risk profile</Label>
-            <Input value={onboarding.financial?.risk_profile ?? ""} onChange={(e) => setFin("risk_profile", e.target.value)} className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs">Trading style</Label>
-            <Input value={onboarding.investment?.trading_style ?? ""} onChange={(e) => setInv("trading_style", e.target.value)} className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs">Primary trading asset</Label>
-            <Input value={onboarding.trading?.primary_asset ?? ""} onChange={(e) => setTra("primary_asset", e.target.value)} className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs">Average risk per trade (%)</Label>
-            <Input type="number" step="0.1" value={onboarding.trading?.avg_risk_pct ?? 1} onChange={(e) => setTra("avg_risk_pct", +e.target.value)} className="mt-1" />
-          </div>
-          <Button onClick={saveOnboarding} disabled={saving} className="bg-cyan text-background hover:bg-cyan/90"><Save className="h-4 w-4 mr-2" /> Save investor profile</Button>
-        </Section>
+        <TabsContent value="preferences" className="mt-6 space-y-4">
+          <Section icon={Globe} title="Currency & Locale" desc="Base currency propagates across every view; locale controls number formatting.">
+            <div>
+              <Label className="text-xs">Base currency</Label>
+              <select value={profileForm.currency} onChange={(e) => setProfileForm({ ...profileForm, currency: e.target.value })}
+                className="mt-1 w-full bg-background border border-border rounded-md px-3 py-2 text-sm">
+                {["USD", "EUR", "GBP", "CHF", "JPY", "AUD", "CAD", "SEK", "NOK", "DKK", "CNY", "INR"].map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Locale</Label>
+              <Input value={profileForm.locale} onChange={(e) => setProfileForm({ ...profileForm, locale: e.target.value })} className="mt-1" placeholder="en-US, fr-FR, de-DE…" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Monthly income</Label>
+                <Input type="number" value={onboarding.financial?.monthly_income ?? 0} onChange={(e) => setFin("monthly_income", +e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Weekly contribution</Label>
+                <Input type="number" value={onboarding.financial?.weekly_income ?? 0} onChange={(e) => setFin("weekly_income", +e.target.value)} className="mt-1" />
+              </div>
+            </div>
+            <Button onClick={async () => { await saveProfile(); await saveOnboarding(); }} disabled={saving} className="bg-cyan text-background hover:bg-cyan/90"><Save className="h-4 w-4 mr-2" /> Save preferences</Button>
+          </Section>
+          <Section icon={Palette} title="Appearance" desc="Theme is fixed to charcoal/cyan dark for the institutional aesthetic.">
+            <div className="text-xs text-muted-foreground">Light themes intentionally disabled to preserve chart contrast and depth.</div>
+          </Section>
+        </TabsContent>
 
-        <Section icon={Database} title="Data" desc="Backup and portability">
-          <Button variant="outline" className="w-full justify-start" onClick={exportAll}><Download className="h-4 w-4 mr-2" /> Export all data (JSON)</Button>
-        </Section>
-      </div>
+        <TabsContent value="trading" className="mt-6">
+          <Section icon={Sliders} title="Trading defaults" desc="Used to pre-fill weekly reviews and risk calculators.">
+            <div>
+              <Label className="text-xs">Risk profile</Label>
+              <Input value={onboarding.financial?.risk_profile ?? ""} onChange={(e) => setFin("risk_profile", e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">Trading style</Label>
+              <Input value={onboarding.investment?.trading_style ?? ""} onChange={(e) => setInv("trading_style", e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">Primary trading asset</Label>
+              <Input value={onboarding.trading?.primary_asset ?? ""} onChange={(e) => setTra("primary_asset", e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">Average risk per trade (%)</Label>
+              <Input type="number" step="0.1" value={onboarding.trading?.avg_risk_pct ?? 1} onChange={(e) => setTra("avg_risk_pct", +e.target.value)} className="mt-1" />
+            </div>
+            <Button onClick={saveOnboarding} disabled={saving} className="bg-cyan text-background hover:bg-cyan/90"><Save className="h-4 w-4 mr-2" /> Save trading defaults</Button>
+          </Section>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="mt-6">
+          <Section icon={Bell} title="Notifications" desc="Alerts and weekly digests">
+            {NOTIF_KEYS.map((n) => (
+              <div key={n.key} className="flex items-center justify-between">
+                <span className="text-sm">{n.label}</span>
+                <Switch checked={!!notifs[n.key]} onCheckedChange={(v) => setNotifs((p) => ({ ...p, [n.key]: v }))} />
+              </div>
+            ))}
+            <Button onClick={saveProfile} disabled={saving} className="bg-cyan text-background hover:bg-cyan/90"><Save className="h-4 w-4 mr-2" /> Save notifications</Button>
+          </Section>
+        </TabsContent>
+
+        <TabsContent value="data" className="mt-6">
+          <Section icon={Database} title="Export & backup" desc="Download a full JSON snapshot of your workspace.">
+            <Button variant="outline" className="w-full justify-start" onClick={exportAll}><Download className="h-4 w-4 mr-2" /> Export all data (JSON)</Button>
+            <div className="text-[11px] text-muted-foreground">
+              Includes ledger transactions, accounts, assets, goals, weekly reports and snapshots. Ledger remains the source of truth.
+            </div>
+          </Section>
+        </TabsContent>
+
+        <TabsContent value="security" className="mt-6">
+          <Section icon={ShieldCheck} title="Privacy & Security" desc="Account session and data integrity.">
+            <div className="text-xs text-muted-foreground">
+              All financial history uses soft-delete (voided) flags — nothing is permanently removed.
+              An immutable audit trail records every account, transaction, goal and weekly-report change.
+            </div>
+            <Button variant="outline" onClick={signOut}><LogOut className="h-4 w-4 mr-2" /> Sign out of this device</Button>
+          </Section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
