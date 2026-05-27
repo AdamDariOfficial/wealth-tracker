@@ -58,8 +58,8 @@ function CalendarPage() {
   const navigate = useNavigate({ from: "/calendar" });
   const { view, anchor } = useSearch({ from: "/calendar" }) as { view: View; anchor: string };
   const anchorDate = useMemo(() => (anchor ? new Date(anchor) : new Date()), [anchor]);
-  const setAnchor = (d: Date) => navigate({ search: (p) => ({ ...p, anchor: dayKey(d) }) });
-  const setView = (v: View) => navigate({ search: (p) => ({ ...p, view: v }) });
+  const setAnchor = (d: Date) => navigate({ search: (p: CalSearch) => ({ ...p, anchor: dayKey(d) }) });
+  const setView = (v: View) => navigate({ search: (p: CalSearch) => ({ ...p, view: v }) });
 
   const { rows: txs } = useUserTable<Transaction>("transactions", { col: "execution_timestamp", asc: true });
   const { rows: accounts } = useAccounts();
