@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { chartTooltipProps } from "@/lib/chart-style";
+import { formatPct } from "@/lib/format-percent";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
 
