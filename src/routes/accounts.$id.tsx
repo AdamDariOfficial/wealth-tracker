@@ -23,6 +23,7 @@ import { AccountFormModal } from "@/components/AccountFormModal";
 import { reconstructFromLedger } from "@/lib/history-reconstruction";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { chartTooltipProps } from "@/lib/chart-style";
 
 export const Route = createFileRoute("/accounts/$id")({ component: AccountDetail });
 
@@ -185,7 +186,7 @@ function AccountDetail() {
                   <XAxis dataKey="date" stroke="oklch(0.6 0 0)" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke="oklch(0.6 0 0)" fontSize={10} tickLine={false} axisLine={false}
                     tickFormatter={(v) => `${(v/1000).toFixed(1)}k`} />
-                  <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} />
+                  <Tooltip {...chartTooltipProps} />
                   <Area type="monotone" dataKey="value" stroke="hsl(190 90% 60%)" strokeWidth={2} fill="url(#balG)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -268,7 +269,7 @@ function AccountDetail() {
                   <XAxis dataKey="month" stroke="oklch(0.6 0 0)" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke="oklch(0.6 0 0)" fontSize={10} tickLine={false} axisLine={false}
                     tickFormatter={(v) => `${(v/1000).toFixed(1)}k`} />
-                  <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} />
+                  <Tooltip {...chartTooltipProps} />
                   <Bar dataKey="in" name="Inflow" fill="hsl(150 70% 50%)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="out" name="Outflow" fill="hsl(0 70% 55%)" radius={[4, 4, 0, 0]} />
                 </BarChart>

@@ -8,6 +8,7 @@ import { TrendingUp, TrendingDown, Activity, Flame, Gauge, Sigma } from "lucide-
 import { useTrading } from "@/hooks/use-trading";
 import { useMoneyFormatter } from "@/lib/format-currency";
 import { cn } from "@/lib/utils";
+import { chartTooltipProps } from "@/lib/chart-style";
 
 /**
  * Insights tab — performance-driven analytics derived from the canonical
@@ -114,7 +115,7 @@ export function InsightsTab() {
                 <XAxis dataKey="week" stroke="oklch(0.6 0 0)" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="oklch(0.6 0 0)" fontSize={10} tickLine={false} axisLine={false}
                   tickFormatter={(v) => `${(v/1000).toFixed(1)}k`} />
-                <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} />
+                <Tooltip {...chartTooltipProps} />
                 <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                   {pnlSeries.map((p, i) => (
                     <Cell key={i} fill={p.pnl >= 0 ? "hsl(150 70% 50%)" : "hsl(0 70% 55%)"} />
@@ -143,7 +144,7 @@ export function InsightsTab() {
                 <XAxis dataKey="date" stroke="oklch(0.6 0 0)" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="oklch(0.6 0 0)" fontSize={10} tickLine={false} axisLine={false}
                   tickFormatter={(v) => `${v.toFixed(0)}%`} />
-                <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} />
+                <Tooltip {...chartTooltipProps} />
                 <Area type="monotone" dataKey="dd" stroke="hsl(0 70% 55%)" strokeWidth={2} fill="url(#dd)" />
               </AreaChart>
             </ResponsiveContainer>
