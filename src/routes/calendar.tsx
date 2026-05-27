@@ -2,8 +2,6 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react";
-import { z } from "zod";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -14,14 +12,15 @@ import { formatPct } from "@/lib/format-percent";
 import { cn } from "@/lib/utils";
 
 type View = "month" | "week" | "day";
-
-const searchSchema = z.object({
-  view: fallback(z.enum(["month", "week", "day"]), "month").default("month"),
-  anchor: fallback(z.string(), "").default(""), // ISO date string anchor
-});
+type CalSearch = { view?: View; anchor?: string };
 
 export const Route = createFileRoute("/calendar")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: (s: Record<string, unknown>): CalSearch => {
+    const v = typeof s.view === "string" ? s.view : "";
+    const view: View = v === "week" || v === "day" ? v : "month";
+    const anchor = typeof s.anchor === "string" ? s.anchor : "";
+    return { view, anchor };
+  },
   component: CalendarPage,
 });
 

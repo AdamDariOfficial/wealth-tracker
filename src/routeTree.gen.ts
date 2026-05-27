@@ -24,6 +24,7 @@ import { Route as EtfRouteImport } from './routes/etf'
 import { Route as DevToolsRouteImport } from './routes/dev-tools'
 import { Route as CryptoRouteImport } from './routes/crypto'
 import { Route as CashRouteImport } from './routes/cash'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as ActivityRouteImport } from './routes/activity'
@@ -106,6 +107,11 @@ const CashRoute = CashRouteImport.update({
   path: '/cash',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuditRoute = AuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof ActivityRoute
   '/analytics': typeof AnalyticsRoute
   '/audit': typeof AuditRoute
+  '/calendar': typeof CalendarRoute
   '/cash': typeof CashRoute
   '/crypto': typeof CryptoRoute
   '/dev-tools': typeof DevToolsRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/activity': typeof ActivityRoute
   '/analytics': typeof AnalyticsRoute
   '/audit': typeof AuditRoute
+  '/calendar': typeof CalendarRoute
   '/cash': typeof CashRoute
   '/crypto': typeof CryptoRoute
   '/dev-tools': typeof DevToolsRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/activity': typeof ActivityRoute
   '/analytics': typeof AnalyticsRoute
   '/audit': typeof AuditRoute
+  '/calendar': typeof CalendarRoute
   '/cash': typeof CashRoute
   '/crypto': typeof CryptoRoute
   '/dev-tools': typeof DevToolsRoute
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/analytics'
     | '/audit'
+    | '/calendar'
     | '/cash'
     | '/crypto'
     | '/dev-tools'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/analytics'
     | '/audit'
+    | '/calendar'
     | '/cash'
     | '/crypto'
     | '/dev-tools'
@@ -261,6 +272,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/analytics'
     | '/audit'
+    | '/calendar'
     | '/cash'
     | '/crypto'
     | '/dev-tools'
@@ -285,6 +297,7 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute
   AnalyticsRoute: typeof AnalyticsRoute
   AuditRoute: typeof AuditRoute
+  CalendarRoute: typeof CalendarRoute
   CashRoute: typeof CashRoute
   CryptoRoute: typeof CryptoRoute
   DevToolsRoute: typeof DevToolsRoute
@@ -409,6 +422,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CashRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/audit': {
       id: '/audit'
       path: '/audit'
@@ -472,6 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   AnalyticsRoute: AnalyticsRoute,
   AuditRoute: AuditRoute,
+  CalendarRoute: CalendarRoute,
   CashRoute: CashRoute,
   CryptoRoute: CryptoRoute,
   DevToolsRoute: DevToolsRoute,
