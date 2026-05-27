@@ -36,7 +36,7 @@ export function StatCard({ label, value, change, icon: Icon, prefix = "$", delay
             <div className={cn("mt-2 inline-flex items-center gap-1 text-xs font-medium",
               positive ? "text-success" : "text-destructive")}>
               {positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-              {positive ? "+" : ""}{change}%
+              <span className="tabular-nums">{formatPct(change, { digits: 2, sign: true, compact: true })}</span>
               <span className="text-muted-foreground ml-1 font-normal">vs last month</span>
             </div>
           )}
