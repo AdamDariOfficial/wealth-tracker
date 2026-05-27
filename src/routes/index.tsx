@@ -147,7 +147,7 @@ function Dashboard() {
                       <div className="h-2 w-2 rounded-full" style={{ background: `var(--chart-${(i % 5) + 1})` }} />
                       <span className="text-muted-foreground">{a.name}</span>
                     </div>
-                    <span className="font-mono font-medium">{a.value}%</span>
+                    <span className="font-mono font-medium tabular-nums">{formatPct(a.value, { digits: 1 })}</span>
                   </div>
                 ))}
               </div>
