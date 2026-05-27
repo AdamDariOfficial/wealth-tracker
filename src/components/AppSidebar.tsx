@@ -15,6 +15,7 @@ const main = [
   { title: "Liquidity & Accounts", url: "/accounts",      icon: Wallet },
   { title: "Transactions",         url: "/transactions",  icon: ArrowLeftRight },
   { title: "Timeline",             url: "/timeline",      icon: BookOpen },
+  { title: "Calendar",             url: "/calendar",      icon: Calendar },
   { title: "Audit Log",            url: "/audit",         icon: ShieldCheck },
 ];
 const portfolio = [
