@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatPct } from "@/lib/format-percent";
 
 interface Props {
   label: string;
