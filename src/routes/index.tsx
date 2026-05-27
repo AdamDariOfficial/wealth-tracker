@@ -135,7 +135,8 @@ function Dashboard() {
                   <Pie data={p.allocation} dataKey="value" innerRadius={55} outerRadius={85} paddingAngle={3} stroke="none">
                     {p.allocation.map((_, i) => <Cell key={i} fill={`var(--chart-${(i % 5) + 1})`} />)}
                   </Pie>
-                  <Tooltip {...chartTooltipProps} />
+                  <Tooltip {...chartTooltipProps} formatter={(v: number, n: string) => [`${formatPct(v, { digits: 2 })}`, n]} />
+
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-1.5 mt-2">
