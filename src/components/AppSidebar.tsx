@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, TrendingUp, PieChart, Bitcoin, Briefcase,
-  BookOpen, Wallet, Target, BarChart3, Settings, Sparkles, ArrowLeftRight, Activity, ShieldCheck, FlaskConical,
+  BookOpen, Wallet, Target, BarChart3, Settings, Sparkles, ArrowLeftRight, Activity, ShieldCheck, FlaskConical, Calendar,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -15,6 +15,7 @@ const main = [
   { title: "Liquidity & Accounts", url: "/accounts",      icon: Wallet },
   { title: "Transactions",         url: "/transactions",  icon: ArrowLeftRight },
   { title: "Timeline",             url: "/timeline",      icon: BookOpen },
+  { title: "Calendar",             url: "/calendar",      icon: Calendar },
   { title: "Audit Log",            url: "/audit",         icon: ShieldCheck },
 ];
 const portfolio = [

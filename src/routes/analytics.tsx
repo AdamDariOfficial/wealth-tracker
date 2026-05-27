@@ -8,6 +8,7 @@ import { TrendingUp, Activity, Gauge, Target, Award, Brain } from "lucide-react"
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useNetWorthSeries } from "@/hooks/use-networth-series";
 import { useUserTable } from "@/hooks/use-user-table";
+import { chartTooltipProps } from "@/lib/chart-style";
 
 export const Route = createFileRoute("/analytics")({ component: Analytics });
 
@@ -126,7 +127,7 @@ function Analytics() {
                 <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 240 / 0.3)" />
                 <XAxis dataKey="m" stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-                <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} />
+                <Tooltip {...chartTooltipProps} />
                 <Area dataKey="bench" stroke="hsl(280 70% 65%)" strokeWidth={1.5} fill="url(#p2)" />
                 <Area dataKey="value" stroke="hsl(190 90% 60%)" strokeWidth={2} fill="url(#p1)" />
               </AreaChart>
@@ -167,7 +168,7 @@ function Analytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 240 / 0.3)" />
               <XAxis dataKey="m" stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} />
               <YAxis stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-              <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} cursor={{ fill: "oklch(0.82 0.15 210 / 0.08)" }} />
+              <Tooltip {...chartTooltipProps} />
               <Bar dataKey="r" radius={[6, 6, 0, 0]} fill="hsl(190 90% 60%)" />
             </BarChart>
           </ResponsiveContainer>

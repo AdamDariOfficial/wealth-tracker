@@ -3,6 +3,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { Activity } from "lucide-react";
 import type { EquityPoint } from "@/lib/trading-engine";
 import { cn } from "@/lib/utils";
+import { chartTooltipProps } from "@/lib/chart-style";
 
 type Mode = "performance" | "total" | "split";
 
@@ -45,7 +46,7 @@ export function EquityCurveCard({ data, defaultMode = "performance" }: { data: E
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 240 / 0.3)" />
             <XAxis dataKey="date" stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} />
-            <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} />
+            <Tooltip {...chartTooltipProps} />
             {mode !== "total" && <Line type="monotone" dataKey="performance" name="Performance" stroke="hsl(190 90% 60%)" strokeWidth={2} dot={false} />}
             {mode === "total" && <Line type="monotone" dataKey="total" name="Total equity" stroke="hsl(190 90% 60%)" strokeWidth={2} dot={false} />}
             {mode === "split" && <Line type="monotone" dataKey="capital" name="Net capital" stroke="hsl(45 90% 60%)" strokeWidth={2} strokeDasharray="4 4" dot={false} />}

@@ -16,6 +16,8 @@ import { useUserTable } from "@/hooks/use-user-table";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { chartTooltipProps } from "@/lib/chart-style";
+import { formatPct } from "@/lib/format-percent";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
 
@@ -117,7 +119,7 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 240 / 0.3)" />
               <XAxis dataKey="month" stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} />
               <YAxis stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} />
+              <Tooltip {...chartTooltipProps} />
               <Area type="monotone" dataKey="invested" stroke="hsl(155 60% 60%)" strokeWidth={1.5} fill="url(#inv)" />
               <Area type="monotone" dataKey="value" stroke="hsl(190 90% 60%)" strokeWidth={2} fill="url(#nw)" />
             </AreaChart>
@@ -134,7 +136,8 @@ function Dashboard() {
                   <Pie data={p.allocation} dataKey="value" innerRadius={55} outerRadius={85} paddingAngle={3} stroke="none">
                     {p.allocation.map((_, i) => <Cell key={i} fill={`var(--chart-${(i % 5) + 1})`} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} />
+                  <Tooltip {...chartTooltipProps} formatter={(v: number, n: string) => [`${formatPct(v, { digits: 2 })}`, n]} />
+
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-1.5 mt-2">
@@ -144,7 +147,7 @@ function Dashboard() {
                       <div className="h-2 w-2 rounded-full" style={{ background: `var(--chart-${(i % 5) + 1})` }} />
                       <span className="text-muted-foreground">{a.name}</span>
                     </div>
-                    <span className="font-mono font-medium">{a.value}%</span>
+                    <span className="font-mono font-medium tabular-nums">{formatPct(a.value, { digits: 1 })}</span>
                   </div>
                 ))}
               </div>
@@ -170,7 +173,7 @@ function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 240 / 0.3)" />
                 <XAxis dataKey="week" stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} cursor={{ fill: "oklch(0.82 0.15 210 / 0.08)" }} />
+                <Tooltip {...chartTooltipProps} />
                 <Bar dataKey="amount" fill="hsl(190 90% 60%)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

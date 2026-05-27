@@ -15,6 +15,7 @@ import { computeConsistency, type WeeklyReport } from "@/lib/trading-engine";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { chartTooltipProps } from "@/lib/chart-style";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -134,7 +135,7 @@ export function WeeklyTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 240 / 0.3)" />
               <XAxis dataKey="week" stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} />
               <YAxis stroke="oklch(0.6 0 0)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
-              <Tooltip contentStyle={{ background: "oklch(0.18 0.008 240)", border: "1px solid oklch(0.3 0.01 240)", borderRadius: 12, fontSize: 12 }} />
+              <Tooltip {...chartTooltipProps} />
               <Line dataKey="equity" stroke="hsl(190 90% 60%)" strokeWidth={2} dot={{ r: 3, fill: "hsl(190 90% 60%)" }} />
             </LineChart>
           </ResponsiveContainer>
