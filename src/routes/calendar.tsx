@@ -365,7 +365,7 @@ function YearView({ buckets, fmt, onOpenMonth }: {
             style={{
               background:
                 intensity > 0.05
-                  ? `linear-gradient(135deg, oklch(var(--card)) 0%, color-mix(in oklab, hsl(var(--${tone})) ${Math.round(intensity * 18)}%, transparent) 100%)`
+                  ? `linear-gradient(135deg, var(--card) 0%, color-mix(in oklab, hsl(var(--${tone})) ${Math.round(intensity * 18)}%, transparent) 100%)`
                   : undefined,
             }}>
             <div className="flex items-center justify-between">
@@ -510,7 +510,7 @@ function MonthIntelligence({ anchor, days, fmt, recon, onPickDay }: {
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <span>Less</span>
             {[1, 2, 3, 4].map((i) => (
-              <span key={i} className="h-2 w-3 rounded-sm" style={{ background: `color-mix(in oklab, hsl(var(--success)) ${i * 18}%, transparent)` }} />
+              <span key={i} className="h-2 w-3 rounded-sm" style={{ background: `color-mix(in oklab, var(--success) ${i * 18}%, transparent)` }} />
             ))}
             <span>More</span>
           </div>
@@ -566,14 +566,14 @@ function MonthIntelligence({ anchor, days, fmt, recon, onPickDay }: {
               <AreaChart data={series}>
                 <defs>
                   <linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--cyan))" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="hsl(var(--cyan))" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--cyan)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="var(--cyan)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" hide />
                 <YAxis hide domain={["auto", "auto"]} />
                 <Tooltip {...chartTooltipProps} formatter={(v: number) => fmt(v)} />
-                <Area type="monotone" dataKey="nw" stroke="hsl(var(--cyan))" strokeWidth={1.5} fill="url(#nwGrad)" />
+                <Area type="monotone" dataKey="nw" stroke="var(--cyan)" strokeWidth={1.5} fill="url(#nwGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
