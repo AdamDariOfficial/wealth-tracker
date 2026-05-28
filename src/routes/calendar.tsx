@@ -451,14 +451,16 @@ function QuarterView({ buckets, fmt, onOpenMonth, recon }: {
 }
 function Bar({ label, value, max, tone, fmt }: { label: string; value: number; max: number; tone: "success" | "destructive"; fmt: (n: number) => string }) {
   const pct = Math.min(100, (value / max) * 100);
+  const textCls = tone === "success" ? "text-success" : "text-destructive";
+  const barCls = tone === "success" ? "bg-success/60" : "bg-destructive/60";
   return (
     <div>
       <div className="flex items-center justify-between text-[11px]">
         <span className="text-muted-foreground">{label}</span>
-        <span className={cn("font-mono tabular-nums", `text-${tone}`)}>{fmt(value)}</span>
+        <span className={cn("font-mono tabular-nums", textCls)}>{fmt(value)}</span>
       </div>
       <div className="mt-1 h-1.5 rounded-full bg-muted/30 overflow-hidden">
-        <div className={cn("h-full rounded-full", `bg-${tone}/60`)} style={{ width: `${pct}%` }} />
+        <div className={cn("h-full rounded-full", barCls)} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
