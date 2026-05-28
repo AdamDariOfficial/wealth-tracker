@@ -365,7 +365,7 @@ function YearView({ buckets, fmt, onOpenMonth }: {
             style={{
               background:
                 intensity > 0.05
-                  ? `linear-gradient(135deg, var(--card) 0%, color-mix(in oklab, hsl(var(--${tone})) ${Math.round(intensity * 18)}%, transparent) 100%)`
+                  ? `linear-gradient(135deg, var(--card) 0%, color-mix(in oklab, var(--${tone}) ${Math.round(intensity * 18)}%, transparent) 100%)`
                   : undefined,
             }}>
             <div className="flex items-center justify-between">
@@ -536,7 +536,7 @@ function MonthIntelligence({ anchor, days, fmt, recon, onPickDay }: {
                 )}
                 style={{
                   background: intensity > 0.03
-                    ? `color-mix(in oklab, hsl(var(--${tone})) ${Math.round(intensity * 30)}%, transparent)`
+                    ? `color-mix(in oklab, var(--${tone}) ${Math.round(intensity * 30)}%, transparent)`
                     : undefined,
                 }}>
                 <div className="flex items-start justify-between">
