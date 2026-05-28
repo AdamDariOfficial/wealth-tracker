@@ -568,14 +568,14 @@ function MonthIntelligence({ anchor, days, fmt, recon, onPickDay }: {
               <AreaChart data={series}>
                 <defs>
                   <linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--cyan)" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="var(--cyan)" stopOpacity={0} />
+                    <stop offset="0%" stopColor="oklch(0.82 0.15 210)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="oklch(0.82 0.15 210)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" hide />
                 <YAxis hide domain={["auto", "auto"]} />
                 <Tooltip {...chartTooltipProps} formatter={(v: number) => fmt(v)} />
-                <Area type="monotone" dataKey="nw" stroke="var(--cyan)" strokeWidth={1.5} fill="url(#nwGrad)" />
+                <Area type="monotone" dataKey="nw" stroke="oklch(0.82 0.15 210)" strokeWidth={1.5} fill="url(#nwGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
