@@ -187,7 +187,7 @@ function RootComponent() {
             <AppSidebar />
             <div className="flex-1 flex flex-col min-w-0">
               <AppHeader path={path} userInitials={(profile?.display_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()} onSignOut={() => signOut()} />
-              <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
+              <main className="flex-1 px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8 max-w-[1600px] w-full mx-auto safe-x mb-safe">
                 <Outlet />
               </main>
             </div>
@@ -197,23 +197,25 @@ function RootComponent() {
         </SidebarProvider>
       )}
     </QueryClientProvider>
+
   );
 }
 
 function AppHeader({ path, userInitials, onSignOut }: { path: string; userInitials: string; onSignOut: () => void }) {
   const togglePalette = useUI((s) => s.togglePalette);
   return (
-    <header className="h-14 sticky top-0 z-30 flex items-center gap-3 px-4 border-b border-border/50 backdrop-blur-xl bg-background/60">
-      <SidebarTrigger />
-      <div className="text-xs font-mono text-muted-foreground hidden sm:block">{path}</div>
+    <header className="h-14 sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-border/50 backdrop-blur-xl bg-background/60 safe-top">
+      <SidebarTrigger className="touch-target" />
+      <div className="text-xs font-mono text-muted-foreground hidden sm:block truncate">{path}</div>
       <button
         onClick={() => togglePalette(true)}
-        className="ml-3 hidden md:flex items-center gap-2 h-8 px-3 rounded-lg glass text-xs text-muted-foreground hover:text-foreground transition-colors w-72"
+        className="ml-2 sm:ml-3 flex items-center gap-2 h-9 px-3 rounded-lg glass text-xs text-muted-foreground hover:text-foreground transition-colors flex-1 md:flex-none md:w-72 max-w-xs touch-target"
         title="Open command palette"
       >
-        <Search className="h-3.5 w-3.5" />
-        <span>Search or run a command…</span>
-        <kbd className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50 border border-border/50">⌘K</kbd>
+        <Search className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate hidden sm:inline">Search or run a command…</span>
+        <span className="truncate sm:hidden">Search…</span>
+        <kbd className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50 border border-border/50 hidden md:inline">⌘K</kbd>
       </button>
       <div className="ml-auto flex items-center gap-3">
         <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">

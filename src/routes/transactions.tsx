@@ -15,6 +15,8 @@ import { RealtimeStatus } from "@/components/RealtimeStatus";
 import { toCsv, downloadCsv, csvDateStamp } from "@/lib/csv-export";
 import { useFilterPresets } from "@/hooks/use-filter-presets";
 import { FilterPresets } from "@/components/FilterPresets";
+import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/transactions")({ component: TransactionsPage });
 
@@ -184,25 +186,72 @@ function TransactionsPage() {
   };
 
 
+  const activeFilterCount =
+    (type !== "all" ? 1 : 0) +
+    (acct !== "all" ? 1 : 0) +
+    (assetSym !== "all" ? 1 : 0) +
+    (currency !== "all" ? 1 : 0) +
+    (amountMin ? 1 : 0) +
+    (amountMax ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0);
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <PageHeader title="Transactions" subtitle="The full ledger of every movement of capital."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <RealtimeStatus />
-            <Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4 mr-1" /> Export CSV</Button>
-            <Button className="bg-cyan text-background hover:bg-cyan/90" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New transaction</Button>
+            <Button variant="outline" size="sm" onClick={exportCsv} className="touch-target">
+              <Download className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </Button>
+            <Button size="sm" className="bg-cyan text-background hover:bg-cyan/90 touch-target" onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">New transaction</span>
+            </Button>
           </div>
         } />
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="glass rounded-2xl p-5"><div className="text-xs uppercase tracking-wider text-muted-foreground">Inflow</div><div className="font-display text-2xl font-semibold mt-2 text-success">+${totals.inflow.toLocaleString(undefined,{maximumFractionDigits:2})}</div></div>
-        <div className="glass rounded-2xl p-5"><div className="text-xs uppercase tracking-wider text-muted-foreground">Outflow</div><div className="font-display text-2xl font-semibold mt-2 text-destructive">-${totals.outflow.toLocaleString(undefined,{maximumFractionDigits:2})}</div></div>
-        <div className="glass rounded-2xl p-5"><div className="text-xs uppercase tracking-wider text-muted-foreground">Net</div><div className="font-display text-2xl font-semibold mt-2 text-cyan">${totals.net.toLocaleString(undefined,{maximumFractionDigits:2})}</div></div>
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="glass rounded-2xl p-3 sm:p-5">
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Inflow</div>
+          <div className="font-display text-stat-value font-semibold mt-1 sm:mt-2 text-success tabular-nums truncate">+${totals.inflow.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
+        </div>
+        <div className="glass rounded-2xl p-3 sm:p-5">
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Outflow</div>
+          <div className="font-display text-stat-value font-semibold mt-1 sm:mt-2 text-destructive tabular-nums truncate">-${totals.outflow.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
+        </div>
+        <div className="glass rounded-2xl p-3 sm:p-5">
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">Net</div>
+          <div className="font-display text-stat-value font-semibold mt-1 sm:mt-2 text-cyan tabular-nums truncate">${totals.net.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
+        </div>
       </div>
 
-      <div className="glass rounded-2xl p-5">
-        <div className="flex flex-wrap gap-2 mb-4">
+      <div className="glass rounded-2xl p-3 sm:p-5">
+        {/* Mobile-condensed filter bar */}
+        <div className="flex items-center gap-2 mb-3 sm:hidden">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="pl-9 h-10" />
+          </div>
+          <Button variant="outline" size="sm" className="h-10 touch-target relative" onClick={() => setFiltersOpen(true)}>
+            <Filter className="h-4 w-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-cyan text-background text-[10px] font-semibold flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </Button>
+          <Button variant="outline" size="sm" className="h-10 touch-target" onClick={() => setSortAsc((s) => !s)} title="Sort">
+            <ArrowUpDown className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Desktop / tablet filter bar */}
+        <div className="hidden sm:flex flex-wrap gap-2 mb-4">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search note, asset, account…" className="pl-9" />
@@ -245,7 +294,8 @@ function TransactionsPage() {
           />
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop / tablet analytical table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="text-muted-foreground text-[11px] uppercase tracking-wider">
               <tr>
@@ -283,16 +333,145 @@ function TransactionsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile / small-tablet card stack */}
+        <div className="md:hidden space-y-2">
+          {pageRows.map((t) => {
+            const inflow = ["deposit","dividend","interest","staking_reward","profit_realization","sell"].includes(t.transaction_type);
+            const outflow = ["withdrawal","fee","buy"].includes(t.transaction_type);
+            return (
+              <button
+                key={t.id}
+                onClick={() => setDetail(t)}
+                className="w-full text-left rounded-xl border border-border/40 bg-white/[0.02] active:bg-white/[0.06] transition-colors p-3 touch-target"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground">
+                        {t.transaction_type}
+                      </span>
+                      {assetSymOf(t.asset_id) !== "—" && (
+                        <span className="text-xs font-semibold">{assetSymOf(t.asset_id)}</span>
+                      )}
+                    </div>
+                    <div className="mt-1.5 text-xs text-muted-foreground truncate">
+                      {acctName(t.source_account_id)} {t.destination_account_id ? `→ ${acctName(t.destination_account_id)}` : ""}
+                    </div>
+                    {t.note && <div className="mt-1 text-xs text-muted-foreground/80 truncate">{t.note}</div>}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className={cn(
+                      "font-mono text-sm font-semibold tabular-nums",
+                      inflow && "text-success",
+                      outflow && "text-destructive",
+                      !inflow && !outflow && "text-foreground"
+                    )}>
+                      {inflow ? "+" : outflow ? "-" : ""}${Number(t.fiat_value).toLocaleString(undefined,{maximumFractionDigits:2})}
+                    </div>
+                    <div className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                      {new Date(t.execution_timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+          {pageRows.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground text-sm">No transactions match.</div>
+          )}
+        </div>
+
         {filtered.length > PAGE && (
-          <div className="flex justify-between items-center mt-3 text-xs text-muted-foreground">
-            <span>Page {page + 1} of {totalPages} · {filtered.length} entries · exporting visible page</span>
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mt-4 text-xs text-muted-foreground">
+            <span>Page {page + 1} of {totalPages} · {filtered.length} entries</span>
             <div className="flex gap-2">
-              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1 rounded glass disabled:opacity-30">Prev</button>
-              <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="px-3 py-1 rounded glass disabled:opacity-30">Next</button>
+              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="flex-1 sm:flex-none px-4 py-2 rounded glass disabled:opacity-30 touch-target">Prev</button>
+              <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="flex-1 sm:flex-none px-4 py-2 rounded glass disabled:opacity-30 touch-target">Next</button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Mobile filter sheet */}
+      <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters" size="md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => { resetFilters(); }} className="touch-target">Reset</Button>
+            <Button onClick={() => setFiltersOpen(false)} className="bg-cyan text-background hover:bg-cyan/90 touch-target">Apply</Button>
+          </>
+        }>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Type</label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger className="mt-1 h-11"><SelectValue /></SelectTrigger>
+              <SelectContent>{TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Account</label>
+            <Select value={acct} onValueChange={setAcct}>
+              <SelectTrigger className="mt-1 h-11"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All accounts</SelectItem>
+                {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Asset</label>
+              <Select value={assetSym} onValueChange={setAssetSym}>
+                <SelectTrigger className="mt-1 h-11"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {assetSymbols.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Currency</label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger className="mt-1 h-11"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {currencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Min $</label>
+              <Input type="number" inputMode="decimal" value={amountMin} onChange={(e) => setAmountMin(e.target.value)} className="mt-1 h-11" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Max $</label>
+              <Input type="number" inputMode="decimal" value={amountMax} onChange={(e) => setAmountMax(e.target.value)} className="mt-1 h-11" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">From</label>
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="mt-1 h-11" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">To</label>
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="mt-1 h-11" />
+            </div>
+          </div>
+          <div className="pt-2">
+            <FilterPresets
+              presets={presets}
+              onApply={(v) => { applyPreset(v); setFiltersOpen(false); }}
+              onSave={(name) => { savePreset(name, currentFilters); toast.success("Preset saved"); }}
+              onDelete={removePreset}
+            />
+          </div>
+        </div>
+      </Modal>
+
 
       <TransactionModal open={open} onClose={() => setOpen(false)} />
       <TransactionModal open={!!editTx} onClose={() => setEditTx(null)} edit={editTx} />
