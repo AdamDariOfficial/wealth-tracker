@@ -195,8 +195,9 @@ function RootComponent() {
           <CommandPalette />
           <GlobalTransactionModal />
         </SidebarProvider>
-
+      )}
     </QueryClientProvider>
+
   );
 }
 
