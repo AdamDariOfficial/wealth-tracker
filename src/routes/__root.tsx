@@ -217,13 +217,6 @@ function AppHeader({ path, userInitials, onSignOut }: { path: string; userInitia
         <span className="truncate sm:hidden">Search…</span>
         <kbd className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50 border border-border/50 hidden md:inline">⌘K</kbd>
       </button>
-
-        title="Open command palette"
-      >
-        <Search className="h-3.5 w-3.5" />
-        <span>Search or run a command…</span>
-        <kbd className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50 border border-border/50">⌘K</kbd>
-      </button>
       <div className="ml-auto flex items-center gap-3">
         <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
           <div className="h-1.5 w-1.5 rounded-full bg-success pulse-dot" />
