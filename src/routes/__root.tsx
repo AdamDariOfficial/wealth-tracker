@@ -187,7 +187,7 @@ function RootComponent() {
             <AppSidebar />
             <div className="flex-1 flex flex-col min-w-0">
               <AppHeader path={path} userInitials={(profile?.display_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()} onSignOut={() => signOut()} />
-              <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
+              <main className="flex-1 px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8 max-w-[1600px] w-full mx-auto safe-x mb-safe">
                 <Outlet />
               </main>
             </div>
@@ -195,7 +195,7 @@ function RootComponent() {
           <CommandPalette />
           <GlobalTransactionModal />
         </SidebarProvider>
-      )}
+
     </QueryClientProvider>
   );
 }
