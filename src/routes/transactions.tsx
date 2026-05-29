@@ -15,6 +15,8 @@ import { RealtimeStatus } from "@/components/RealtimeStatus";
 import { toCsv, downloadCsv, csvDateStamp } from "@/lib/csv-export";
 import { useFilterPresets } from "@/hooks/use-filter-presets";
 import { FilterPresets } from "@/components/FilterPresets";
+import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/transactions")({ component: TransactionsPage });
 
