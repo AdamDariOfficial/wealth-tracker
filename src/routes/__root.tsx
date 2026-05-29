@@ -203,7 +203,8 @@ function RootComponent() {
 
 function AppHeader({ path, userInitials, onSignOut }: { path: string; userInitials: string; onSignOut: () => void }) {
   const togglePalette = useUI((s) => s.togglePalette);
-  return (
+    <header className="h-14 sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-border/50 backdrop-blur-xl bg-background/60 safe-top">
+
     <header className="h-14 sticky top-0 z-30 flex items-center gap-3 px-4 border-b border-border/50 backdrop-blur-xl bg-background/60">
       <SidebarTrigger />
       <div className="text-xs font-mono text-muted-foreground hidden sm:block">{path}</div>
