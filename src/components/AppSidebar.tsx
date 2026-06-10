@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, TrendingUp, PieChart, Bitcoin, Briefcase,
-  BookOpen, Wallet, Target, BarChart3, Settings, Sparkles, ArrowLeftRight, Activity, ShieldCheck, FlaskConical, Calendar,
+  BookOpen, Wallet, Target, BarChart3, Settings, Sparkles, ArrowLeftRight, Activity, ShieldCheck, FlaskConical, Calendar, Upload,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
