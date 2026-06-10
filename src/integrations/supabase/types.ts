@@ -401,6 +401,45 @@ export type Database = {
         }
         Relationships: []
       }
+      import_batches: {
+        Row: {
+          created_at: string
+          error_count: number
+          errors: Json
+          id: string
+          imported_count: number
+          label: string | null
+          rolled_back_at: string | null
+          source_text: string
+          summary: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_count?: number
+          errors?: Json
+          id?: string
+          imported_count?: number
+          label?: string | null
+          rolled_back_at?: string | null
+          source_text: string
+          summary?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_count?: number
+          errors?: Json
+          id?: string
+          imported_count?: number
+          label?: string | null
+          rolled_back_at?: string | null
+          source_text?: string
+          summary?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       investments: {
         Row: {
           asset_class: string

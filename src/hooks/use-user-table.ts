@@ -8,7 +8,7 @@ type TableName =
   | "investments" | "etfs" | "crypto_holdings" | "goals" | "cash_reserves"
   | "weekly_reports" | "trades"
   | "accounts" | "assets" | "transactions" | "portfolio_snapshots_v2" | "dca_plans"
-  | "audit_log";
+  | "audit_log" | "import_batches";
 
 /**
  * Financial-history tables are never hard-deleted. Removing a row sets the

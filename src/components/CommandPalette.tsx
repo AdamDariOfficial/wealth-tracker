@@ -10,7 +10,7 @@ import { useUserTable } from "@/hooks/use-user-table";
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, Activity, ShieldCheck,
   TrendingUp, PieChart, Bitcoin, Briefcase, Target, BarChart3, Settings,
-  Plus, ArrowDownToLine, ArrowUpFromLine, Repeat, FlaskConical,
+  Plus, ArrowDownToLine, ArrowUpFromLine, Repeat, FlaskConical, Upload,
 } from "lucide-react";
 
 type Goal = { id: string; name: string };
@@ -43,6 +43,7 @@ export function CommandPalette() {
     { label: "Dashboard", to: "/", icon: LayoutDashboard },
     { label: "Liquidity & Accounts", to: "/accounts", icon: Wallet },
     { label: "Transactions", to: "/transactions", icon: ArrowLeftRight },
+    { label: "Import Data", to: "/import", icon: Upload },
     { label: "Activity", to: "/activity", icon: Activity },
     { label: "Timeline", to: "/timeline", icon: Activity },
     { label: "Audit Log", to: "/audit", icon: ShieldCheck },
@@ -77,6 +78,9 @@ export function CommandPalette() {
           </CommandItem>
           <CommandItem onSelect={() => run(() => openTxModal({ type: "sell" }))}>
             <Plus /> Sell asset
+          </CommandItem>
+          <CommandItem onSelect={() => run(() => nav("/import"))}>
+            <Upload /> Import transactions
           </CommandItem>
           <CommandItem onSelect={() => run(() => nav("/trading"))}>
             <Briefcase /> Open trading workspace
