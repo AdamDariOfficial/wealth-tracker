@@ -16,7 +16,8 @@ import { useAccounts, useTransactions } from "@/hooks/use-ledger";
 import { useUserTable } from "@/hooks/use-user-table";
 import { parseImportText, type ParsedEntry } from "@/lib/import-parser";
 import { executeImport, rollbackImport } from "@/lib/import-engine";
-import { formatCurrency } from "@/lib/format-currency";
+import { formatMoney } from "@/lib/format-currency";
+const formatCurrency = (v: number, currency: string) => formatMoney(v, { currency });
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 
