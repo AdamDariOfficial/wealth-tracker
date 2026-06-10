@@ -16,6 +16,7 @@ const main = [
   { title: "Transactions",         url: "/transactions",  icon: ArrowLeftRight },
   { title: "Timeline",             url: "/timeline",      icon: BookOpen },
   { title: "Timeline Intelligence", url: "/calendar",      icon: Calendar },
+  { title: "Import Data",          url: "/import",        icon: Upload },
   { title: "Audit Log",            url: "/audit",         icon: ShieldCheck },
 ];
 const portfolio = [
