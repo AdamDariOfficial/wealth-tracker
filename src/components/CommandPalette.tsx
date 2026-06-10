@@ -43,6 +43,7 @@ export function CommandPalette() {
     { label: "Dashboard", to: "/", icon: LayoutDashboard },
     { label: "Liquidity & Accounts", to: "/accounts", icon: Wallet },
     { label: "Transactions", to: "/transactions", icon: ArrowLeftRight },
+    { label: "Import Data", to: "/import", icon: Upload },
     { label: "Activity", to: "/activity", icon: Activity },
     { label: "Timeline", to: "/timeline", icon: Activity },
     { label: "Audit Log", to: "/audit", icon: ShieldCheck },
