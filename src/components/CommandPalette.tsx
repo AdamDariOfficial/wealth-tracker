@@ -10,7 +10,7 @@ import { useUserTable } from "@/hooks/use-user-table";
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, Activity, ShieldCheck,
   TrendingUp, PieChart, Bitcoin, Briefcase, Target, BarChart3, Settings,
-  Plus, ArrowDownToLine, ArrowUpFromLine, Repeat, FlaskConical,
+  Plus, ArrowDownToLine, ArrowUpFromLine, Repeat, FlaskConical, Upload,
 } from "lucide-react";
 
 type Goal = { id: string; name: string };
