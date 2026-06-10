@@ -92,7 +92,7 @@ async function recordDepositTagged(e: ParsedEntry, tag: string) {
     destinationAccountId: e.account!.matchedId!,
     amount: e.amount,
     ts: e.timestamp,
-    note: e.description ?? null,
+    note: e.description ?? undefined,
     tags,
   });
 }
@@ -109,7 +109,7 @@ async function recordWithdrawalTagged(e: ParsedEntry, tag: string) {
     fiat_value: e.amount,
     base_value: e.amount,
     execution_timestamp: e.timestamp,
-    note: e.description ?? null,
+    note: e.description ?? undefined,
     tags,
   });
   if (error) throw error;
@@ -128,7 +128,7 @@ async function recordTransferTagged(e: ParsedEntry, tag: string) {
     inQuantity: e.amount,
     inFiatValue: e.amount,
     ts: e.timestamp,
-    note: e.description ?? null,
+    note: e.description ?? undefined,
   }).catch(async () => {
     // Fallback: do two simple cash legs without asset (deposit + withdrawal pair)
     const user_id = await uid();
@@ -143,7 +143,7 @@ async function recordTransferTagged(e: ParsedEntry, tag: string) {
         quantity: e.amount, fiat_value: e.amount, base_value: e.amount,
         transfer_group_id: groupId,
         execution_timestamp: e.timestamp,
-        note: e.description ?? null,
+        note: e.description ?? undefined,
         tags,
       },
       {
@@ -154,7 +154,7 @@ async function recordTransferTagged(e: ParsedEntry, tag: string) {
         quantity: e.amount, fiat_value: e.amount, base_value: e.amount,
         transfer_group_id: groupId,
         execution_timestamp: e.timestamp,
-        note: e.description ?? null,
+        note: e.description ?? undefined,
         tags,
       },
     ]);
