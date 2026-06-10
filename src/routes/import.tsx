@@ -53,7 +53,7 @@ function ImportPage() {
   const ccy = profile?.currency ?? "USD";
   const { rows: accounts } = useAccounts();
   const { rows: existingTx } = useTransactions();
-  const { rows: batches, refresh: refreshBatches } = useUserTable<ImportBatch>("import_batches" as any, {
+  const { rows: batches, refresh: refreshBatches } = useUserTable<ImportBatch>("import_batches", {
     col: "created_at", asc: false,
   });
 
