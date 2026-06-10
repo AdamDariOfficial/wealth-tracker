@@ -19,6 +19,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as InvestmentsRouteImport } from './routes/investments'
+import { Route as ImportRouteImport } from './routes/import'
 import { Route as GoalsRouteImport } from './routes/goals'
 import { Route as EtfRouteImport } from './routes/etf'
 import { Route as DevToolsRouteImport } from './routes/dev-tools'
@@ -80,6 +81,11 @@ const JournalRoute = JournalRouteImport.update({
 const InvestmentsRoute = InvestmentsRouteImport.update({
   id: '/investments',
   path: '/investments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportRoute = ImportRouteImport.update({
+  id: '/import',
+  path: '/import',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GoalsRoute = GoalsRouteImport.update({
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/dev-tools': typeof DevToolsRoute
   '/etf': typeof EtfRoute
   '/goals': typeof GoalsRoute
+  '/import': typeof ImportRoute
   '/investments': typeof InvestmentsRoute
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/dev-tools': typeof DevToolsRoute
   '/etf': typeof EtfRoute
   '/goals': typeof GoalsRoute
+  '/import': typeof ImportRoute
   '/investments': typeof InvestmentsRoute
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/dev-tools': typeof DevToolsRoute
   '/etf': typeof EtfRoute
   '/goals': typeof GoalsRoute
+  '/import': typeof ImportRoute
   '/investments': typeof InvestmentsRoute
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/dev-tools'
     | '/etf'
     | '/goals'
+    | '/import'
     | '/investments'
     | '/journal'
     | '/login'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/dev-tools'
     | '/etf'
     | '/goals'
+    | '/import'
     | '/investments'
     | '/journal'
     | '/login'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/dev-tools'
     | '/etf'
     | '/goals'
+    | '/import'
     | '/investments'
     | '/journal'
     | '/login'
@@ -303,6 +315,7 @@ export interface RootRouteChildren {
   DevToolsRoute: typeof DevToolsRoute
   EtfRoute: typeof EtfRoute
   GoalsRoute: typeof GoalsRoute
+  ImportRoute: typeof ImportRoute
   InvestmentsRoute: typeof InvestmentsRoute
   JournalRoute: typeof JournalRoute
   LoginRoute: typeof LoginRoute
@@ -385,6 +398,13 @@ declare module '@tanstack/react-router' {
       path: '/investments'
       fullPath: '/investments'
       preLoaderRoute: typeof InvestmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import': {
+      id: '/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof ImportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/goals': {
@@ -498,6 +518,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevToolsRoute: DevToolsRoute,
   EtfRoute: EtfRoute,
   GoalsRoute: GoalsRoute,
+  ImportRoute: ImportRoute,
   InvestmentsRoute: InvestmentsRoute,
   JournalRoute: JournalRoute,
   LoginRoute: LoginRoute,
