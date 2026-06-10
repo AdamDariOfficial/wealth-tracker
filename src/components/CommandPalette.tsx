@@ -78,6 +78,9 @@ export function CommandPalette() {
           <CommandItem onSelect={() => run(() => openTxModal({ type: "sell" }))}>
             <Plus /> Sell asset
           </CommandItem>
+          <CommandItem onSelect={() => run(() => nav("/import"))}>
+            <Upload /> Import transactions
+          </CommandItem>
           <CommandItem onSelect={() => run(() => nav("/trading"))}>
             <Briefcase /> Open trading workspace
           </CommandItem>
