@@ -33,6 +33,10 @@ export interface ParsedEntry {
   category: string | null;
   warnings: string[];
   errors: string[];
+  /** Unresolved raw account names on this row (deduped). Drives the Issues panel. */
+  unresolvedAccounts: string[];
+  /** Effective severity after ignores/aliases: 'ready' | 'warning' | 'error'. */
+  severity: "ready" | "warning" | "error";
   duplicateOf?: string | null; // existing tx id
 }
 
