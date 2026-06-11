@@ -33,6 +33,10 @@ export interface ParsedEntry {
   category: string | null;
   warnings: string[];
   errors: string[];
+  /** Unresolved raw account names on this row (deduped). Drives the Issues panel. */
+  unresolvedAccounts: string[];
+  /** Effective severity after ignores/aliases: 'ready' | 'warning' | 'error'. */
+  severity: "ready" | "warning" | "error";
   duplicateOf?: string | null; // existing tx id
 }
 
@@ -55,10 +59,19 @@ export interface AccountLike {
   provider?: string | null;
 }
 
+export interface ImportAlias {
+  alias: string;
+  entity_type: "account" | "asset";
+  entity_id: string;
+}
+
 export interface ParseInput {
   text: string;
   accounts: AccountLike[];
   defaultDate?: Date;
+  aliases?: ImportAlias[];
+  /** Session-only ignore list of normalized raw names — entries flagged here become warnings, not errors. */
+  ignoredAccounts?: string[];
   existingTransactions?: {
     id: string;
     execution_timestamp: string;
@@ -104,10 +117,30 @@ function diceCoefficient(a: string, b: string): number {
   return (2 * inter) / (sizeA + sizeB);
 }
 
-function resolveAccount(raw: string, accounts: AccountLike[]): AccountRef {
+function resolveAccount(
+  raw: string,
+  accounts: AccountLike[],
+  aliases?: ImportAlias[],
+): AccountRef {
   const target = norm(raw);
   if (!target) {
     return { raw, matchedId: null, matchedName: null, confidence: 0, candidates: [] };
+  }
+  // 1) Alias hit — highest priority, exact normalized match.
+  if (aliases?.length) {
+    const a = aliases.find((al) => al.entity_type === "account" && norm(al.alias) === target);
+    if (a) {
+      const acct = accounts.find((x) => x.id === a.entity_id);
+      if (acct) {
+        return {
+          raw,
+          matchedId: acct.id,
+          matchedName: acct.name,
+          confidence: 1,
+          candidates: [{ id: acct.id, name: acct.name, score: 1 }],
+        };
+      }
+    }
   }
   const scored = accounts.map((a) => {
     const n = norm(a.name);
@@ -197,6 +230,8 @@ function parseEntryLine(
   lineNo: number,
   activeDate: Date,
   accounts: AccountLike[],
+  aliases: ImportAlias[] | undefined,
+  ignoredNorms: Set<string>,
 ): ParsedEntry {
   const base: ParsedEntry = {
     lineNo,
@@ -208,6 +243,8 @@ function parseEntryLine(
     category: null,
     warnings: [],
     errors: [],
+    unresolvedAccounts: [],
+    severity: "error",
   };
 
   // Transfer first: "30 contanti -> Isy bank, note"
@@ -219,8 +256,8 @@ function parseEntryLine(
     const toRaw = restParts.shift() ?? "";
     const desc = restParts.shift() ?? null;
     const cat = restParts.shift() ?? null;
-    const from = resolveAccount(fromRaw, accounts);
-    const to = resolveAccount(toRaw, accounts);
+    const from = resolveAccount(fromRaw, accounts, aliases);
+    const to = resolveAccount(toRaw, accounts, aliases);
     const e: ParsedEntry = {
       ...base,
       kind: "transfer",
@@ -230,8 +267,14 @@ function parseEntryLine(
       description: desc,
       category: cat,
     };
-    if (!from.matchedId) e.errors.push(`Unknown source account "${fromRaw}"`);
-    if (!to.matchedId) e.errors.push(`Unknown destination account "${toRaw}"`);
+    if (!from.matchedId) {
+      if (ignoredNorms.has(norm(fromRaw))) e.warnings.push(`Skipped: unknown source "${fromRaw}"`);
+      else { e.errors.push(`Unknown source account "${fromRaw}"`); e.unresolvedAccounts.push(fromRaw); }
+    }
+    if (!to.matchedId) {
+      if (ignoredNorms.has(norm(toRaw))) e.warnings.push(`Skipped: unknown destination "${toRaw}"`);
+      else { e.errors.push(`Unknown destination account "${toRaw}"`); e.unresolvedAccounts.push(toRaw); }
+    }
     if (from.matchedId && to.matchedId && from.matchedId === to.matchedId)
       e.errors.push("Transfer source and destination are the same account");
     if (!amount || amount <= 0) e.errors.push("Invalid amount");
@@ -249,7 +292,7 @@ function parseEntryLine(
     const accountRaw = parts.shift() ?? "";
     const description = parts.shift() ?? null;
     const category = parts.shift() ?? null;
-    const acct = resolveAccount(accountRaw, accounts);
+    const acct = resolveAccount(accountRaw, accounts, aliases);
     const kind: ParsedKind = sign === "-" ? "expense" : "deposit";
     const e: ParsedEntry = {
       ...base,
@@ -259,7 +302,10 @@ function parseEntryLine(
       description,
       category,
     };
-    if (!acct.matchedId) e.errors.push(`Unknown account "${accountRaw}"`);
+    if (!acct.matchedId) {
+      if (ignoredNorms.has(norm(accountRaw))) e.warnings.push(`Skipped: unknown account "${accountRaw}"`);
+      else { e.errors.push(`Unknown account "${accountRaw}"`); e.unresolvedAccounts.push(accountRaw); }
+    }
     if (!amount || amount <= 0) e.errors.push("Invalid amount");
     if (acct.matchedId && acct.confidence < 0.9)
       e.warnings.push(`Fuzzy match for "${accountRaw}" → ${acct.matchedName}`);
@@ -296,64 +342,82 @@ export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; su
   const entries: ParsedEntry[] = [];
   let active = input.defaultDate ?? new Date();
   active.setHours(0, 0, 0, 0);
+  const ignoredNorms = new Set((input.ignoredAccounts ?? []).map(norm));
 
   lines.forEach((raw, idx) => {
     const line = raw.trim();
     if (!line) return;
     if (line.startsWith("#") || line.startsWith("//")) return;
 
-    // Date header detection
     const maybeDate = tryParseDate(line);
-    // Heuristic: a line that *only* contains date tokens (optionally a weekday)
-    // is treated as a header. If it also contains amount markers, treat as entry.
     if (maybeDate && !/[+\-]?\d+[.,]?\d*\s+\S/.test(line.replace(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/g, "").replace(/\d{4}-\d{2}-\d{2}/g, "").replace(/\d{1,2}:\d{2}/g, ""))) {
       active = maybeDate;
       return;
     }
 
-    const e = parseEntryLine(line, idx + 1, active, input.accounts);
+    const e = parseEntryLine(line, idx + 1, active, input.accounts, input.aliases, ignoredNorms);
     const dup = detectDuplicate(e, input.existingTransactions);
     if (dup) {
       e.duplicateOf = dup;
       e.warnings.push("Possible duplicate of existing transaction");
     }
+    // Compute effective severity
+    if (e.errors.length) e.severity = "error";
+    else if (e.warnings.length || e.duplicateOf) e.severity = "warning";
+    else e.severity = "ready";
     entries.push(e);
   });
 
-  let inflow = 0;
-  let outflow = 0;
-  let deposits = 0;
-  let expenses = 0;
-  let transfers = 0;
-  let errorCount = 0;
-  let warningCount = 0;
+  let inflow = 0, outflow = 0, deposits = 0, expenses = 0, transfers = 0;
+  let errorCount = 0, warningCount = 0;
   for (const e of entries) {
-    if (e.errors.length) errorCount++;
+    if (e.severity === "error") errorCount++;
     warningCount += e.warnings.length;
-    if (e.kind === "deposit") {
-      deposits++;
-      inflow += e.amount;
-    } else if (e.kind === "expense") {
-      expenses++;
-      outflow += e.amount;
-    } else if (e.kind === "transfer") {
-      transfers++;
-    }
+    if (e.kind === "deposit") { deposits++; inflow += e.amount; }
+    else if (e.kind === "expense") { expenses++; outflow += e.amount; }
+    else if (e.kind === "transfer") { transfers++; }
   }
   return {
     entries,
     summary: {
-      total: entries.length,
-      deposits,
-      expenses,
-      transfers,
-      inflow,
-      outflow,
-      net: inflow - outflow,
-      errorCount,
-      warningCount,
+      total: entries.length, deposits, expenses, transfers,
+      inflow, outflow, net: inflow - outflow,
+      errorCount, warningCount,
     },
   };
 }
+
+/**
+ * Group unresolved raw account names across entries → list of issues with affected line numbers
+ * and suggested existing accounts (fuzzy matched).
+ */
+export interface AccountIssue {
+  raw: string;
+  normalized: string;
+  lineNos: number[];
+  suggestions: { id: string; name: string; score: number }[];
+}
+export function groupAccountIssues(entries: ParsedEntry[], accounts: AccountLike[]): AccountIssue[] {
+  const map = new Map<string, AccountIssue>();
+  for (const e of entries) {
+    for (const raw of e.unresolvedAccounts) {
+      const key = norm(raw);
+      if (!key) continue;
+      let g = map.get(key);
+      if (!g) {
+        const scored = accounts
+          .map((a) => ({ id: a.id, name: a.name, score: diceCoefficient(norm(a.name), key) }))
+          .sort((x, y) => y.score - x.score)
+          .filter((s) => s.score >= 0.35)
+          .slice(0, 3);
+        g = { raw, normalized: key, lineNos: [], suggestions: scored };
+        map.set(key, g);
+      }
+      if (!g.lineNos.includes(e.lineNo)) g.lineNos.push(e.lineNo);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.lineNos.length - a.lineNos.length);
+}
+
 
 export { isDateLine, tryParseDate };
