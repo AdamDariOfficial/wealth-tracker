@@ -55,10 +55,19 @@ export interface AccountLike {
   provider?: string | null;
 }
 
+export interface ImportAlias {
+  alias: string;
+  entity_type: "account" | "asset";
+  entity_id: string;
+}
+
 export interface ParseInput {
   text: string;
   accounts: AccountLike[];
   defaultDate?: Date;
+  aliases?: ImportAlias[];
+  /** Session-only ignore list of normalized raw names — entries flagged here become warnings, not errors. */
+  ignoredAccounts?: string[];
   existingTransactions?: {
     id: string;
     execution_timestamp: string;
