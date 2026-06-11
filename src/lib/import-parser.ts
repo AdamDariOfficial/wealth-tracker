@@ -230,6 +230,8 @@ function parseEntryLine(
   lineNo: number,
   activeDate: Date,
   accounts: AccountLike[],
+  aliases: ImportAlias[] | undefined,
+  ignoredNorms: Set<string>,
 ): ParsedEntry {
   const base: ParsedEntry = {
     lineNo,
@@ -241,6 +243,8 @@ function parseEntryLine(
     category: null,
     warnings: [],
     errors: [],
+    unresolvedAccounts: [],
+    severity: "error",
   };
 
   // Transfer first: "30 contanti -> Isy bank, note"
@@ -252,8 +256,8 @@ function parseEntryLine(
     const toRaw = restParts.shift() ?? "";
     const desc = restParts.shift() ?? null;
     const cat = restParts.shift() ?? null;
-    const from = resolveAccount(fromRaw, accounts);
-    const to = resolveAccount(toRaw, accounts);
+    const from = resolveAccount(fromRaw, accounts, aliases);
+    const to = resolveAccount(toRaw, accounts, aliases);
     const e: ParsedEntry = {
       ...base,
       kind: "transfer",
@@ -263,8 +267,14 @@ function parseEntryLine(
       description: desc,
       category: cat,
     };
-    if (!from.matchedId) e.errors.push(`Unknown source account "${fromRaw}"`);
-    if (!to.matchedId) e.errors.push(`Unknown destination account "${toRaw}"`);
+    if (!from.matchedId) {
+      if (ignoredNorms.has(norm(fromRaw))) e.warnings.push(`Skipped: unknown source "${fromRaw}"`);
+      else { e.errors.push(`Unknown source account "${fromRaw}"`); e.unresolvedAccounts.push(fromRaw); }
+    }
+    if (!to.matchedId) {
+      if (ignoredNorms.has(norm(toRaw))) e.warnings.push(`Skipped: unknown destination "${toRaw}"`);
+      else { e.errors.push(`Unknown destination account "${toRaw}"`); e.unresolvedAccounts.push(toRaw); }
+    }
     if (from.matchedId && to.matchedId && from.matchedId === to.matchedId)
       e.errors.push("Transfer source and destination are the same account");
     if (!amount || amount <= 0) e.errors.push("Invalid amount");
@@ -282,7 +292,7 @@ function parseEntryLine(
     const accountRaw = parts.shift() ?? "";
     const description = parts.shift() ?? null;
     const category = parts.shift() ?? null;
-    const acct = resolveAccount(accountRaw, accounts);
+    const acct = resolveAccount(accountRaw, accounts, aliases);
     const kind: ParsedKind = sign === "-" ? "expense" : "deposit";
     const e: ParsedEntry = {
       ...base,
@@ -292,7 +302,10 @@ function parseEntryLine(
       description,
       category,
     };
-    if (!acct.matchedId) e.errors.push(`Unknown account "${accountRaw}"`);
+    if (!acct.matchedId) {
+      if (ignoredNorms.has(norm(accountRaw))) e.warnings.push(`Skipped: unknown account "${accountRaw}"`);
+      else { e.errors.push(`Unknown account "${accountRaw}"`); e.unresolvedAccounts.push(accountRaw); }
+    }
     if (!amount || amount <= 0) e.errors.push("Invalid amount");
     if (acct.matchedId && acct.confidence < 0.9)
       e.warnings.push(`Fuzzy match for "${accountRaw}" → ${acct.matchedName}`);
