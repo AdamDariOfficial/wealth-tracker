@@ -342,64 +342,82 @@ export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; su
   const entries: ParsedEntry[] = [];
   let active = input.defaultDate ?? new Date();
   active.setHours(0, 0, 0, 0);
+  const ignoredNorms = new Set((input.ignoredAccounts ?? []).map(norm));
 
   lines.forEach((raw, idx) => {
     const line = raw.trim();
     if (!line) return;
     if (line.startsWith("#") || line.startsWith("//")) return;
 
-    // Date header detection
     const maybeDate = tryParseDate(line);
-    // Heuristic: a line that *only* contains date tokens (optionally a weekday)
-    // is treated as a header. If it also contains amount markers, treat as entry.
     if (maybeDate && !/[+\-]?\d+[.,]?\d*\s+\S/.test(line.replace(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/g, "").replace(/\d{4}-\d{2}-\d{2}/g, "").replace(/\d{1,2}:\d{2}/g, ""))) {
       active = maybeDate;
       return;
     }
 
-    const e = parseEntryLine(line, idx + 1, active, input.accounts);
+    const e = parseEntryLine(line, idx + 1, active, input.accounts, input.aliases, ignoredNorms);
     const dup = detectDuplicate(e, input.existingTransactions);
     if (dup) {
       e.duplicateOf = dup;
       e.warnings.push("Possible duplicate of existing transaction");
     }
+    // Compute effective severity
+    if (e.errors.length) e.severity = "error";
+    else if (e.warnings.length || e.duplicateOf) e.severity = "warning";
+    else e.severity = "ready";
     entries.push(e);
   });
 
-  let inflow = 0;
-  let outflow = 0;
-  let deposits = 0;
-  let expenses = 0;
-  let transfers = 0;
-  let errorCount = 0;
-  let warningCount = 0;
+  let inflow = 0, outflow = 0, deposits = 0, expenses = 0, transfers = 0;
+  let errorCount = 0, warningCount = 0;
   for (const e of entries) {
-    if (e.errors.length) errorCount++;
+    if (e.severity === "error") errorCount++;
     warningCount += e.warnings.length;
-    if (e.kind === "deposit") {
-      deposits++;
-      inflow += e.amount;
-    } else if (e.kind === "expense") {
-      expenses++;
-      outflow += e.amount;
-    } else if (e.kind === "transfer") {
-      transfers++;
-    }
+    if (e.kind === "deposit") { deposits++; inflow += e.amount; }
+    else if (e.kind === "expense") { expenses++; outflow += e.amount; }
+    else if (e.kind === "transfer") { transfers++; }
   }
   return {
     entries,
     summary: {
-      total: entries.length,
-      deposits,
-      expenses,
-      transfers,
-      inflow,
-      outflow,
-      net: inflow - outflow,
-      errorCount,
-      warningCount,
+      total: entries.length, deposits, expenses, transfers,
+      inflow, outflow, net: inflow - outflow,
+      errorCount, warningCount,
     },
   };
 }
+
+/**
+ * Group unresolved raw account names across entries → list of issues with affected line numbers
+ * and suggested existing accounts (fuzzy matched).
+ */
+export interface AccountIssue {
+  raw: string;
+  normalized: string;
+  lineNos: number[];
+  suggestions: { id: string; name: string; score: number }[];
+}
+export function groupAccountIssues(entries: ParsedEntry[], accounts: AccountLike[]): AccountIssue[] {
+  const map = new Map<string, AccountIssue>();
+  for (const e of entries) {
+    for (const raw of e.unresolvedAccounts) {
+      const key = norm(raw);
+      if (!key) continue;
+      let g = map.get(key);
+      if (!g) {
+        const scored = accounts
+          .map((a) => ({ id: a.id, name: a.name, score: diceCoefficient(norm(a.name), key) }))
+          .sort((x, y) => y.score - x.score)
+          .filter((s) => s.score >= 0.35)
+          .slice(0, 3);
+        g = { raw, normalized: key, lineNos: [], suggestions: scored };
+        map.set(key, g);
+      }
+      if (!g.lineNos.includes(e.lineNo)) g.lineNos.push(e.lineNo);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.lineNos.length - a.lineNos.length);
+}
+
 
 export { isDateLine, tryParseDate };
