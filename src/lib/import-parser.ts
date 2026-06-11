@@ -113,10 +113,30 @@ function diceCoefficient(a: string, b: string): number {
   return (2 * inter) / (sizeA + sizeB);
 }
 
-function resolveAccount(raw: string, accounts: AccountLike[]): AccountRef {
+function resolveAccount(
+  raw: string,
+  accounts: AccountLike[],
+  aliases?: ImportAlias[],
+): AccountRef {
   const target = norm(raw);
   if (!target) {
     return { raw, matchedId: null, matchedName: null, confidence: 0, candidates: [] };
+  }
+  // 1) Alias hit — highest priority, exact normalized match.
+  if (aliases?.length) {
+    const a = aliases.find((al) => al.entity_type === "account" && norm(al.alias) === target);
+    if (a) {
+      const acct = accounts.find((x) => x.id === a.entity_id);
+      if (acct) {
+        return {
+          raw,
+          matchedId: acct.id,
+          matchedName: acct.name,
+          confidence: 1,
+          candidates: [{ id: acct.id, name: acct.name, score: 1 }],
+        };
+      }
+    }
   }
   const scored = accounts.map((a) => {
     const n = norm(a.name);
