@@ -5,9 +5,13 @@ import { useHoldings, useAccounts, useAssets } from "@/hooks/use-ledger";
 import { useUserTable } from "@/hooks/use-user-table";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
+export type AllocationSlice = { name: string; value: number; raw: number };
 export type PortfolioAggregates = {
   netWorth: number;
+  /** Capital deployed into investments (ETF + investments + crypto + trading float). Excludes cash/bank/savings. */
   invested: number;
+  /** Cost basis of all current holdings (used for unrealized PnL %). */
+  costBasis: number;
   cashReserve: number;
   tradingCapital: number;
   tradingReserve: number;
@@ -16,7 +20,11 @@ export type PortfolioAggregates = {
   cryptoValue: number;
   pnl: number;
   pnlPct: number;
-  allocation: { name: string; value: number }[];
+  /** Default allocation (by account). */
+  allocation: AllocationSlice[];
+  allocationByAccount: AllocationSlice[];
+  allocationByAssetClass: AllocationSlice[];
+  allocationByAccountType: AllocationSlice[];
   weeklyDca: number;
 };
 
