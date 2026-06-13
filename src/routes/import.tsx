@@ -557,8 +557,9 @@ function EntryRow({
       <td className="px-3 py-2 truncate max-w-[240px]">{e.description ?? <span className="text-muted-foreground/60">—</span>}</td>
       <td className="px-3 py-2 align-top">
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {statusBadge(e)}
+            {confidenceBadge(e)}
             {issue && (
               <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => onFix(issue)}>
                 <Wrench className="h-2.5 w-2.5 mr-1" />Fix
