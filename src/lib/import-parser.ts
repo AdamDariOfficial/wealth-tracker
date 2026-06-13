@@ -37,6 +37,12 @@ export interface ParsedEntry {
   unresolvedAccounts: string[];
   /** Effective severity after ignores/aliases: 'ready' | 'warning' | 'error'. */
   severity: "ready" | "warning" | "error";
+  /** Overall row confidence 0..1, considering account match + warnings + duplicates. */
+  confidence: number;
+  /** Confidence tier for badges. */
+  confidenceTier: "high" | "medium" | "low";
+  /** True when account was inferred from defaultAccountId instead of explicit token. */
+  usedDefaultAccount?: boolean;
   duplicateOf?: string | null; // existing tx id
 }
 
