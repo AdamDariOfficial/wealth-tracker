@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Wallet, TrendingUp, Briefcase, Zap, PiggyBank, Activity,
 } from "lucide-react";
