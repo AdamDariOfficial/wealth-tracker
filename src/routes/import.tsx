@@ -517,6 +517,20 @@ function statusBadge(e: ParsedEntry) {
   return <Badge className="text-[10px] bg-success/15 text-success border-success/30"><CheckCircle2 className="h-3 w-3 mr-1" />Ready</Badge>;
 }
 
+function confidenceBadge(e: ParsedEntry) {
+  if (e.severity === "error") return null;
+  const tone =
+    e.confidenceTier === "high" ? "bg-success/10 text-success border-success/30" :
+    e.confidenceTier === "medium" ? "bg-warning/10 text-warning border-warning/30" :
+    "bg-destructive/10 text-destructive border-destructive/30";
+  const label = e.confidenceTier === "high" ? "High" : e.confidenceTier === "medium" ? "Medium" : "Low";
+  return (
+    <Badge variant="outline" className={cn("text-[10px] font-normal", tone)} title={`${Math.round(e.confidence * 100)}% confidence`}>
+      {label} · {Math.round(e.confidence * 100)}%
+    </Badge>
+  );
+}
+
 function accountLabel(e: ParsedEntry) {
   if (e.kind === "transfer")
     return `${e.fromAccount?.matchedName ?? e.fromAccount?.raw ?? "?"} → ${e.toAccount?.matchedName ?? e.toAccount?.raw ?? "?"}`;
