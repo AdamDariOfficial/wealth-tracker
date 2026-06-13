@@ -115,8 +115,51 @@ function TransactionsPage() {
     });
   }, [txs, type, acct, assetSym, currency, amountMin, amountMax, dateFrom, dateTo, debouncedQ, accounts, assets, sortAsc]);
 
-  const pageRows = useMemo(() => filtered.slice(page * PAGE, (page + 1) * PAGE), [filtered, page]);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE));
+  // Collapse paired transfer legs (sharing transfer_group_id) into a single display row.
+  const collapsed = useMemo(() => {
+    const groups = new Map<string, Transaction[]>();
+    const out: Transaction[] = [];
+    for (const t of filtered) {
+      if (t.transaction_type === "transfer" && t.transfer_group_id) {
+        const arr = groups.get(t.transfer_group_id) ?? [];
+        arr.push(t);
+        groups.set(t.transfer_group_id, arr);
+      } else {
+        out.push(t);
+      }
+    }
+    for (const legs of groups.values()) {
+      if (legs.length === 1) { out.push(legs[0]); continue; }
+      // Build a synthetic merged row: take outgoing leg as primary, fill destination from incoming leg.
+      const outLeg = legs.find((l) => l.source_account_id) ?? legs[0];
+      const inLeg  = legs.find((l) => l.destination_account_id && l.id !== outLeg.id) ?? legs[1] ?? outLeg;
+      out.push({
+        ...outLeg,
+        source_account_id: outLeg.source_account_id ?? inLeg.source_account_id,
+        destination_account_id: inLeg.destination_account_id ?? outLeg.destination_account_id,
+      });
+    }
+    return out.sort((a, b) => {
+      const da = +new Date(a.execution_timestamp), db = +new Date(b.execution_timestamp);
+      return sortAsc ? da - db : db - da;
+    });
+  }, [filtered, sortAsc]);
+
+  // Legs lookup for drawer drill-down.
+  const legsByGroup = useMemo(() => {
+    const m = new Map<string, Transaction[]>();
+    for (const t of txs) {
+      if (t.transfer_group_id) {
+        const a = m.get(t.transfer_group_id) ?? [];
+        a.push(t);
+        m.set(t.transfer_group_id, a);
+      }
+    }
+    return m;
+  }, [txs]);
+
+  const pageRows = useMemo(() => collapsed.slice(page * PAGE, (page + 1) * PAGE), [collapsed, page]);
+  const totalPages = Math.max(1, Math.ceil(collapsed.length / PAGE));
   useEffect(() => { if (page >= totalPages) setPage(0); }, [page, totalPages]);
 
   const resetFilters = () => {
