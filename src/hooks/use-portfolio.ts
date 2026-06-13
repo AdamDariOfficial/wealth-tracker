@@ -74,19 +74,57 @@ export function usePortfolio() {
     const pnlPct = costBasis > 0 ? (totals.unrealized / costBasis) * 100 : 0;
     const weeklyDca = etfs.reduce((s, r) => s + Number(r.monthly_contribution ?? 0) / 4, 0);
 
-    const allocationRaw = [
-      { name: "ETFs", value: etfsValue },
-      { name: "Investments", value: investmentsValue },
-      { name: "Crypto", value: cryptoValue },
-      { name: "Trading", value: tradingCapital },
-      { name: "Cash", value: cashReserve },
-    ].filter((a) => a.value > 0);
-    const total = allocationRaw.reduce((s, a) => s + a.value, 0) || 1;
-    const allocation = allocationRaw.map((a) => ({ name: a.name, value: +(a.value / total * 100).toFixed(1) }));
+    // Invested = capital deployed into investments. Excludes cash/bank/savings.
+    const invested = etfsValue + investmentsValue + cryptoValue + tradingCapital;
+
+    // ---- Allocation modes ----
+    const toPct = (rows: { name: string; raw: number }[]): AllocationSlice[] => {
+      const filtered = rows.filter((r) => r.raw > 0);
+      const total = filtered.reduce((s, r) => s + r.raw, 0) || 1;
+      return filtered
+        .map((r) => ({ name: r.name, raw: r.raw, value: +((r.raw / total) * 100).toFixed(1) }))
+        .sort((a, b) => b.raw - a.raw);
+    };
+
+    // By Account
+    const byAccountRows: { name: string; raw: number }[] = [];
+    for (const acc of accounts) {
+      if (!acc.include_in_net_worth || acc.archived_at) continue;
+      const cash = Number(acc.current_balance ?? 0);
+      const positions = accountValue.get(acc.id) ?? 0;
+      byAccountRows.push({ name: acc.name, raw: cash + positions });
+    }
+
+    // By Asset Class
+    const byAssetClass = toPct([
+      { name: "ETFs", raw: etfsValue },
+      { name: "Investments", raw: investmentsValue },
+      { name: "Crypto", raw: cryptoValue },
+      { name: "Trading", raw: tradingCapital },
+      { name: "Cash", raw: cashReserve },
+    ]);
+
+    // By Account Type
+    const typeLabel = (t: string) => ({
+      bank: "Bank", cash: "Cash", savings: "Savings",
+      broker: "Broker", exchange: "Exchange", investment: "Investment",
+      crypto_wallet: "Crypto Wallet", cold_wallet: "Cold Wallet", external: "External",
+    } as Record<string, string>)[t] ?? t;
+    const typeMap = new Map<string, number>();
+    for (const acc of accounts) {
+      if (!acc.include_in_net_worth || acc.archived_at) continue;
+      const cash = Number(acc.current_balance ?? 0);
+      const positions = accountValue.get(acc.id) ?? 0;
+      const k = typeLabel(acc.type);
+      typeMap.set(k, (typeMap.get(k) ?? 0) + cash + positions);
+    }
+    const byAccountType = toPct(Array.from(typeMap.entries()).map(([name, raw]) => ({ name, raw })));
+    const byAccount = toPct(byAccountRows);
 
     return {
       netWorth,
-      invested: costBasis,
+      invested,
+      costBasis,
       cashReserve,
       tradingCapital,
       tradingReserve: 0,
@@ -95,7 +133,10 @@ export function usePortfolio() {
       cryptoValue,
       pnl,
       pnlPct,
-      allocation,
+      allocation: byAccount,
+      allocationByAccount: byAccount,
+      allocationByAssetClass: byAssetClass,
+      allocationByAccountType: byAccountType,
       weeklyDca,
       loading: false,
     };
