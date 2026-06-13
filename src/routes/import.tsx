@@ -258,7 +258,7 @@ function ImportPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* INPUT */}
         <Card className="glass p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <FileText className="h-4 w-4 text-cyan" /> Raw text
             </div>
@@ -268,6 +268,17 @@ function ImportPage() {
               placeholder="Batch label (optional)"
               className="h-8 max-w-[200px] text-xs"
             />
+          </div>
+          <div className="flex items-center gap-2 text-[11px]">
+            <label className="text-muted-foreground uppercase tracking-wider text-[10px] shrink-0">Default account</label>
+            <select
+              value={defaultAccountId}
+              onChange={(e) => setDefaultAccountId(e.target.value)}
+              className="flex-1 h-8 px-2 rounded-md bg-card/60 border border-border/40 text-xs"
+            >
+              <option value="">— none (require explicit account) —</option>
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
           </div>
           <Textarea
             value={text}
