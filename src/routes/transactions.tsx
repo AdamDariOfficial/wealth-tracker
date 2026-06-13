@@ -529,7 +529,24 @@ function TransactionsPage() {
         )}>
 
         {detail && (
-          <div className="space-y-2 text-xs font-mono">
+          <div className="space-y-3 text-xs font-mono">
+            {detail.transaction_type === "transfer" && detail.transfer_group_id && (() => {
+              const legs = legsByGroup.get(detail.transfer_group_id) ?? [];
+              if (legs.length < 2) return null;
+              return (
+                <div className="rounded-lg border border-cyan/30 bg-cyan/5 p-3 space-y-2">
+                  <div className="text-[10px] uppercase tracking-wider text-cyan">Double-entry legs</div>
+                  {legs.map((l) => (
+                    <div key={l.id} className="flex items-center justify-between gap-3 text-[11px]">
+                      <span className="text-muted-foreground">
+                        {l.source_account_id ? `− ${acctName(l.source_account_id)}` : `+ ${acctName(l.destination_account_id)}`}
+                      </span>
+                      <span className="font-mono">${Number(l.fiat_value).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             {([
               ["ID", detail.id],
               ["Type", detail.transaction_type],
