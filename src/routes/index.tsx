@@ -110,17 +110,6 @@ function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="Net Worth" value={fmt2(p.netWorth)} change={p.pnlPct} icon={Wallet} delay={0.0} accent />
         <StatCard label="Invested Capital" value={fmt(p.invested)} icon={TrendingUp} delay={0.05} />
-        action={
-          <div className="glass rounded-xl px-3 py-2 text-xs font-mono text-muted-foreground flex items-center gap-2">
-            <Activity className="h-3.5 w-3.5 text-cyan" />
-            {new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
-          </div>
-        }
-      />
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Net Worth" value={fmt2(p.netWorth)} change={p.pnlPct} icon={Wallet} delay={0.0} accent />
-        <StatCard label="Total Invested" value={fmt(p.invested)} icon={TrendingUp} delay={0.05} />
         <StatCard label="Trading Capital" value={fmt(p.tradingCapital)} icon={Briefcase} delay={0.1} />
         <StatCard label="Unrealized P&L" value={fmt2(p.pnl)} change={p.pnlPct} icon={Zap} delay={0.15} />
       </div>
