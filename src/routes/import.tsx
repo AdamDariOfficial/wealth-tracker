@@ -593,7 +593,7 @@ function EntryCard({
             {new Date(e.timestamp).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
           </span>
         </div>
-        {statusBadge(e)}
+        <div className="flex items-center gap-1.5">{confidenceBadge(e)}{statusBadge(e)}</div>
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className="truncate">{accountLabel(e)}</span>
