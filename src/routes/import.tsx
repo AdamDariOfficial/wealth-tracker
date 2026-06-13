@@ -69,6 +69,16 @@ function ImportPage() {
   const [aliases, setAliases] = useState<ImportAlias[]>([]);
   const [ignored, setIgnored] = useState<string[]>([]);
   const [resolveIssue, setResolveIssue] = useState<AccountIssue | null>(null);
+  const [defaultAccountId, setDefaultAccountId] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem("import.defaultAccountId") ?? "";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (defaultAccountId) window.localStorage.setItem("import.defaultAccountId", defaultAccountId);
+      else window.localStorage.removeItem("import.defaultAccountId");
+    }
+  }, [defaultAccountId]);
   const [lastResult, setLastResult] = useState<{
     imported: number; failed: number; createdAccounts: number; aliasesAdded: number;
     inflow: number; outflow: number; net: number;
