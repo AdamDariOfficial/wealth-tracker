@@ -78,6 +78,8 @@ export interface ParseInput {
   aliases?: ImportAlias[];
   /** Session-only ignore list of normalized raw names — entries flagged here become warnings, not errors. */
   ignoredAccounts?: string[];
+  /** Fallback account when a deposit/expense line omits an account (single-token after amount that didn't match). */
+  defaultAccountId?: string;
   existingTransactions?: {
     id: string;
     execution_timestamp: string;
