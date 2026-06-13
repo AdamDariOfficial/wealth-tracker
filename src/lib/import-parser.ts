@@ -37,6 +37,12 @@ export interface ParsedEntry {
   unresolvedAccounts: string[];
   /** Effective severity after ignores/aliases: 'ready' | 'warning' | 'error'. */
   severity: "ready" | "warning" | "error";
+  /** Overall row confidence 0..1, considering account match + warnings + duplicates. */
+  confidence: number;
+  /** Confidence tier for badges. */
+  confidenceTier: "high" | "medium" | "low";
+  /** True when account was inferred from defaultAccountId instead of explicit token. */
+  usedDefaultAccount?: boolean;
   duplicateOf?: string | null; // existing tx id
 }
 
@@ -72,6 +78,8 @@ export interface ParseInput {
   aliases?: ImportAlias[];
   /** Session-only ignore list of normalized raw names — entries flagged here become warnings, not errors. */
   ignoredAccounts?: string[];
+  /** Fallback account when a deposit/expense line omits an account (single-token after amount that didn't match). */
+  defaultAccountId?: string;
   existingTransactions?: {
     id: string;
     execution_timestamp: string;
@@ -232,6 +240,7 @@ function parseEntryLine(
   accounts: AccountLike[],
   aliases: ImportAlias[] | undefined,
   ignoredNorms: Set<string>,
+  defaultAccountId?: string,
 ): ParsedEntry {
   const base: ParsedEntry = {
     lineNo,
@@ -245,6 +254,8 @@ function parseEntryLine(
     errors: [],
     unresolvedAccounts: [],
     severity: "error",
+    confidence: 0,
+    confidenceTier: "low",
   };
 
   // Transfer first: "30 contanti -> Isy bank, note"
@@ -288,11 +299,31 @@ function parseEntryLine(
   if (m) {
     const sign = m[1] || "+";
     const amount = parseAmount(m[2]);
-    const parts = splitCsv(m[3]);
-    const accountRaw = parts.shift() ?? "";
-    const description = parts.shift() ?? null;
+    const remainder = m[3];
+    const hasComma = remainder.includes(",");
+    const parts = splitCsv(remainder);
+    let accountRaw = parts.shift() ?? "";
+    let description = parts.shift() ?? null;
     const category = parts.shift() ?? null;
-    const acct = resolveAccount(accountRaw, accounts, aliases);
+    let acct = resolveAccount(accountRaw, accounts, aliases);
+    let usedDefault = false;
+
+    // Smart fallback: if no comma AND the first token didn't match an account,
+    // treat the whole remainder as description and fall back to the default account.
+    if (!acct.matchedId && !hasComma && defaultAccountId) {
+      const def = accounts.find((a) => a.id === defaultAccountId);
+      if (def) {
+        description = remainder.trim();
+        accountRaw = def.name;
+        acct = {
+          raw: def.name, matchedId: def.id, matchedName: def.name,
+          confidence: 0.7, // medium — inferred
+          candidates: [{ id: def.id, name: def.name, score: 0.7 }],
+        };
+        usedDefault = true;
+      }
+    }
+
     const kind: ParsedKind = sign === "-" ? "expense" : "deposit";
     const e: ParsedEntry = {
       ...base,
@@ -301,13 +332,16 @@ function parseEntryLine(
       account: acct,
       description,
       category,
+      usedDefaultAccount: usedDefault,
     };
     if (!acct.matchedId) {
       if (ignoredNorms.has(norm(accountRaw))) e.warnings.push(`Skipped: unknown account "${accountRaw}"`);
       else { e.errors.push(`Unknown account "${accountRaw}"`); e.unresolvedAccounts.push(accountRaw); }
+    } else if (usedDefault) {
+      e.warnings.push(`Used default account → ${acct.matchedName}`);
     }
     if (!amount || amount <= 0) e.errors.push("Invalid amount");
-    if (acct.matchedId && acct.confidence < 0.9)
+    if (acct.matchedId && !usedDefault && acct.confidence < 0.9)
       e.warnings.push(`Fuzzy match for "${accountRaw}" → ${acct.matchedName}`);
     return e;
   }
@@ -355,12 +389,27 @@ export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; su
       return;
     }
 
-    const e = parseEntryLine(line, idx + 1, active, input.accounts, input.aliases, ignoredNorms);
+    const e = parseEntryLine(line, idx + 1, active, input.accounts, input.aliases, ignoredNorms, input.defaultAccountId);
     const dup = detectDuplicate(e, input.existingTransactions);
     if (dup) {
       e.duplicateOf = dup;
       e.warnings.push("Possible duplicate of existing transaction");
     }
+    // Compute row confidence from account match(es)
+    const accConfs: number[] = [];
+    if (e.kind === "deposit" || e.kind === "expense") {
+      if (e.account?.matchedId) accConfs.push(e.account.confidence);
+      else accConfs.push(0);
+    } else if (e.kind === "transfer") {
+      if (e.fromAccount?.matchedId) accConfs.push(e.fromAccount.confidence); else accConfs.push(0);
+      if (e.toAccount?.matchedId) accConfs.push(e.toAccount.confidence); else accConfs.push(0);
+    }
+    let conf = accConfs.length ? Math.min(...accConfs) : 0;
+    if (e.duplicateOf) conf = Math.min(conf, 0.5);
+    if (e.errors.length) conf = 0;
+    e.confidence = +conf.toFixed(2);
+    e.confidenceTier = conf >= 0.9 ? "high" : conf >= 0.6 ? "medium" : "low";
+
     // Compute effective severity
     if (e.errors.length) e.severity = "error";
     else if (e.warnings.length || e.duplicateOf) e.severity = "warning";

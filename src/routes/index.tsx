@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Wallet, TrendingUp, Briefcase, Zap, PiggyBank, Activity,
 } from "lucide-react";
@@ -80,6 +80,18 @@ function Dashboard() {
     }));
   }, [weekly]);
 
+  const [allocMode, setAllocMode] = useState<"account" | "class" | "type">(() => {
+    if (typeof window === "undefined") return "account";
+    return (window.localStorage.getItem("dashboard.allocationMode") as any) || "account";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("dashboard.allocationMode", allocMode);
+  }, [allocMode]);
+  const allocationData =
+    allocMode === "class" ? p.allocationByAssetClass :
+    allocMode === "type"  ? p.allocationByAccountType :
+    p.allocationByAccount;
+
   const firstName = (profile?.display_name ?? "there").split(" ")[0];
 
   return (
@@ -97,7 +109,7 @@ function Dashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="Net Worth" value={fmt2(p.netWorth)} change={p.pnlPct} icon={Wallet} delay={0.0} accent />
-        <StatCard label="Total Invested" value={fmt(p.invested)} icon={TrendingUp} delay={0.05} />
+        <StatCard label="Invested Capital" value={fmt(p.invested)} icon={TrendingUp} delay={0.05} />
         <StatCard label="Trading Capital" value={fmt(p.tradingCapital)} icon={Briefcase} delay={0.1} />
         <StatCard label="Unrealized P&L" value={fmt2(p.pnl)} change={p.pnlPct} icon={Zap} delay={0.15} />
       </div>
@@ -126,28 +138,48 @@ function Dashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Portfolio Allocation" subtitle="Live breakdown">
-          {p.allocation.length === 0 ? (
+        <ChartCard
+          title="Portfolio Allocation"
+          subtitle="Live breakdown"
+        >
+          <div className="flex items-center gap-1 mb-3 p-0.5 rounded-lg bg-muted/30 text-[10px] uppercase tracking-wider">
+            {([
+              ["account", "Account"],
+              ["class", "Asset class"],
+              ["type", "Type"],
+            ] as const).map(([k, lbl]) => (
+              <button
+                key={k}
+                onClick={() => setAllocMode(k)}
+                className={cn(
+                  "flex-1 px-2 py-1 rounded-md transition-colors",
+                  allocMode === k ? "bg-cyan/10 text-cyan" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+          {allocationData.length === 0 ? (
             <div className="text-xs text-muted-foreground text-center py-12">Add holdings to see your allocation.</div>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-                  <Pie data={p.allocation} dataKey="value" innerRadius={55} outerRadius={85} paddingAngle={3} stroke="none">
-                    {p.allocation.map((_, i) => <Cell key={i} fill={`var(--chart-${(i % 5) + 1})`} />)}
+                  <Pie data={allocationData} dataKey="value" innerRadius={55} outerRadius={85} paddingAngle={3} stroke="none">
+                    {allocationData.map((_, i) => <Cell key={i} fill={`var(--chart-${(i % 5) + 1})`} />)}
                   </Pie>
                   <Tooltip {...chartTooltipProps} formatter={(v: number, n: string) => [`${formatPct(v, { digits: 2 })}`, n]} />
-
                 </PieChart>
               </ResponsiveContainer>
-              <div className="space-y-1.5 mt-2">
-                {p.allocation.map((a, i) => (
+              <div className="space-y-1.5 mt-2 max-h-[180px] overflow-y-auto pr-1">
+                {allocationData.map((a, i) => (
                   <div key={a.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full" style={{ background: `var(--chart-${(i % 5) + 1})` }} />
-                      <span className="text-muted-foreground">{a.name}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-2 w-2 rounded-full shrink-0" style={{ background: `var(--chart-${(i % 5) + 1})` }} />
+                      <span className="text-muted-foreground truncate">{a.name}</span>
                     </div>
-                    <span className="font-mono font-medium tabular-nums">{formatPct(a.value, { digits: 1 })}</span>
+                    <span className="font-mono font-medium tabular-nums shrink-0">{formatPct(a.value, { digits: 1 })}</span>
                   </div>
                 ))}
               </div>

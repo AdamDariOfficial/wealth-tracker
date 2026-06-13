@@ -69,6 +69,16 @@ function ImportPage() {
   const [aliases, setAliases] = useState<ImportAlias[]>([]);
   const [ignored, setIgnored] = useState<string[]>([]);
   const [resolveIssue, setResolveIssue] = useState<AccountIssue | null>(null);
+  const [defaultAccountId, setDefaultAccountId] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem("import.defaultAccountId") ?? "";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (defaultAccountId) window.localStorage.setItem("import.defaultAccountId", defaultAccountId);
+      else window.localStorage.removeItem("import.defaultAccountId");
+    }
+  }, [defaultAccountId]);
   const [lastResult, setLastResult] = useState<{
     imported: number; failed: number; createdAccounts: number; aliasesAdded: number;
     inflow: number; outflow: number; net: number;
@@ -104,6 +114,7 @@ function ImportPage() {
       accounts,
       aliases,
       ignoredAccounts: ignored,
+      defaultAccountId: defaultAccountId || undefined,
       existingTransactions: existingTx.map((t) => ({
         id: t.id,
         execution_timestamp: t.execution_timestamp,
@@ -113,7 +124,7 @@ function ImportPage() {
         note: t.note,
       })),
     });
-  }, [text, accounts, existingTx, aliases, ignored]);
+  }, [text, accounts, existingTx, aliases, ignored, defaultAccountId]);
 
   const issues = useMemo<AccountIssue[]>(
     () => parsed ? groupAccountIssues(parsed.entries, accounts) : [],
@@ -247,7 +258,7 @@ function ImportPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* INPUT */}
         <Card className="glass p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <FileText className="h-4 w-4 text-cyan" /> Raw text
             </div>
@@ -257,6 +268,17 @@ function ImportPage() {
               placeholder="Batch label (optional)"
               className="h-8 max-w-[200px] text-xs"
             />
+          </div>
+          <div className="flex items-center gap-2 text-[11px]">
+            <label className="text-muted-foreground uppercase tracking-wider text-[10px] shrink-0">Default account</label>
+            <select
+              value={defaultAccountId}
+              onChange={(e) => setDefaultAccountId(e.target.value)}
+              className="flex-1 h-8 px-2 rounded-md bg-card/60 border border-border/40 text-xs"
+            >
+              <option value="">— none (require explicit account) —</option>
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
           </div>
           <Textarea
             value={text}
@@ -495,6 +517,20 @@ function statusBadge(e: ParsedEntry) {
   return <Badge className="text-[10px] bg-success/15 text-success border-success/30"><CheckCircle2 className="h-3 w-3 mr-1" />Ready</Badge>;
 }
 
+function confidenceBadge(e: ParsedEntry) {
+  if (e.severity === "error") return null;
+  const tone =
+    e.confidenceTier === "high" ? "bg-success/10 text-success border-success/30" :
+    e.confidenceTier === "medium" ? "bg-warning/10 text-warning border-warning/30" :
+    "bg-destructive/10 text-destructive border-destructive/30";
+  const label = e.confidenceTier === "high" ? "High" : e.confidenceTier === "medium" ? "Medium" : "Low";
+  return (
+    <Badge variant="outline" className={cn("text-[10px] font-normal", tone)} title={`${Math.round(e.confidence * 100)}% confidence`}>
+      {label} · {Math.round(e.confidence * 100)}%
+    </Badge>
+  );
+}
+
 function accountLabel(e: ParsedEntry) {
   if (e.kind === "transfer")
     return `${e.fromAccount?.matchedName ?? e.fromAccount?.raw ?? "?"} → ${e.toAccount?.matchedName ?? e.toAccount?.raw ?? "?"}`;
@@ -521,8 +557,9 @@ function EntryRow({
       <td className="px-3 py-2 truncate max-w-[240px]">{e.description ?? <span className="text-muted-foreground/60">—</span>}</td>
       <td className="px-3 py-2 align-top">
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {statusBadge(e)}
+            {confidenceBadge(e)}
             {issue && (
               <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => onFix(issue)}>
                 <Wrench className="h-2.5 w-2.5 mr-1" />Fix
@@ -556,7 +593,7 @@ function EntryCard({
             {new Date(e.timestamp).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
           </span>
         </div>
-        {statusBadge(e)}
+        <div className="flex items-center gap-1.5">{confidenceBadge(e)}{statusBadge(e)}</div>
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className="truncate">{accountLabel(e)}</span>
