@@ -389,12 +389,27 @@ export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; su
       return;
     }
 
-    const e = parseEntryLine(line, idx + 1, active, input.accounts, input.aliases, ignoredNorms);
+    const e = parseEntryLine(line, idx + 1, active, input.accounts, input.aliases, ignoredNorms, input.defaultAccountId);
     const dup = detectDuplicate(e, input.existingTransactions);
     if (dup) {
       e.duplicateOf = dup;
       e.warnings.push("Possible duplicate of existing transaction");
     }
+    // Compute row confidence from account match(es)
+    const accConfs: number[] = [];
+    if (e.kind === "deposit" || e.kind === "expense") {
+      if (e.account?.matchedId) accConfs.push(e.account.confidence);
+      else accConfs.push(0);
+    } else if (e.kind === "transfer") {
+      if (e.fromAccount?.matchedId) accConfs.push(e.fromAccount.confidence); else accConfs.push(0);
+      if (e.toAccount?.matchedId) accConfs.push(e.toAccount.confidence); else accConfs.push(0);
+    }
+    let conf = accConfs.length ? Math.min(...accConfs) : 0;
+    if (e.duplicateOf) conf = Math.min(conf, 0.5);
+    if (e.errors.length) conf = 0;
+    e.confidence = +conf.toFixed(2);
+    e.confidenceTier = conf >= 0.9 ? "high" : conf >= 0.6 ? "medium" : "low";
+
     // Compute effective severity
     if (e.errors.length) e.severity = "error";
     else if (e.warnings.length || e.duplicateOf) e.severity = "warning";
