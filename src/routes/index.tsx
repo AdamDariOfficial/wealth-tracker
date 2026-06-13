@@ -80,6 +80,18 @@ function Dashboard() {
     }));
   }, [weekly]);
 
+  const [allocMode, setAllocMode] = useState<"account" | "class" | "type">(() => {
+    if (typeof window === "undefined") return "account";
+    return (window.localStorage.getItem("dashboard.allocationMode") as any) || "account";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("dashboard.allocationMode", allocMode);
+  }, [allocMode]);
+  const allocationData =
+    allocMode === "class" ? p.allocationByAssetClass :
+    allocMode === "type"  ? p.allocationByAccountType :
+    p.allocationByAccount;
+
   const firstName = (profile?.display_name ?? "there").split(" ")[0];
 
   return (
@@ -87,6 +99,17 @@ function Dashboard() {
       <PageHeader
         title={`Welcome back, ${firstName}`}
         subtitle="Live portfolio across every account."
+        action={
+          <div className="glass rounded-xl px-3 py-2 text-xs font-mono text-muted-foreground flex items-center gap-2">
+            <Activity className="h-3.5 w-3.5 text-cyan" />
+            {new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Net Worth" value={fmt2(p.netWorth)} change={p.pnlPct} icon={Wallet} delay={0.0} accent />
+        <StatCard label="Invested Capital" value={fmt(p.invested)} icon={TrendingUp} delay={0.05} />
         action={
           <div className="glass rounded-xl px-3 py-2 text-xs font-mono text-muted-foreground flex items-center gap-2">
             <Activity className="h-3.5 w-3.5 text-cyan" />
