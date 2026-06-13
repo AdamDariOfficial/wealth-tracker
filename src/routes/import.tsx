@@ -114,6 +114,7 @@ function ImportPage() {
       accounts,
       aliases,
       ignoredAccounts: ignored,
+      defaultAccountId: defaultAccountId || undefined,
       existingTransactions: existingTx.map((t) => ({
         id: t.id,
         execution_timestamp: t.execution_timestamp,
@@ -123,7 +124,7 @@ function ImportPage() {
         note: t.note,
       })),
     });
-  }, [text, accounts, existingTx, aliases, ignored]);
+  }, [text, accounts, existingTx, aliases, ignored, defaultAccountId]);
 
   const issues = useMemo<AccountIssue[]>(
     () => parsed ? groupAccountIssues(parsed.entries, accounts) : [],
