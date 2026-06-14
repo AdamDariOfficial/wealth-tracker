@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   FileText, Play, RotateCcw, AlertTriangle, CheckCircle2, ArrowDownToLine,
   ArrowUpFromLine, Repeat, History, Sparkles, Wrench, Link2, Plus,
+  TrendingUp, TrendingDown, Target, Wallet, Coins,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
@@ -12,52 +13,61 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useAccounts, useTransactions } from "@/hooks/use-ledger";
+import { useAccounts, useAssets, useTransactions } from "@/hooks/use-ledger";
 import { useUserTable } from "@/hooks/use-user-table";
 import {
-  parseImportText, groupAccountIssues,
-  type ParsedEntry, type AccountIssue, type ImportAlias,
+  parseImportText, groupImportIssues,
+  type ParsedEntry, type ImportIssue, type ImportAlias,
 } from "@/lib/import-parser";
 import { executeImport, rollbackImport } from "@/lib/import-engine";
 import { formatMoney } from "@/lib/format-currency";
 const formatCurrency = (v: number, currency: string) => formatMoney(v, { currency });
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
-import { IssueResolveModal, type ResolveResult } from "@/components/import/IssueResolveModal";
+import { IssueResolveModal, type ResolveResult as AcctResolveResult } from "@/components/import/IssueResolveModal";
+import { AssetResolveModal, GoalResolveModal, type ResolveResult } from "@/components/import/EntityResolveModals";
+import { SyntaxGuide } from "@/components/import/SyntaxGuide";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/import")({
-  component: ImportPage,
-});
+export const Route = createFileRoute("/import")({ component: ImportPage });
 
 type ImportBatch = {
-  id: string;
-  source_text: string;
-  imported_count: number;
-  error_count: number;
-  errors: any;
-  summary: any;
+  id: string; source_text: string;
+  imported_count: number; error_count: number;
+  errors: any; summary: any;
   label: string | null;
   created_at: string;
   rolled_back_at: string | null;
 };
 
+type GoalRow = { id: string; name: string };
+
 const EXAMPLE = `Lunedì 11/05/26 00:00
-+240 contanti, pizzeria
-+370 contanti, altro
++240 Cash Wallet, salary
+-50 Isy Bank, groceries
 
-Lunedì 18/05/26 00:00
-+240 contanti, pizzeria
+# Transfers
+250 Cash Wallet -> Isy Bank
 
-Domenica 31/05/26 12:00
-30 contanti -> Isy bank
--105 Isy bank, Auto radio + accessori, Car`;
+# Buys & sells
+BUY 2 BTC @ 42000 from Isy Bank
+SELL 0.5 BTC @ 65000 to Isy Bank
+
+# Goals
+GOAL Emergency Fund target 10000
+500 -> GOAL Emergency Fund
+
+# Opening setup
+ACCOUNT Cash Wallet balance 1375
+ASSET VWCE qty 25 avg 128.45`;
 
 function ImportPage() {
   const { profile } = useAuth();
   const ccy = profile?.currency ?? "USD";
   const { rows: accounts } = useAccounts();
+  const { rows: assets } = useAssets();
   const { rows: existingTx } = useTransactions();
+  const { rows: goals } = useUserTable<GoalRow>("goals", { col: "name", asc: true });
   const { rows: batches, refresh: refreshBatches } = useUserTable<ImportBatch>("import_batches", {
     col: "created_at", asc: false,
   });
@@ -67,8 +77,14 @@ function ImportPage() {
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [aliases, setAliases] = useState<ImportAlias[]>([]);
-  const [ignored, setIgnored] = useState<string[]>([]);
-  const [resolveIssue, setResolveIssue] = useState<AccountIssue | null>(null);
+  const [ignoredAccts, setIgnoredAccts] = useState<string[]>([]);
+  const [ignoredAssets, setIgnoredAssets] = useState<string[]>([]);
+  const [ignoredGoals, setIgnoredGoals] = useState<string[]>([]);
+
+  const [resolveAcctIssue, setResolveAcctIssue] = useState<ImportIssue | null>(null);
+  const [resolveAssetIssue, setResolveAssetIssue] = useState<ImportIssue | null>(null);
+  const [resolveGoalIssue, setResolveGoalIssue] = useState<ImportIssue | null>(null);
+
   const [defaultAccountId, setDefaultAccountId] = useState<string>(() => {
     if (typeof window === "undefined") return "";
     return window.localStorage.getItem("import.defaultAccountId") ?? "";
@@ -79,24 +95,13 @@ function ImportPage() {
       else window.localStorage.removeItem("import.defaultAccountId");
     }
   }, [defaultAccountId]);
+
   const [lastResult, setLastResult] = useState<{
-    imported: number; failed: number; createdAccounts: number; aliasesAdded: number;
+    imported: number; failed: number;
     inflow: number; outflow: number; net: number;
   } | null>(null);
 
-  // Load aliases on mount + when accounts change.
-  useEffect(() => {
-    (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return;
-      const { data } = await (supabase as any)
-        .from("import_aliases")
-        .select("alias,entity_type,entity_id")
-        .eq("user_id", u.user.id);
-      setAliases(data ?? []);
-    })();
-  }, []);
-
+  useEffect(() => { void refreshAliases(); }, []);
   async function refreshAliases() {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
@@ -112,8 +117,12 @@ function ImportPage() {
     return parseImportText({
       text,
       accounts,
+      assets,
+      goals,
       aliases,
-      ignoredAccounts: ignored,
+      ignoredAccounts: ignoredAccts,
+      ignoredAssets,
+      ignoredGoals,
       defaultAccountId: defaultAccountId || undefined,
       existingTransactions: existingTx.map((t) => ({
         id: t.id,
@@ -124,11 +133,11 @@ function ImportPage() {
         note: t.note,
       })),
     });
-  }, [text, accounts, existingTx, aliases, ignored, defaultAccountId]);
+  }, [text, accounts, assets, goals, existingTx, aliases, ignoredAccts, ignoredAssets, ignoredGoals, defaultAccountId]);
 
-  const issues = useMemo<AccountIssue[]>(
-    () => parsed ? groupAccountIssues(parsed.entries, accounts) : [],
-    [parsed, accounts],
+  const issues = useMemo<ImportIssue[]>(
+    () => parsed ? groupImportIssues(parsed.entries, accounts, assets, goals) : [],
+    [parsed, accounts, assets, goals],
   );
 
   const counts = useMemo(() => {
@@ -143,18 +152,28 @@ function ImportPage() {
   }, [parsed]);
 
   const canImport =
-    parsed &&
-    parsed.entries.length > 0 &&
+    parsed && parsed.entries.length > 0 &&
     parsed.entries.some((x) => x.severity !== "error");
 
-  function handleResolved(r: ResolveResult) {
+  function handleAcctResolved(r: AcctResolveResult) {
     if (r.kind === "ignored") {
-      setIgnored((prev) => prev.includes(r.alias) ? prev : [...prev, r.alias]);
+      setIgnoredAccts((p) => p.includes(r.alias) ? p : [...p, r.alias]);
     } else if (r.accountId) {
-      // optimistic alias add; refresh from DB to confirm
       setAliases((prev) => {
         const filtered = prev.filter((a) => !(a.entity_type === "account" && a.alias.toLowerCase() === r.alias));
         return [...filtered, { alias: r.alias, entity_type: "account", entity_id: r.accountId! }];
+      });
+      refreshAliases();
+    }
+  }
+  function handleEntityResolved(r: ResolveResult) {
+    if (r.kind === "ignored") {
+      if (r.entityType === "asset") setIgnoredAssets((p) => p.includes(r.alias) ? p : [...p, r.alias]);
+      else setIgnoredGoals((p) => p.includes(r.alias) ? p : [...p, r.alias]);
+    } else if (r.entityId) {
+      setAliases((prev) => {
+        const filtered = prev.filter((a) => !(a.entity_type === r.entityType && a.alias.toLowerCase() === r.alias));
+        return [...filtered, { alias: r.alias, entity_type: r.entityType, entity_id: r.entityId! }];
       });
       refreshAliases();
     }
@@ -163,7 +182,6 @@ function ImportPage() {
   async function handleImport() {
     if (!parsed) return;
     setIsImporting(true);
-    const before = { accounts: accounts.length, aliases: aliases.length };
     try {
       const res = await executeImport({
         sourceText: text,
@@ -173,23 +191,17 @@ function ImportPage() {
         skipDuplicates,
       });
       setLastResult({
-        imported: res.imported,
-        failed: res.failed,
-        createdAccounts: Math.max(0, accounts.length - before.accounts),
-        aliasesAdded: Math.max(0, aliases.length - before.aliases),
+        imported: res.imported, failed: res.failed,
         inflow: parsed.summary.inflow,
         outflow: parsed.summary.outflow,
         net: parsed.summary.net,
       });
       toast.success(`Imported ${res.imported} entries${res.failed ? ` (${res.failed} failed)` : ""}`);
-      setText("");
-      setLabel("");
+      setText(""); setLabel("");
       await refreshBatches();
     } catch (e: any) {
       toast.error(e?.message ?? "Import failed");
-    } finally {
-      setIsImporting(false);
-    }
+    } finally { setIsImporting(false); }
   }
 
   async function handleRollback(id: string) {
@@ -198,29 +210,44 @@ function ImportPage() {
       const r = await rollbackImport(id);
       toast.success(`Rolled back ${r.voided} transactions`);
       await refreshBatches();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Rollback failed");
-    }
+    } catch (e: any) { toast.error(e?.message ?? "Rollback failed"); }
   }
 
-  // Map raw normalized → issue for inline row Fix button
-  const issueByNorm = useMemo(() => {
-    const m = new Map<string, AccountIssue>();
-    for (const i of issues) m.set(i.normalized, i);
+  function openIssue(iss: ImportIssue) {
+    if (iss.kind === "unknown_account") setResolveAcctIssue(iss);
+    else if (iss.kind === "unknown_asset") setResolveAssetIssue(iss);
+    else if (iss.kind === "unknown_goal") setResolveGoalIssue(iss);
+  }
+
+  const issueByKey = useMemo(() => {
+    const m = new Map<string, ImportIssue>();
+    for (const i of issues) m.set(`${i.kind}:${i.normalized}`, i);
     return m;
   }, [issues]);
 
-  function rowIssue(e: ParsedEntry): AccountIssue | null {
-    const raw = e.unresolvedAccounts[0];
-    if (!raw) return null;
-    return issueByNorm.get(raw.toLowerCase().trim()) ?? issueByNorm.get(normLoose(raw)) ?? null;
+  function rowIssues(e: ParsedEntry): ImportIssue[] {
+    const out: ImportIssue[] = [];
+    for (const r of e.unresolvedAccounts) {
+      const i = issueByKey.get(`unknown_account:${normLoose(r)}`); if (i) out.push(i);
+    }
+    for (const r of e.unresolvedAssets) {
+      const i = issueByKey.get(`unknown_asset:${normLoose(r)}`); if (i) out.push(i);
+    }
+    for (const r of e.unresolvedGoals) {
+      const i = issueByKey.get(`unknown_goal:${normLoose(r)}`); if (i) out.push(i);
+    }
+    return out;
+  }
+
+  function insertSnippet(code: string) {
+    setText((t) => (t.trim() ? t + "\n" + code : code));
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Import Data"
-        subtitle="Paste raw financial notes — they’re parsed deterministically into ledger entries. No AI."
+        subtitle="Paste raw financial notes — treasury moves, transfers, buys, sells, goals & opening positions. Pure rule-based parsing, no AI."
         action={
           <Button variant="outline" size="sm" onClick={() => setText(EXAMPLE)}>
             <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Load example
@@ -228,19 +255,16 @@ function ImportPage() {
         }
       />
 
-      {/* POST-IMPORT SUMMARY */}
       {lastResult && (
         <Card className="glass p-4 border-success/30">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <CheckCircle2 className="h-4 w-4 text-success" /> Import completed
               </div>
               <div className="text-xs text-muted-foreground">
-                {lastResult.imported} transaction{lastResult.imported === 1 ? "" : "s"} imported
+                {lastResult.imported} operation{lastResult.imported === 1 ? "" : "s"}
                 {lastResult.failed > 0 && ` · ${lastResult.failed} failed`}
-                {lastResult.createdAccounts > 0 && ` · ${lastResult.createdAccounts} new account${lastResult.createdAccounts === 1 ? "" : "s"}`}
-                {lastResult.aliasesAdded > 0 && ` · ${lastResult.aliasesAdded} alias${lastResult.aliasesAdded === 1 ? "" : "es"} added`}
               </div>
             </div>
             <div className="flex gap-3 text-xs font-mono">
@@ -263,8 +287,7 @@ function ImportPage() {
               <FileText className="h-4 w-4 text-cyan" /> Raw text
             </div>
             <Input
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
+              value={label} onChange={(e) => setLabel(e.target.value)}
               placeholder="Batch label (optional)"
               className="h-8 max-w-[200px] text-xs"
             />
@@ -272,8 +295,7 @@ function ImportPage() {
           <div className="flex items-center gap-2 text-[11px]">
             <label className="text-muted-foreground uppercase tracking-wider text-[10px] shrink-0">Default account</label>
             <select
-              value={defaultAccountId}
-              onChange={(e) => setDefaultAccountId(e.target.value)}
+              value={defaultAccountId} onChange={(e) => setDefaultAccountId(e.target.value)}
               className="flex-1 h-8 px-2 rounded-md bg-card/60 border border-border/40 text-xs"
             >
               <option value="">— none (require explicit account) —</option>
@@ -281,20 +303,15 @@ function ImportPage() {
             </select>
           </div>
           <Textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
+            value={text} onChange={(e) => setText(e.target.value)}
             placeholder={EXAMPLE}
             className="font-mono text-xs min-h-[320px] resize-y"
             spellCheck={false}
           />
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={skipDuplicates}
-                onChange={(e) => setSkipDuplicates(e.target.checked)}
-                className="accent-cyan"
-              />
+              <input type="checkbox" checked={skipDuplicates}
+                onChange={(e) => setSkipDuplicates(e.target.checked)} className="accent-cyan" />
               Skip likely duplicates
             </label>
             <div className="flex items-center gap-2">
@@ -313,56 +330,74 @@ function ImportPage() {
               )}
               <Button onClick={handleImport} disabled={!canImport || isImporting} size="sm">
                 <Play className="h-3.5 w-3.5 mr-1.5" />
-                {isImporting ? "Importing…" : counts.error > 0 ? `Import ${counts.ready + counts.warning} ready` : "Confirm import"}
+                {isImporting ? "Importing…" : counts.error > 0
+                  ? `Import ${counts.ready + counts.warning} ready` : "Confirm import"}
               </Button>
             </div>
           </div>
         </Card>
 
-        {/* SUMMARY */}
+        {/* DRY-RUN SUMMARY */}
         <Card className="glass p-4">
           {!parsed ? (
             <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-              Paste text on the left to preview parsed entries.
+              Paste text on the left for a dry-run preview.
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="text-sm font-semibold">Summary</div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">Dry-run summary</div>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">simulation · no writes yet</span>
+              </div>
               <div className="grid grid-cols-3 gap-2 text-xs">
-                <Stat label="Total" value={parsed.summary.total.toString()} />
-                <Stat label="Deposits" value={parsed.summary.deposits.toString()} tone="success" />
-                <Stat label="Expenses" value={parsed.summary.expenses.toString()} tone="destructive" />
-                <Stat label="Transfers" value={parsed.summary.transfers.toString()} tone="cyan" />
+                <Stat label="Rows" value={parsed.summary.total.toString()} />
                 <Stat label="Ready" value={counts.ready.toString()} tone="success" />
                 <Stat label="Blocking" value={counts.error.toString()} tone={counts.error ? "destructive" : "muted"} />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                <Stat label="Deposits" value={parsed.summary.deposits.toString()} tone="success" icon={<ArrowDownToLine className="h-3 w-3" />} />
+                <Stat label="Expenses" value={parsed.summary.expenses.toString()} tone="destructive" icon={<ArrowUpFromLine className="h-3 w-3" />} />
+                <Stat label="Transfers" value={parsed.summary.transfers.toString()} tone="cyan" icon={<Repeat className="h-3 w-3" />} />
+                <Stat label="Buys" value={parsed.summary.buys.toString()} tone="success" icon={<TrendingUp className="h-3 w-3" />} />
+                <Stat label="Sells" value={parsed.summary.sells.toString()} tone="warning" icon={<TrendingDown className="h-3 w-3" />} />
+                <Stat label="Goal +" value={parsed.summary.goalContributions.toString()} tone="cyan" icon={<Target className="h-3 w-3" />} />
+                <Stat label="Acct open" value={parsed.summary.accountOpens.toString()} tone="muted" icon={<Wallet className="h-3 w-3" />} />
+                <Stat label="Asset open" value={parsed.summary.assetOpens.toString()} tone="muted" icon={<Coins className="h-3 w-3" />} />
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <Stat label="Inflow" value={formatCurrency(parsed.summary.inflow, ccy)} tone="success" />
                 <Stat label="Outflow" value={formatCurrency(parsed.summary.outflow, ccy)} tone="destructive" />
-                <Stat label="Net" value={formatCurrency(parsed.summary.net, ccy)} tone={parsed.summary.net >= 0 ? "success" : "destructive"} />
+                <Stat label="Net impact" value={formatCurrency(parsed.summary.net, ccy)} tone={parsed.summary.net >= 0 ? "success" : "destructive"} />
               </div>
             </div>
           )}
         </Card>
       </div>
 
+      {/* SYNTAX GUIDE */}
+      <SyntaxGuide onInsert={insertSnippet} />
+
       {/* ISSUES PANEL */}
       {issues.length > 0 && (
         <Card className="glass p-0 overflow-hidden border-destructive/30">
-          <div className="px-4 py-3 border-b border-border/40 text-sm font-semibold flex items-center justify-between bg-destructive/5">
+          <div className="px-4 py-3 border-b border-border/40 text-sm font-semibold flex items-center justify-between bg-destructive/5 flex-wrap gap-2">
             <span className="flex items-center gap-2">
               <Wrench className="h-4 w-4 text-destructive" />
               Issues to resolve ({issues.length})
             </span>
             <span className="text-[11px] text-muted-foreground font-normal">
-              Resolving once fixes every affected row. Mappings are remembered for future imports.
+              Resolving once fixes every affected row. Mappings persist for future imports.
             </span>
           </div>
           <div className="divide-y divide-border/30">
             {issues.map((iss) => (
-              <div key={iss.normalized} className="p-3 flex items-start justify-between gap-3">
+              <div key={`${iss.kind}:${iss.normalized}`} className="p-3 flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
-                  <div className="text-[10px] uppercase tracking-wider text-destructive">Unknown account</div>
+                  <div className="text-[10px] uppercase tracking-wider text-destructive">
+                    {iss.kind === "unknown_account" ? "Unknown account"
+                      : iss.kind === "unknown_asset" ? "Unknown asset"
+                      : "Unknown goal"}
+                  </div>
                   <div className="font-mono text-sm truncate">"{iss.raw}"</div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
                     {iss.lineNos.length} row{iss.lineNos.length === 1 ? "" : "s"} affected
@@ -373,17 +408,11 @@ function ImportPage() {
                 </div>
                 <div className="flex flex-wrap gap-1.5 shrink-0">
                   {iss.suggestions[0] && (
-                    <Button
-                      size="sm" variant="outline" className="text-xs h-7"
-                      onClick={() => setResolveIssue(iss)}
-                    >
+                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => openIssue(iss)}>
                       <Link2 className="h-3 w-3 mr-1" />Map
                     </Button>
                   )}
-                  <Button
-                    size="sm" className="text-xs h-7 bg-cyan text-background hover:bg-cyan/90"
-                    onClick={() => setResolveIssue(iss)}
-                  >
+                  <Button size="sm" className="text-xs h-7 bg-cyan text-background hover:bg-cyan/90" onClick={() => openIssue(iss)}>
                     <Plus className="h-3 w-3 mr-1" />Resolve
                   </Button>
                 </div>
@@ -398,18 +427,15 @@ function ImportPage() {
         <Card className="glass p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-border/40 text-sm font-semibold flex items-center justify-between">
             <span>Preview ({parsed.entries.length})</span>
-            <span className="text-xs text-muted-foreground font-normal">
-              Review every row before confirming
-            </span>
+            <span className="text-xs text-muted-foreground font-normal">Review every row before confirming</span>
           </div>
-          {/* Desktop table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-muted/30 text-muted-foreground uppercase tracking-wider">
                 <tr>
                   <th className="px-3 py-2 text-left">When</th>
                   <th className="px-3 py-2 text-left">Type</th>
-                  <th className="px-3 py-2 text-left">Account(s)</th>
+                  <th className="px-3 py-2 text-left">Detail</th>
                   <th className="px-3 py-2 text-right">Amount</th>
                   <th className="px-3 py-2 text-left">Description</th>
                   <th className="px-3 py-2 text-left">Status</th>
@@ -417,15 +443,14 @@ function ImportPage() {
               </thead>
               <tbody>
                 {parsed.entries.map((e, i) => (
-                  <EntryRow key={i} e={e} ccy={ccy} issue={rowIssue(e)} onFix={setResolveIssue} />
+                  <EntryRow key={i} e={e} ccy={ccy} issues={rowIssues(e)} onFix={openIssue} />
                 ))}
               </tbody>
             </table>
           </div>
-          {/* Mobile cards */}
           <div className="md:hidden divide-y divide-border/40">
             {parsed.entries.map((e, i) => (
-              <EntryCard key={i} e={e} ccy={ccy} issue={rowIssue(e)} onFix={setResolveIssue} />
+              <EntryCard key={i} e={e} ccy={ccy} issues={rowIssues(e)} onFix={openIssue} />
             ))}
           </div>
         </Card>
@@ -441,7 +466,7 @@ function ImportPage() {
         ) : (
           <div className="space-y-2">
             {batches.map((b) => (
-              <div key={b.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/40 bg-card/40">
+              <div key={b.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/40 bg-card/40 flex-wrap">
                 <div className="min-w-0">
                   <div className="text-sm font-medium truncate">
                     {b.label || `Import · ${new Date(b.created_at).toLocaleString()}`}
@@ -451,6 +476,8 @@ function ImportPage() {
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     {b.imported_count} imported · {b.error_count} errors
+                    {b.summary?.created_goals ? ` · ${b.summary.created_goals} goal${b.summary.created_goals === 1 ? "" : "s"}` : ""}
+                    {b.summary?.created_assets ? ` · ${b.summary.created_assets} asset${b.summary.created_assets === 1 ? "" : "s"}` : ""}
                     {b.summary?.net != null && ` · net ${formatCurrency(Number(b.summary.net), ccy)}`}
                   </div>
                 </div>
@@ -466,16 +493,28 @@ function ImportPage() {
       </Card>
 
       <div className="text-[11px] text-muted-foreground">
-        Tip: also reachable from the Command Palette (<kbd className="px-1 border rounded">⌘K</kbd> → “Import transactions”) and the sidebar.
+        Tip: also reachable from the Command Palette (<kbd className="px-1 border rounded">⌘K</kbd> → "Import data") and the sidebar.
         <Link to="/transactions" className="ml-2 underline">View transactions →</Link>
       </div>
 
       <IssueResolveModal
-        open={!!resolveIssue}
-        onClose={() => setResolveIssue(null)}
-        issue={resolveIssue}
+        open={!!resolveAcctIssue}
+        onClose={() => setResolveAcctIssue(null)}
+        issue={resolveAcctIssue as any}
         defaultCurrency={ccy}
-        onResolved={handleResolved}
+        onResolved={handleAcctResolved}
+      />
+      <AssetResolveModal
+        open={!!resolveAssetIssue}
+        onClose={() => setResolveAssetIssue(null)}
+        issue={resolveAssetIssue}
+        onResolved={handleEntityResolved}
+      />
+      <GoalResolveModal
+        open={!!resolveGoalIssue}
+        onClose={() => setResolveGoalIssue(null)}
+        issue={resolveGoalIssue}
+        onResolved={handleEntityResolved}
       />
     </div>
   );
@@ -485,26 +524,41 @@ function normLoose(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "success" | "destructive" | "warning" | "cyan" | "muted" }) {
+function Stat({ label, value, tone, icon }: {
+  label: string; value: string;
+  tone?: "success" | "destructive" | "warning" | "cyan" | "muted";
+  icon?: React.ReactNode;
+}) {
   const color =
     tone === "success" ? "text-success" :
     tone === "destructive" ? "text-destructive" :
     tone === "warning" ? "text-warning" :
     tone === "cyan" ? "text-cyan" :
+    tone === "muted" ? "text-muted-foreground" :
     "text-foreground";
   return (
     <div className="rounded-md border border-border/40 px-2 py-1.5 bg-card/40">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+        {icon}{label}
+      </div>
       <div className={cn("font-mono text-sm font-semibold tabular-nums", color)}>{value}</div>
     </div>
   );
 }
 
 function kindIcon(kind: ParsedEntry["kind"]) {
-  if (kind === "deposit") return <ArrowDownToLine className="h-3 w-3 text-success" />;
-  if (kind === "expense") return <ArrowUpFromLine className="h-3 w-3 text-destructive" />;
-  if (kind === "transfer") return <Repeat className="h-3 w-3 text-cyan" />;
-  return <AlertTriangle className="h-3 w-3 text-warning" />;
+  switch (kind) {
+    case "deposit": return <ArrowDownToLine className="h-3 w-3 text-success" />;
+    case "expense": return <ArrowUpFromLine className="h-3 w-3 text-destructive" />;
+    case "transfer": return <Repeat className="h-3 w-3 text-cyan" />;
+    case "buy": return <TrendingUp className="h-3 w-3 text-success" />;
+    case "sell": return <TrendingDown className="h-3 w-3 text-warning" />;
+    case "goal_create": return <Target className="h-3 w-3 text-cyan" />;
+    case "goal_contribution": return <Target className="h-3 w-3 text-success" />;
+    case "account_open": return <Wallet className="h-3 w-3 text-muted-foreground" />;
+    case "asset_open": return <Coins className="h-3 w-3 text-muted-foreground" />;
+    default: return <AlertTriangle className="h-3 w-3 text-warning" />;
+  }
 }
 
 function statusBadge(e: ParsedEntry) {
@@ -531,40 +585,62 @@ function confidenceBadge(e: ParsedEntry) {
   );
 }
 
-function accountLabel(e: ParsedEntry) {
-  if (e.kind === "transfer")
-    return `${e.fromAccount?.matchedName ?? e.fromAccount?.raw ?? "?"} → ${e.toAccount?.matchedName ?? e.toAccount?.raw ?? "?"}`;
-  return e.account?.matchedName ?? e.account?.raw ?? "—";
+function detailLabel(e: ParsedEntry): string {
+  switch (e.kind) {
+    case "transfer":
+      return `${e.fromAccount?.matchedName ?? e.fromAccount?.raw ?? "?"} → ${e.toAccount?.matchedName ?? e.toAccount?.raw ?? "?"}`;
+    case "buy":
+    case "sell":
+      return `${e.quantity ?? "?"} ${e.asset?.matchedSymbol ?? e.asset?.raw ?? "?"}${e.price ? ` @ ${e.price}` : ""}${e.account ? ` · ${e.account.matchedName ?? e.account.raw}` : ""}`;
+    case "goal_create":
+      return `${e.goal?.raw} → target ${e.targetAmount ?? 0}`;
+    case "goal_contribution":
+      return `→ ${e.goal?.matchedName ?? e.goal?.raw ?? "?"}`;
+    case "account_open":
+      return `${e.account?.matchedName ?? e.account?.raw ?? "?"} → ${e.amount}`;
+    case "asset_open":
+      return `${e.quantity} ${e.asset?.matchedSymbol ?? e.asset?.raw}${e.price ? ` @ ${e.price}` : ""}`;
+    default:
+      return e.account?.matchedName ?? e.account?.raw ?? "—";
+  }
 }
 
-function EntryRow({
-  e, ccy, issue, onFix,
-}: { e: ParsedEntry; ccy: string; issue: AccountIssue | null; onFix: (i: AccountIssue) => void }) {
-  const rowTone = e.severity === "error" ? "bg-destructive/5"
-    : e.severity === "warning" ? "bg-warning/5" : "";
+function amountCell(e: ParsedEntry, ccy: string) {
+  const sign = e.kind === "expense" || e.kind === "buy" ? "−" : e.kind === "deposit" || e.kind === "sell" || e.kind === "goal_contribution" ? "+" : "";
+  const color =
+    e.kind === "deposit" || e.kind === "sell" || e.kind === "goal_contribution" ? "text-success" :
+    e.kind === "expense" || e.kind === "buy" ? "text-destructive" : "";
+  if (e.kind === "goal_create") return <span className="text-muted-foreground">target {formatCurrency(e.targetAmount ?? 0, ccy)}</span>;
+  return <span className={cn("font-mono tabular-nums", color)}>{sign}{formatCurrency(e.amount, ccy)}</span>;
+}
+
+function EntryRow({ e, ccy, issues, onFix }: {
+  e: ParsedEntry; ccy: string; issues: ImportIssue[]; onFix: (i: ImportIssue) => void;
+}) {
+  const rowTone = e.severity === "error" ? "bg-destructive/5" : e.severity === "warning" ? "bg-warning/5" : "";
   return (
     <tr className={cn("border-t border-border/30", rowTone)}>
       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
         {new Date(e.timestamp).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
       </td>
-      <td className="px-3 py-2"><span className="inline-flex items-center gap-1.5">{kindIcon(e.kind)}<span className="capitalize">{e.kind}</span></span></td>
-      <td className="px-3 py-2">{accountLabel(e)}</td>
-      <td className={cn("px-3 py-2 text-right font-mono tabular-nums",
-        e.kind === "deposit" && "text-success",
-        e.kind === "expense" && "text-destructive")}>
-        {e.kind === "expense" ? "−" : e.kind === "deposit" ? "+" : ""}{formatCurrency(e.amount, ccy)}
+      <td className="px-3 py-2">
+        <span className="inline-flex items-center gap-1.5">
+          {kindIcon(e.kind)}<span className="capitalize">{e.kind.replace("_", " ")}</span>
+        </span>
       </td>
+      <td className="px-3 py-2 truncate max-w-[280px]">{detailLabel(e)}</td>
+      <td className="px-3 py-2 text-right">{amountCell(e, ccy)}</td>
       <td className="px-3 py-2 truncate max-w-[240px]">{e.description ?? <span className="text-muted-foreground/60">—</span>}</td>
       <td className="px-3 py-2 align-top">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             {statusBadge(e)}
             {confidenceBadge(e)}
-            {issue && (
-              <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => onFix(issue)}>
-                <Wrench className="h-2.5 w-2.5 mr-1" />Fix
+            {issues.map((iss, i) => (
+              <Button key={i} size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => onFix(iss)}>
+                <Wrench className="h-2.5 w-2.5 mr-1" />Fix {iss.kind === "unknown_account" ? "account" : iss.kind === "unknown_asset" ? "asset" : "goal"}
               </Button>
-            )}
+            ))}
           </div>
           {(e.errors.length > 0 || e.warnings.length > 0) && (
             <div className="text-[10px] text-muted-foreground space-y-0.5">
@@ -578,16 +654,15 @@ function EntryRow({
   );
 }
 
-function EntryCard({
-  e, ccy, issue, onFix,
-}: { e: ParsedEntry; ccy: string; issue: AccountIssue | null; onFix: (i: AccountIssue) => void }) {
-  const tone = e.severity === "error" ? "bg-destructive/5"
-    : e.severity === "warning" ? "bg-warning/5" : "";
+function EntryCard({ e, ccy, issues, onFix }: {
+  e: ParsedEntry; ccy: string; issues: ImportIssue[]; onFix: (i: ImportIssue) => void;
+}) {
+  const tone = e.severity === "error" ? "bg-destructive/5" : e.severity === "warning" ? "bg-warning/5" : "";
   return (
     <div className={cn("p-3 space-y-1.5", tone)}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs">
-          {kindIcon(e.kind)} <span className="capitalize font-medium">{e.kind}</span>
+          {kindIcon(e.kind)} <span className="capitalize font-medium">{e.kind.replace("_", " ")}</span>
           <span className="text-muted-foreground">·</span>
           <span className="text-muted-foreground">
             {new Date(e.timestamp).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
@@ -596,12 +671,8 @@ function EntryCard({
         <div className="flex items-center gap-1.5">{confidenceBadge(e)}{statusBadge(e)}</div>
       </div>
       <div className="flex items-center justify-between text-xs">
-        <span className="truncate">{accountLabel(e)}</span>
-        <span className={cn("font-mono font-semibold",
-          e.kind === "deposit" && "text-success",
-          e.kind === "expense" && "text-destructive")}>
-          {e.kind === "expense" ? "−" : e.kind === "deposit" ? "+" : ""}{formatCurrency(e.amount, ccy)}
-        </span>
+        <span className="truncate">{detailLabel(e)}</span>
+        <span className="font-mono font-semibold">{amountCell(e, ccy)}</span>
       </div>
       {(e.description || e.category) && (
         <div className="text-[11px] text-muted-foreground">
@@ -614,11 +685,11 @@ function EntryCard({
           {e.warnings.map((m, i) => <div key={`w${i}`} className="text-muted-foreground">{m}</div>)}
         </div>
       )}
-      {issue && (
-        <Button size="sm" variant="outline" className="h-7 w-full text-[11px]" onClick={() => onFix(issue)}>
-          <Wrench className="h-3 w-3 mr-1" />Fix issue
+      {issues.map((iss, i) => (
+        <Button key={i} size="sm" variant="outline" className="h-7 w-full text-[11px]" onClick={() => onFix(iss)}>
+          <Wrench className="h-3 w-3 mr-1" />Fix {iss.kind === "unknown_account" ? "account" : iss.kind === "unknown_asset" ? "asset" : "goal"}
         </Button>
-      )}
+      ))}
     </div>
   );
 }
