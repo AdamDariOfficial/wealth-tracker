@@ -412,5 +412,5 @@ function guessClass(raw: string): AssetClass {
   if (/aapl|msft|googl|amzn|tsla|nvda|stock/.test(t)) return "stock";
   if (/gold|silver|oil/.test(t)) return "commodity";
   if (/usd|eur|gbp|jpy|chf|fiat/.test(t)) return "fiat";
-  return "other";
+  return "custom";
 }
