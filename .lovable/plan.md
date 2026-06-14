@@ -1,87 +1,97 @@
-# Ledger Stabilization & UX Consistency Plan
+# Import Data 2.0 — Plan
 
-This is a large structural pass (11 areas). Shipping all of it in a single batch would produce regressions everywhere and be impossible to verify. I'll execute in **5 sequential phases**, each independently shippable and testable. After each phase you confirm before I start the next.
+This is a large, multi-surface refactor. To keep risk low and respect the **single source of truth** rule (everything flows through ledger / holdings / goals engines), I'll ship in 4 sequenced phases. Each phase is independently shippable and testable.
 
----
-
-## Phase 1 — Financial Core (foundation, blocking everything else)
-
-The calculation engine and currency model must be right before UI/UX work, otherwise we re-fix the same bugs later.
-
-**1a. Base currency + FX engine**
-- Add `base_currency` to `profiles` (default `USD`, options: `USD`, `EUR`, `JOD`, extensible).
-- New `fx_rates` table: `(base, quote, rate, as_of timestamptz)`, unique `(base, quote, date_trunc('day', as_of))`.
-- `src/lib/fx.ts`: `convert(amount, from, to, at?)` with daily cache + fallback chain (direct → via USD → 1:1 if same).
-- `src/lib/format-currency.ts`: locale-aware `Intl.NumberFormat` formatter driven by the user's base currency. Replace hardcoded `$`/`€` formatters.
-
-**1b. Transaction model extension** (additive — no breaking changes)
-- Migration adds columns to `transactions`: `asset_price numeric`, `asset_currency text`, `base_currency text`, `base_value numeric`, `fee_asset_id uuid` (already exists), `fee_base_value numeric`. Keep `quantity`, `fiat_value`, `fee_amount` for back-compat; new code reads new columns, falls back to old.
-- Backfill: `base_value = fiat_value`, `base_currency = profiles.currency`, `asset_price = fiat_value / NULLIF(quantity,0)`, `asset_currency = base_currency`.
-- Update `recompute_account_balance` to prefer `base_value` when present.
-
-**1c. Centralized calculation engine**
-- New `src/lib/ledger-engine.ts`: pure functions taking `transactions[] + accounts[] + assets[] + fxRates + baseCurrency` → derived holdings, balances, P&L, net worth, allocation. Decimal-safe via a tiny `Dec` wrapper (string-based) for sums; `Number` only at format boundaries.
-- Refactor `use-portfolio.ts`, `use-ledger.ts`, `use-positions.ts` to call the engine — no inline aggregations elsewhere.
-- Fix: transfer double-count, missing `user_id` filter, UTC day grouping (`date_trunc('day', execution_timestamp AT TIME ZONE 'UTC')`), rounding drift.
-
-**1d. Reconciliation**
-- Extend `/dev-tools` with a "Verify integrity" action: compares `accounts.current_balance` vs engine-recomputed balance, lists drift, offers one-click reconcile (calls `recompute_account_balance` per account).
+Confirm the phasing (or pick which phases to ship now) before I start.
 
 ---
 
-## Phase 2 — Universal CRUD + Inline Entity Creation
+## Phase 1 — Parser & Engine Foundation (no UI changes yet)
 
-**2a. Inline create-in-place**
-- New `<InlineCreatePicker>` primitive wrapping `Select` with a "+ Create new" footer item that opens a nested `Modal` (modal-in-modal supported — already used in `AccountPicker`). Generalize the AccountPicker pattern to: `AssetPicker`, `TagPicker` (new), `GoalPicker` (new), `CategoryPicker` (new).
-- After create: optimistic insert via `useUserTable`, auto-select new id, preserve parent form state (no remount).
-- Apply across `TransactionModal`, `HoldingActionModal`, buy/transfer flows.
+Rewrite `src/lib/import-parser.ts` into a modular grammar with one tokenizer per operation kind, plus a normalizer for "natural language" phrasings. Output a discriminated union `ParsedEntry` covering every new type.
 
-**2b. Full edit/delete coverage**
-- Audit every entity (`accounts`, `assets`, `goals`, `transactions`, `tags`, notes). For each missing edit path: add edit modal reusing the create form in "edit" mode.
-- Soft delete: add `archived_at` where missing (accounts has it; add to `assets`, `goals`). Hard delete only for transactions (with confirm + undo toast via sonner, 5s window using cached row).
-- "Correct transaction" flow: edit modal pre-fills, on save runs as UPDATE (trigger re-recomputes balances).
+**New operation kinds:**
+- `deposit` / `expense` (existing, kept)
+- `transfer` (existing, kept; reinforced)
+- `buy` / `sell` — with `@ price`, `at price`, `qty/price` keywords, and capital-only form
+- `goal_create` / `goal_contribution`
+- `account_open` (opening balance)
+- `asset_open` (opening position)
+- `snapshot` (NET WORTH / ACCOUNT / ETF / CRYPTO bulk lines → expands into opening txns + positions)
 
----
+**Natural-language normalizer:** rule-based regex layer that rewrites
+`Bought 2 BTC at 42000 from X` → `BUY 2 BTC @ 42000 from X` before main parse. No LLM.
 
-## Phase 3 — Trading Workspace Unification
+**Engine layer:** extend `src/lib/import-engine.ts` so every kind dispatches to existing primitives:
+- buys/sells → existing trade/holding actions in `ledger-actions.ts`
+- transfers → `recordPairedTransfer` with `transfer_group_id`
+- goals → `goals` table via existing hook
+- opening balances → `recordManualAdjustment`
+- opening positions → buy txn dated `opening_date`
+- every created row tagged `import:<batchId>` (rollback already works)
 
-- Merge `/trading-capital`, `/journal`, weekly reports into single `/trading` route with tabs: **Overview · Weekly · Journal · Calendar**.
-- Shared header: broker account selector, equity curve, current week P&L, drawdown, consistency score.
-- Keep old routes as redirects for 1 release so deep links don't break.
-- Weekly report remains the primary entry; trade-by-trade is secondary.
-
----
-
-## Phase 4 — Goals Engine
-
-- Extend `goals` with: `contribution_frequency`, `contribution_amount`, `linked_account_id`, `linked_asset_id` (some exist).
-- `src/lib/goals-engine.ts`: auto-progress from linked account/asset balance; projection = `(target - current) / contribution_per_period` → ETA date; milestone markers at 25/50/75%.
-- Contribution history derived from transactions tagged to goal (new optional `goal_id` on transactions, or via tag).
-- Goals page: progress timeline chart, projection card, milestone list.
+**Issue model:** extend `AccountIssue` into a generic `ImportIssue` union: `unknown_account | unknown_asset | unknown_goal | invalid_price | missing_qty | invalid_date | duplicate`.
 
 ---
 
-## Phase 5 — UX Consistency & Performance Pass
+## Phase 2 — Resolution Center & Editable Preview
 
-- Spacing/typography audit using existing tokens in `src/styles.css`; no new design language.
-- Dedupe buttons, normalize modal headers (`PageHeader`-style), consistent naming (Account vs Wallet → pick one per surface).
-- Realtime: consolidate channel subscriptions in `realtime-store.ts`, single channel per table, reference-counted teardown.
-- Cache: standardize React Query keys `[table, userId, ...filters]`; invalidate engine-derived queries on any transaction mutation.
-- Timezone: all display via `formatInTimeZone(user.timezone)`, all grouping in UTC.
+Refactor `src/routes/import.tsx`:
+
+- **Issue Resolution Panel** (replaces today's flat error list): grouped by issue type, each with row count + inline actions. Reuse `IssueResolveModal` for accounts; add `AssetResolveModal` and `GoalResolveModal` (same 3-mode pattern: create / map / ignore). All resolutions persist via `import_aliases` (entity_type already supports `asset` and `goal`).
+- **Editable Preview Table:** per-row inline editors for account, asset, goal, qty, price, amount, date, description — diff-applied to the parsed entry, no re-parse needed.
+- **Dry-Run Summary Card:** rows parsed · new accounts/assets/goals · deposits / withdrawals / transfers / buys / sells / goal contributions · estimated net-worth impact. Always shown before commit (current "preview" becomes a true dry-run; commit is a separate explicit step).
+- **Capital-only BUY flow:** if price unknown AND no live market price, mark row `needs_price` and surface a single-field inline prompt in the issues panel.
+
+Mobile: stacked cards already exist for preview; extend with collapsible row editor.
+
+---
+
+## Phase 3 — Templates, Syntax Guide, History
+
+- **Templates:** new `import_templates` table (`id, user_id, name, body, created_at`). Sidebar panel on `/import` with built-in presets (Salary, Weekly Work, DCA BTC, Goal Contribution) + user-saved templates. Click → appends to textarea.
+- **Syntax Guide:** collapsible right-rail (desktop) / bottom-sheet (mobile) using `Collapsible`. Each section has copyable example blocks.
+- **Import History:** existing `import_batches` already stores most of this. Expand summary JSON to include created accounts/assets/goals counts. Render as a table with rollback button per batch (rollback already implemented; extend to also void created `assets`/`goals` rows tagged with batch).
+
+---
+
+## Phase 4 — Recurring Rules & Performance
+
+- **Recurring Rules:** new `import_recurring_rules` table (`id, user_id, schedule, body, next_run_at, last_run_at, active`). Background `pg_cron` job (hourly) calls a public API route `/api/public/hooks/run-recurring-imports` that materializes due rules into transactions via the same engine. UI: "Recurring" tab on `/import` to create/edit/pause rules.
+- **Performance:**
+  - Move parse off the main thread for >200 rows via `requestIdleCallback` chunking (50-row chunks).
+  - Virtualize preview table with `@tanstack/react-virtual` (already in tree via shadcn).
+  - Memoize row components by stable `lineNo`.
+  - Batch DB writes: group all deposits/withdrawals into a single `transactions` insert per batch where possible.
 
 ---
 
 ## Technical notes
 
-- Migrations are additive in Phase 1 — no data loss, old code keeps working during rollout.
-- New engine is pure & unit-testable; I'll add `src/lib/__tests__/ledger-engine.test.ts` with synthetic ledgers covering: buy, sell, transfer, fee, multi-currency, dividend, reconciliation drift.
-- No UI redesign. No module removal. Trading consolidation is a route-level merge of existing components, not a rebuild.
-- FX rates seeded from a free source on demand (manual entry in dev-tools for now; live fetch can be added later as a server fn — out of scope for this pass).
+**No new "special-case" paths.** Every executor in `import-engine.ts` calls existing helpers in `ledger-actions.ts` / `useUserTable` / `recordManualAdjustment`. The engine is purely a translator.
+
+**Migrations needed:**
+1. `import_templates` (Phase 3)
+2. `import_recurring_rules` (Phase 4)
+3. Extend `import_batches.summary` schema (additive JSON, no migration strictly needed)
+
+All with full `GRANT` + RLS scoped to `auth.uid()`.
+
+**Files touched (high level):**
+- `src/lib/import-parser.ts` — full rewrite (modular)
+- `src/lib/import-engine.ts` — extended dispatchers
+- `src/routes/import.tsx` — UI refactor (split into subcomponents under `src/components/import/`)
+- `src/components/import/` — new: `AssetResolveModal`, `GoalResolveModal`, `IssuePanel`, `PreviewTable`, `DryRunSummary`, `TemplatesPanel`, `SyntaxGuide`, `RecurringRulesPanel`, `HistoryPanel`
+- Supabase migrations for templates + recurring rules
+- `/api/public/hooks/run-recurring-imports` server route + pg_cron entry
 
 ---
 
-## Deliverable cadence
+## Question before I start
 
-I'll start with **Phase 1** end-to-end (migration + engine + reconciliation + dev-tools verify), then stop and let you validate against your real data before moving to Phase 2. Each subsequent phase same pattern.
+This is roughly 3–4 days of focused work if shipped end-to-end. Two options:
 
-**Confirm to start Phase 1**, or tell me to re-scope / re-order.
+1. **Ship all 4 phases now in one large pass** — long single response, more files changed at once, harder to review.
+2. **Ship Phase 1 + Phase 2 first** (parser, engine, resolution, editable preview, dry-run) — the highest-leverage work, fully usable. Then Phase 3 (templates / guide / history polish) and Phase 4 (recurring + perf) in follow-ups.
+
+I recommend **Option 2**. Reply "go" for Option 2, "all" for Option 1, or tell me which specific phases to prioritize.

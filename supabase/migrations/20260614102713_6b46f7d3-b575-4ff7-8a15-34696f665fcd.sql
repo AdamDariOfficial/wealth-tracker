@@ -1,0 +1,2 @@
+ALTER TABLE public.import_aliases DROP CONSTRAINT IF EXISTS import_aliases_entity_type_check;
+ALTER TABLE public.import_aliases ADD CONSTRAINT import_aliases_entity_type_check CHECK (entity_type = ANY (ARRAY['account'::text, 'asset'::text, 'goal'::text]));
