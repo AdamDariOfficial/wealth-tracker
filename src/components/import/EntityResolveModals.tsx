@@ -12,15 +12,17 @@ import type { ImportIssue } from "@/lib/import-parser";
 import { toast } from "sonner";
 import { Sparkles, Plus, Link2 } from "lucide-react";
 
-type AssetClass = "crypto" | "stock" | "etf" | "fiat" | "bond" | "commodity" | "other";
+type AssetClass = "crypto" | "stock" | "etf" | "fiat" | "commodity" | "forex" | "cash" | "stablecoin" | "custom";
 const CLASSES: { value: AssetClass; label: string }[] = [
   { value: "crypto", label: "Crypto" },
   { value: "stock", label: "Stock" },
   { value: "etf", label: "ETF" },
   { value: "fiat", label: "Fiat" },
-  { value: "bond", label: "Bond" },
+  { value: "stablecoin", label: "Stablecoin" },
   { value: "commodity", label: "Commodity" },
-  { value: "other", label: "Other" },
+  { value: "forex", label: "Forex" },
+  { value: "cash", label: "Cash" },
+  { value: "custom", label: "Custom" },
 ];
 
 type Mode = "choose" | "create" | "map";
