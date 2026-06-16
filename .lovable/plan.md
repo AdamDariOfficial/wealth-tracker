@@ -1,97 +1,86 @@
-# Import Data 2.0 — Plan
+# Import Data 3.0 — Production-Grade Integrity Phase
 
-This is a large, multi-surface refactor. To keep risk low and respect the **single source of truth** rule (everything flows through ledger / holdings / goals engines), I'll ship in 4 sequenced phases. Each phase is independently shippable and testable.
+**Non-negotiable rule:** Import remains an input layer only. All math flows through the existing ledger / holdings / goals / analytics / reconstruction engines. No parallel aggregations, no new portfolio calculators.
 
-Confirm the phasing (or pick which phases to ship now) before I start.
-
----
-
-## Phase 1 — Parser & Engine Foundation (no UI changes yet)
-
-Rewrite `src/lib/import-parser.ts` into a modular grammar with one tokenizer per operation kind, plus a normalizer for "natural language" phrasings. Output a discriminated union `ParsedEntry` covering every new type.
-
-**New operation kinds:**
-- `deposit` / `expense` (existing, kept)
-- `transfer` (existing, kept; reinforced)
-- `buy` / `sell` — with `@ price`, `at price`, `qty/price` keywords, and capital-only form
-- `goal_create` / `goal_contribution`
-- `account_open` (opening balance)
-- `asset_open` (opening position)
-- `snapshot` (NET WORTH / ACCOUNT / ETF / CRYPTO bulk lines → expands into opening txns + positions)
-
-**Natural-language normalizer:** rule-based regex layer that rewrites
-`Bought 2 BTC at 42000 from X` → `BUY 2 BTC @ 42000 from X` before main parse. No LLM.
-
-**Engine layer:** extend `src/lib/import-engine.ts` so every kind dispatches to existing primitives:
-- buys/sells → existing trade/holding actions in `ledger-actions.ts`
-- transfers → `recordPairedTransfer` with `transfer_group_id`
-- goals → `goals` table via existing hook
-- opening balances → `recordManualAdjustment`
-- opening positions → buy txn dated `opening_date`
-- every created row tagged `import:<batchId>` (rollback already works)
-
-**Issue model:** extend `AccountIssue` into a generic `ImportIssue` union: `unknown_account | unknown_asset | unknown_goal | invalid_price | missing_qty | invalid_date | duplicate`.
+Single source of truth stays: `transactions`, `accounts`, `assets`, `goals`. Every created row keeps the `import:<batchId>` tag so the existing rollback path keeps working.
 
 ---
 
-## Phase 2 — Resolution Center & Editable Preview
+## Phase A — Integrity Core (ship first)
 
-Refactor `src/routes/import.tsx`:
+The minimum that makes large historical imports safe.
 
-- **Issue Resolution Panel** (replaces today's flat error list): grouped by issue type, each with row count + inline actions. Reuse `IssueResolveModal` for accounts; add `AssetResolveModal` and `GoalResolveModal` (same 3-mode pattern: create / map / ignore). All resolutions persist via `import_aliases` (entity_type already supports `asset` and `goal`).
-- **Editable Preview Table:** per-row inline editors for account, asset, goal, qty, price, amount, date, description — diff-applied to the parsed entry, no re-parse needed.
-- **Dry-Run Summary Card:** rows parsed · new accounts/assets/goals · deposits / withdrawals / transfers / buys / sells / goal contributions · estimated net-worth impact. Always shown before commit (current "preview" becomes a true dry-run; commit is a separate explicit step).
-- **Capital-only BUY flow:** if price unknown AND no live market price, mark row `needs_price` and surface a single-field inline prompt in the issues panel.
+1. **Duplicate Detection Engine** (`src/lib/import-duplicates.ts`)
+   - Compares new parsed rows against: other rows in the same batch + existing `transactions` within ±3 days of the row date, scoped to user.
+   - Signal weights: date proximity, amount equality, account match, asset/qty match, description similarity (token Jaccard), transfer-pair symmetry.
+   - Emits `confidence 0–100` + `duplicateOf?: txId | rowIndex`.
+   - Per-row action in preview: **Import / Skip / Merge** (merge = drop the new row and tag the existing tx with the alias/description from the new row).
+   - Surfaces aggregated count in Dry Run ("3 possible duplicates").
 
-Mobile: stacked cards already exist for preview; extend with collapsible row editor.
+2. **Import Health Score** (`src/lib/import-health.ts`)
+   - Pure function over parsed rows + issues + duplicate report → `{ score, tier, breakdown[] }`.
+   - Deductions: unresolved account/asset/goal, missing price, duplicate prob, invalid date, malformed row.
+   - Rendered as a single header card with tier (Excellent / Good / Needs Review / High Risk) and a click-to-expand breakdown.
 
----
+3. **Smarter Entity Matching**
+   - Extend `assets` with `aliases text[]` and `isin text` via migration (additive, nullable).
+   - `import-parser.ts` resolver: exact symbol → ISIN → alias → fuzzy (existing). When >1 candidate within score threshold, emit `ambiguous_asset` issue.
+   - `EntityResolveModals.tsx` gets an "Alternative matches" list with confidence; "Map" persists into `import_aliases` AND appends to `assets.aliases` so future imports skip the modal.
 
-## Phase 3 — Templates, Syntax Guide, History
-
-- **Templates:** new `import_templates` table (`id, user_id, name, body, created_at`). Sidebar panel on `/import` with built-in presets (Salary, Weekly Work, DCA BTC, Goal Contribution) + user-saved templates. Click → appends to textarea.
-- **Syntax Guide:** collapsible right-rail (desktop) / bottom-sheet (mobile) using `Collapsible`. Each section has copyable example blocks.
-- **Import History:** existing `import_batches` already stores most of this. Expand summary JSON to include created accounts/assets/goals counts. Render as a table with rollback button per batch (rollback already implemented; extend to also void created `assets`/`goals` rows tagged with batch).
-
----
-
-## Phase 4 — Recurring Rules & Performance
-
-- **Recurring Rules:** new `import_recurring_rules` table (`id, user_id, schedule, body, next_run_at, last_run_at, active`). Background `pg_cron` job (hourly) calls a public API route `/api/public/hooks/run-recurring-imports` that materializes due rules into transactions via the same engine. UI: "Recurring" tab on `/import` to create/edit/pause rules.
-- **Performance:**
-  - Move parse off the main thread for >200 rows via `requestIdleCallback` chunking (50-row chunks).
-  - Virtualize preview table with `@tanstack/react-virtual` (already in tree via shadcn).
-  - Memoize row components by stable `lineNo`.
-  - Batch DB writes: group all deposits/withdrawals into a single `transactions` insert per batch where possible.
+4. **Auto Categorization Engine** (`src/lib/import-categorize.ts`)
+   - Rule table (keyword → category/tag): salary→income, rent/groceries/utilities→expense buckets, BTC/ETH→crypto, VWCE/SWDA→etf, AAPL/MSFT→stock.
+   - Runs after parse, before preview. Fills `category`/`tags` only when empty. User edit in preview wins.
 
 ---
 
-## Technical notes
+## Phase B — Confidence & Analytics (after A lands)
 
-**No new "special-case" paths.** Every executor in `import-engine.ts` calls existing helpers in `ledger-actions.ts` / `useUserTable` / `recordManualAdjustment`. The engine is purely a translator.
+5. **Import Analytics Preview** — expand existing `DryRunSummary` with: Net Worth delta, allocation delta per class, per-goal progress delta. Derived by feeding the simulated rows through existing `use-portfolio` / goals selectors against a cloned in-memory ledger (no new aggregator).
 
-**Migrations needed:**
-1. `import_templates` (Phase 3)
-2. `import_recurring_rules` (Phase 4)
-3. Extend `import_batches.summary` schema (additive JSON, no migration strictly needed)
+6. **Inline Correction Center** — finish making preview cells fully editable (account, asset, goal, qty, price, amount, date, description, tags) with live re-derivation of issues, duplicates, and health score. No re-parse.
 
-All with full `GRANT` + RLS scoped to `auth.uid()`.
-
-**Files touched (high level):**
-- `src/lib/import-parser.ts` — full rewrite (modular)
-- `src/lib/import-engine.ts` — extended dispatchers
-- `src/routes/import.tsx` — UI refactor (split into subcomponents under `src/components/import/`)
-- `src/components/import/` — new: `AssetResolveModal`, `GoalResolveModal`, `IssuePanel`, `PreviewTable`, `DryRunSummary`, `TemplatesPanel`, `SyntaxGuide`, `RecurringRulesPanel`, `HistoryPanel`
-- Supabase migrations for templates + recurring rules
-- `/api/public/hooks/run-recurring-imports` server route + pg_cron entry
+7. **Opening Position Wizard** (`src/components/import/OpeningPositionWizard.tsx`) — three tabs (Account / Asset / Goal). On submit it inserts the corresponding syntax line into the import textarea — does not bypass the parser.
 
 ---
 
-## Question before I start
+## Phase C — Post-import & Rollback (after B)
 
-This is roughly 3–4 days of focused work if shipped end-to-end. Two options:
+8. **Import Statistics Report** — replaces the post-commit toast with a results screen on `/import?batch=<id>`: counts per op kind, inflow/outflow bars, created-entities list, "View in Activity" deep link.
 
-1. **Ship all 4 phases now in one large pass** — long single response, more files changed at once, harder to review.
-2. **Ship Phase 1 + Phase 2 first** (parser, engine, resolution, editable preview, dry-run) — the highest-leverage work, fully usable. Then Phase 3 (templates / guide / history polish) and Phase 4 (recurring + perf) in follow-ups.
+9. **Advanced Rollback** — extend existing batch rollback with:
+   - Rollback selected rows (checkbox list in batch detail).
+   - Rollback by operation kind (e.g. only the buys).
+   - Pre-rollback impact preview ("Will remove 12 tx, 2 transfers, 1 goal contribution").
+   - Reuses existing void/delete primitives; no new SQL paths.
 
-I recommend **Option 2**. Reply "go" for Option 2, "all" for Option 1, or tell me which specific phases to prioritize.
+10. **Audit Trail + Activity Feed wiring** — `import_batches.summary` already stores per-batch metadata; piggyback on the existing `audit_log` triggers (no new triggers). Add lightweight client-side mapper in `use-activity-feed.ts` so import events render as: "Imported N rows", "Created asset X", "Mapped A→B", "Skipped duplicate", "Rolled back batch".
+
+---
+
+## Phase D — Performance (last)
+
+11. Chunked parsing via `requestIdleCallback` (50-row chunks).
+12. `@tanstack/react-virtual` on preview + batch detail tables.
+13. Memoize duplicate matrix and health score selectors keyed by `rowsHash`.
+14. Single batched insert per op kind on commit (already mostly true — verify).
+
+Target: 1000+ rows parsing < 1s on a mid-range laptop, scrolling stays at 60fps.
+
+---
+
+## Files (Phase A only — concrete)
+
+- **Migration:** add `aliases text[] default '{}'`, `isin text` to `assets`; index on `isin`.
+- **New:** `src/lib/import-duplicates.ts`, `src/lib/import-health.ts`, `src/lib/import-categorize.ts`.
+- **Edit:** `src/lib/import-parser.ts` (ambiguous_asset, ISIN/alias resolution, hook categorizer), `src/components/import/EntityResolveModals.tsx` (alt matches + persist alias to asset), `src/routes/import.tsx` (health card, duplicate column + per-row action, dup count in dry-run).
+- **No edits** to: `ledger-engine.ts`, `ledger-actions.ts`, `use-portfolio.ts`, `use-holdings`, goals selectors, reconstruction engine.
+
+---
+
+## Question
+
+Ship **Phase A only** first (recommended — it's the actual integrity layer and unblocks safe historical imports), then B/C/D as follow-ups? Reply:
+
+- **"go"** → ship Phase A now.
+- **"go ab"** / **"go abc"** / **"all"** → ship more phases this turn (longer, more files at once).
+- Or name the specific items you want first (e.g. "duplicates + health only").
