@@ -554,6 +554,50 @@ function Stat({ label, value, tone, icon }: {
   );
 }
 
+function HealthCard({ health }: { health: HealthReport }) {
+  const [open, setOpen] = useState(false);
+  const tone =
+    health.tier === "excellent" ? { text: "text-success", bg: "bg-success/10", border: "border-success/30", bar: "bg-success" } :
+    health.tier === "good"      ? { text: "text-success", bg: "bg-success/5",  border: "border-success/20", bar: "bg-success/80" } :
+    health.tier === "review"    ? { text: "text-warning", bg: "bg-warning/10", border: "border-warning/30", bar: "bg-warning" } :
+                                  { text: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/30", bar: "bg-destructive" };
+  return (
+    <div className={cn("rounded-md border p-3", tone.border, tone.bg)}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Import Health Score</div>
+          <div className="flex items-baseline gap-2 mt-0.5">
+            <span className={cn("text-2xl font-bold tabular-nums", tone.text)}>{health.score}</span>
+            <span className="text-xs text-muted-foreground">/ 100</span>
+            <span className={cn("text-xs font-medium", tone.text)}>· {healthTierLabel(health.tier)}</span>
+          </div>
+        </div>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="text-[11px] underline text-muted-foreground hover:text-foreground"
+        >
+          {open ? "Hide breakdown" : "Why this score?"}
+        </button>
+      </div>
+      <div className="mt-2 h-1.5 bg-muted/40 rounded-full overflow-hidden">
+        <div className={cn("h-full transition-all", tone.bar)} style={{ width: `${health.score}%` }} />
+      </div>
+      {open && (
+        <div className="mt-3 space-y-1 text-[11px]">
+          {health.breakdown.length === 0 ? (
+            <div className="text-muted-foreground">No issues detected — perfect import.</div>
+          ) : health.breakdown.map((b) => (
+            <div key={b.key} className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">{b.label} <span className="opacity-60">× {b.count}</span></span>
+              <span className="font-mono tabular-nums text-destructive">−{b.penalty}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function kindIcon(kind: ParsedEntry["kind"]) {
   switch (kind) {
     case "deposit": return <ArrowDownToLine className="h-3 w-3 text-success" />;
