@@ -355,6 +355,7 @@ function ImportPage() {
                 <div className="text-sm font-semibold">Dry-run summary</div>
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">simulation · no writes yet</span>
               </div>
+              {health && <HealthCard health={health} />}
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <Stat label="Rows" value={parsed.summary.total.toString()} />
                 <Stat label="Ready" value={counts.ready.toString()} tone="success" />
@@ -370,10 +371,11 @@ function ImportPage() {
                 <Stat label="Acct open" value={parsed.summary.accountOpens.toString()} tone="muted" icon={<Wallet className="h-3 w-3" />} />
                 <Stat label="Asset open" value={parsed.summary.assetOpens.toString()} tone="muted" icon={<Coins className="h-3 w-3" />} />
               </div>
-              <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                 <Stat label="Inflow" value={formatCurrency(parsed.summary.inflow, ccy)} tone="success" />
                 <Stat label="Outflow" value={formatCurrency(parsed.summary.outflow, ccy)} tone="destructive" />
                 <Stat label="Net impact" value={formatCurrency(parsed.summary.net, ccy)} tone={parsed.summary.net >= 0 ? "success" : "destructive"} />
+                <Stat label="Duplicates" value={(parsed.summary.duplicateCount ?? 0).toString()} tone={(parsed.summary.duplicateCount ?? 0) > 0 ? "warning" : "muted"} />
               </div>
             </div>
           )}
