@@ -603,26 +603,9 @@ function finalize(e: ParsedEntry): ParsedEntry {
   return e;
 }
 
-// ---------- duplicate detection ----------
-function detectDuplicate(e: ParsedEntry, existing: ParseInput["existingTransactions"]): string | null {
-  if (!existing?.length) return null;
-  if (e.kind !== "deposit" && e.kind !== "expense" && e.kind !== "transfer") return null;
-  const ts = new Date(e.timestamp).getTime();
-  const acctId =
-    e.kind === "deposit" ? e.account?.matchedId :
-    e.kind === "expense" ? e.account?.matchedId :
-    e.fromAccount?.matchedId;
-  if (!acctId) return null;
-  for (const x of existing) {
-    const xts = new Date(x.execution_timestamp).getTime();
-    if (Math.abs(xts - ts) > 1000 * 60 * 60 * 24) continue;
-    if (Math.abs(Number(x.fiat_value) - e.amount) > 0.01) continue;
-    if (x.source_account_id !== acctId && x.destination_account_id !== acctId) continue;
-    if (e.description && x.note && norm(e.description) === norm(x.note)) return x.id;
-    if (!e.description && !x.note) return x.id;
-  }
-  return null;
-}
+// ---------- duplicate detection (delegated to import-duplicates) ----------
+import { detectDuplicates, type DupInput } from "./import-duplicates";
+import { categorizeBatch } from "./import-categorize";
 
 // ---------- top-level ----------
 export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; summary: ParseSummary } {
@@ -645,17 +628,46 @@ export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; su
     }
 
     const e = parseEntryLine(line, idx + 1, active, input, ignoredAcct, ignoredAsset, ignoredGoal);
-    const dup = detectDuplicate(e, input.existingTransactions);
-    if (dup) { e.duplicateOf = dup; e.warnings.push("Possible duplicate of existing transaction"); finalize(e); }
     entries.push(e);
   });
 
+  // ---- auto-categorize (never overwrites existing categories) ----
+  categorizeBatch(entries);
+
+  // ---- duplicate detection pass (in-batch + against existing ledger) ----
+  const dupInputs: DupInput[] = entries.map((e) => ({
+    lineNo: e.lineNo,
+    kind: e.kind,
+    timestamp: e.timestamp,
+    amount: e.amount,
+    accountId: e.account?.matchedId ?? null,
+    fromAccountId: e.fromAccount?.matchedId ?? null,
+    toAccountId: e.toAccount?.matchedId ?? null,
+    description: e.description ?? null,
+  }));
+  const dupMap = detectDuplicates(dupInputs, input.existingTransactions ?? []);
+  for (const e of entries) {
+    const m = dupMap.get(e.lineNo);
+    if (!m) continue;
+    e.duplicateOf = m.existingId ?? null;
+    e.duplicateScore = m.score;
+    e.duplicateReasons = m.reasons;
+    if (m.duplicateOfLine) e.duplicateOfLine = m.duplicateOfLine;
+    e.warnings.push(
+      m.existingId
+        ? `Possible duplicate (${Math.round(m.score * 100)}%) of existing transaction — ${m.reasons.join(", ")}`
+        : `Possible duplicate of row ${m.duplicateOfLine} (${Math.round(m.score * 100)}%)`,
+    );
+    finalize(e);
+  }
+
   let inflow = 0, outflow = 0;
   const c = { deposits: 0, expenses: 0, transfers: 0, buys: 0, sells: 0, goalCreates: 0, goalContributions: 0, accountOpens: 0, assetOpens: 0 };
-  let errorCount = 0, warningCount = 0;
+  let errorCount = 0, warningCount = 0, duplicateCount = 0;
   for (const e of entries) {
     if (e.severity === "error") errorCount++;
     warningCount += e.warnings.length;
+    if (e.duplicateOf || e.duplicateOfLine) duplicateCount++;
     switch (e.kind) {
       case "deposit": c.deposits++; inflow += e.amount; break;
       case "expense": c.expenses++; outflow += e.amount; break;
@@ -670,7 +682,7 @@ export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; su
   }
   return {
     entries,
-    summary: { total: entries.length, ...c, inflow, outflow, net: inflow - outflow, errorCount, warningCount },
+    summary: { total: entries.length, ...c, inflow, outflow, net: inflow - outflow, errorCount, warningCount, duplicateCount },
   };
 }
 
