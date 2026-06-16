@@ -141,6 +141,11 @@ function ImportPage() {
     [parsed, accounts, assets, goals],
   );
 
+  const health = useMemo<HealthReport | null>(
+    () => parsed ? computeImportHealth(parsed.entries, issues) : null,
+    [parsed, issues],
+  );
+
   const counts = useMemo(() => {
     if (!parsed) return { ready: 0, warning: 0, error: 0 };
     let r = 0, w = 0, e = 0;
