@@ -75,7 +75,7 @@ export interface ParsedEntry {
   fromAccount?: AccountRef;
   toAccount?: AccountRef;
   // buy / sell / asset_open
-  asset?: AssetRef;
+  asset?: AssetRefExt;
   quantity?: number;
   price?: number;
   // goal_create / goal_contribution
