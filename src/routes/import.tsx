@@ -20,6 +20,7 @@ import {
   type ParsedEntry, type ImportIssue, type ImportAlias,
 } from "@/lib/import-parser";
 import { executeImport, rollbackImport } from "@/lib/import-engine";
+import { computeImportHealth, healthTierLabel, type HealthReport } from "@/lib/import-health";
 import { formatMoney } from "@/lib/format-currency";
 const formatCurrency = (v: number, currency: string) => formatMoney(v, { currency });
 import { useAuth } from "@/lib/auth-store";
