@@ -75,7 +75,7 @@ export interface ParsedEntry {
   fromAccount?: AccountRef;
   toAccount?: AccountRef;
   // buy / sell / asset_open
-  asset?: AssetRef;
+  asset?: AssetRefExt;
   quantity?: number;
   price?: number;
   // goal_create / goal_contribution
@@ -94,6 +94,9 @@ export interface ParsedEntry {
   confidenceTier: "high" | "medium" | "low";
   usedDefaultAccount?: boolean;
   duplicateOf?: string | null;
+  duplicateOfLine?: number;
+  duplicateScore?: number;
+  duplicateReasons?: string[];
 }
 
 export interface ParseSummary {
@@ -112,6 +115,7 @@ export interface ParseSummary {
   net: number;
   errorCount: number;
   warningCount: number;
+  duplicateCount?: number;
 }
 
 export interface AccountLike {
@@ -119,6 +123,8 @@ export interface AccountLike {
 }
 export interface AssetLike {
   id: string; symbol: string; name?: string; current_price?: number; asset_class?: string;
+  aliases?: string[] | null;
+  isin?: string | null;
 }
 export interface GoalLike {
   id: string; name: string;
@@ -207,9 +213,16 @@ function resolveAccount(raw: string, accounts: AccountLike[], aliases?: ImportAl
   };
 }
 
-function resolveAsset(raw: string, assets: AssetLike[] | undefined, aliases?: ImportAlias[]): AssetRef {
+export interface AssetRefExt extends AssetRef {
+  /** non-null when the resolver found 2+ candidates above ambiguity threshold */
+  alternatives?: { id: string; symbol: string; name: string; score: number }[];
+}
+
+function resolveAsset(raw: string, assets: AssetLike[] | undefined, aliases?: ImportAlias[]): AssetRefExt {
   const target = norm(raw);
   if (!target || !assets) return { raw, matchedId: null, matchedSymbol: null, confidence: 0 };
+
+  // 1. user-defined import_alias rows (highest precedence)
   if (aliases?.length) {
     const a = aliases.find((al) => al.entity_type === "asset" && norm(al.alias) === target);
     if (a) {
@@ -217,20 +230,34 @@ function resolveAsset(raw: string, assets: AssetLike[] | undefined, aliases?: Im
       if (ass) return { raw, matchedId: ass.id, matchedSymbol: ass.symbol, confidence: 1 };
     }
   }
-  // exact symbol match wins
+  // 2. ISIN exact match
+  const upperRaw = raw.trim().toUpperCase();
+  const isinHit = assets.find((a) => (a.isin ?? "").toUpperCase() === upperRaw);
+  if (isinHit) return { raw, matchedId: isinHit.id, matchedSymbol: isinHit.symbol, confidence: 1 };
+  // 3. exact symbol match
   const symHit = assets.find((a) => norm(a.symbol) === target);
   if (symHit) return { raw, matchedId: symHit.id, matchedSymbol: symHit.symbol, confidence: 1 };
-  // fuzzy by symbol then name
-  let best: { id: string; symbol: string; score: number } | null = null;
-  for (const a of assets) {
-    const s = Math.max(
-      diceCoefficient(norm(a.symbol), target),
-      a.name ? diceCoefficient(norm(a.name), target) : 0,
+  // 4. asset-level aliases column (exact, normalized)
+  const aliasHit = assets.find((a) => (a.aliases ?? []).some((al) => norm(al) === target));
+  if (aliasHit) return { raw, matchedId: aliasHit.id, matchedSymbol: aliasHit.symbol, confidence: 0.98 };
+
+  // 5. fuzzy by symbol / name / alias — keep alternatives within band
+  const scored = assets.map((a) => {
+    const sSym = diceCoefficient(norm(a.symbol), target);
+    const sName = a.name ? diceCoefficient(norm(a.name), target) : 0;
+    const sAlias = (a.aliases ?? []).reduce(
+      (m, al) => Math.max(m, diceCoefficient(norm(al), target)), 0,
     );
-    if (!best || s > best.score) best = { id: a.id, symbol: a.symbol, score: s };
-  }
+    return { id: a.id, symbol: a.symbol, name: a.name ?? a.symbol, score: Math.max(sSym, sName, sAlias) };
+  }).sort((x, y) => y.score - x.score);
+
+  const best = scored[0];
   if (best && best.score >= 0.7) {
-    return { raw, matchedId: best.id, matchedSymbol: best.symbol, confidence: best.score };
+    const alts = scored.filter((s) => s.id !== best.id && s.score >= Math.max(0.6, best.score - 0.15)).slice(0, 3);
+    return {
+      raw, matchedId: best.id, matchedSymbol: best.symbol, confidence: best.score,
+      alternatives: alts.length ? alts : undefined,
+    };
   }
   return { raw, matchedId: null, matchedSymbol: null, confidence: best?.score ?? 0 };
 }
@@ -580,26 +607,9 @@ function finalize(e: ParsedEntry): ParsedEntry {
   return e;
 }
 
-// ---------- duplicate detection ----------
-function detectDuplicate(e: ParsedEntry, existing: ParseInput["existingTransactions"]): string | null {
-  if (!existing?.length) return null;
-  if (e.kind !== "deposit" && e.kind !== "expense" && e.kind !== "transfer") return null;
-  const ts = new Date(e.timestamp).getTime();
-  const acctId =
-    e.kind === "deposit" ? e.account?.matchedId :
-    e.kind === "expense" ? e.account?.matchedId :
-    e.fromAccount?.matchedId;
-  if (!acctId) return null;
-  for (const x of existing) {
-    const xts = new Date(x.execution_timestamp).getTime();
-    if (Math.abs(xts - ts) > 1000 * 60 * 60 * 24) continue;
-    if (Math.abs(Number(x.fiat_value) - e.amount) > 0.01) continue;
-    if (x.source_account_id !== acctId && x.destination_account_id !== acctId) continue;
-    if (e.description && x.note && norm(e.description) === norm(x.note)) return x.id;
-    if (!e.description && !x.note) return x.id;
-  }
-  return null;
-}
+// ---------- duplicate detection (delegated to import-duplicates) ----------
+import { detectDuplicates, type DupInput } from "./import-duplicates";
+import { categorizeBatch } from "./import-categorize";
 
 // ---------- top-level ----------
 export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; summary: ParseSummary } {
@@ -622,17 +632,46 @@ export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; su
     }
 
     const e = parseEntryLine(line, idx + 1, active, input, ignoredAcct, ignoredAsset, ignoredGoal);
-    const dup = detectDuplicate(e, input.existingTransactions);
-    if (dup) { e.duplicateOf = dup; e.warnings.push("Possible duplicate of existing transaction"); finalize(e); }
     entries.push(e);
   });
 
+  // ---- auto-categorize (never overwrites existing categories) ----
+  categorizeBatch(entries);
+
+  // ---- duplicate detection pass (in-batch + against existing ledger) ----
+  const dupInputs: DupInput[] = entries.map((e) => ({
+    lineNo: e.lineNo,
+    kind: e.kind,
+    timestamp: e.timestamp,
+    amount: e.amount,
+    accountId: e.account?.matchedId ?? null,
+    fromAccountId: e.fromAccount?.matchedId ?? null,
+    toAccountId: e.toAccount?.matchedId ?? null,
+    description: e.description ?? null,
+  }));
+  const dupMap = detectDuplicates(dupInputs, input.existingTransactions ?? []);
+  for (const e of entries) {
+    const m = dupMap.get(e.lineNo);
+    if (!m) continue;
+    e.duplicateOf = m.existingId ?? null;
+    e.duplicateScore = m.score;
+    e.duplicateReasons = m.reasons;
+    if (m.duplicateOfLine) e.duplicateOfLine = m.duplicateOfLine;
+    e.warnings.push(
+      m.existingId
+        ? `Possible duplicate (${Math.round(m.score * 100)}%) of existing transaction — ${m.reasons.join(", ")}`
+        : `Possible duplicate of row ${m.duplicateOfLine} (${Math.round(m.score * 100)}%)`,
+    );
+    finalize(e);
+  }
+
   let inflow = 0, outflow = 0;
   const c = { deposits: 0, expenses: 0, transfers: 0, buys: 0, sells: 0, goalCreates: 0, goalContributions: 0, accountOpens: 0, assetOpens: 0 };
-  let errorCount = 0, warningCount = 0;
+  let errorCount = 0, warningCount = 0, duplicateCount = 0;
   for (const e of entries) {
     if (e.severity === "error") errorCount++;
     warningCount += e.warnings.length;
+    if (e.duplicateOf || e.duplicateOfLine) duplicateCount++;
     switch (e.kind) {
       case "deposit": c.deposits++; inflow += e.amount; break;
       case "expense": c.expenses++; outflow += e.amount; break;
@@ -647,7 +686,7 @@ export function parseImportText(input: ParseInput): { entries: ParsedEntry[]; su
   }
   return {
     entries,
-    summary: { total: entries.length, ...c, inflow, outflow, net: inflow - outflow, errorCount, warningCount },
+    summary: { total: entries.length, ...c, inflow, outflow, net: inflow - outflow, errorCount, warningCount, duplicateCount },
   };
 }
 

@@ -70,6 +70,7 @@ export type Database = {
       }
       assets: {
         Row: {
+          aliases: string[]
           archived_at: string | null
           asset_class: Database["public"]["Enums"]["asset_class"]
           color: string | null
@@ -78,6 +79,7 @@ export type Database = {
           custom_asset: boolean
           icon: string | null
           id: string
+          isin: string | null
           name: string
           symbol: string
           tracking_enabled: boolean
@@ -85,6 +87,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          aliases?: string[]
           archived_at?: string | null
           asset_class?: Database["public"]["Enums"]["asset_class"]
           color?: string | null
@@ -93,6 +96,7 @@ export type Database = {
           custom_asset?: boolean
           icon?: string | null
           id?: string
+          isin?: string | null
           name: string
           symbol: string
           tracking_enabled?: boolean
@@ -100,6 +104,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          aliases?: string[]
           archived_at?: string | null
           asset_class?: Database["public"]["Enums"]["asset_class"]
           color?: string | null
@@ -108,6 +113,7 @@ export type Database = {
           custom_asset?: boolean
           icon?: string | null
           id?: string
+          isin?: string | null
           name?: string
           symbol?: string
           tracking_enabled?: boolean

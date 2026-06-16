@@ -20,6 +20,7 @@ import {
   type ParsedEntry, type ImportIssue, type ImportAlias,
 } from "@/lib/import-parser";
 import { executeImport, rollbackImport } from "@/lib/import-engine";
+import { computeImportHealth, healthTierLabel, type HealthReport } from "@/lib/import-health";
 import { formatMoney } from "@/lib/format-currency";
 const formatCurrency = (v: number, currency: string) => formatMoney(v, { currency });
 import { useAuth } from "@/lib/auth-store";
@@ -138,6 +139,11 @@ function ImportPage() {
   const issues = useMemo<ImportIssue[]>(
     () => parsed ? groupImportIssues(parsed.entries, accounts, assets, goals) : [],
     [parsed, accounts, assets, goals],
+  );
+
+  const health = useMemo<HealthReport | null>(
+    () => parsed ? computeImportHealth(parsed.entries, issues) : null,
+    [parsed, issues],
   );
 
   const counts = useMemo(() => {
@@ -349,6 +355,7 @@ function ImportPage() {
                 <div className="text-sm font-semibold">Dry-run summary</div>
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">simulation · no writes yet</span>
               </div>
+              {health && <HealthCard health={health} />}
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <Stat label="Rows" value={parsed.summary.total.toString()} />
                 <Stat label="Ready" value={counts.ready.toString()} tone="success" />
@@ -364,10 +371,11 @@ function ImportPage() {
                 <Stat label="Acct open" value={parsed.summary.accountOpens.toString()} tone="muted" icon={<Wallet className="h-3 w-3" />} />
                 <Stat label="Asset open" value={parsed.summary.assetOpens.toString()} tone="muted" icon={<Coins className="h-3 w-3" />} />
               </div>
-              <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                 <Stat label="Inflow" value={formatCurrency(parsed.summary.inflow, ccy)} tone="success" />
                 <Stat label="Outflow" value={formatCurrency(parsed.summary.outflow, ccy)} tone="destructive" />
                 <Stat label="Net impact" value={formatCurrency(parsed.summary.net, ccy)} tone={parsed.summary.net >= 0 ? "success" : "destructive"} />
+                <Stat label="Duplicates" value={(parsed.summary.duplicateCount ?? 0).toString()} tone={(parsed.summary.duplicateCount ?? 0) > 0 ? "warning" : "muted"} />
               </div>
             </div>
           )}
@@ -542,6 +550,50 @@ function Stat({ label, value, tone, icon }: {
         {icon}{label}
       </div>
       <div className={cn("font-mono text-sm font-semibold tabular-nums", color)}>{value}</div>
+    </div>
+  );
+}
+
+function HealthCard({ health }: { health: HealthReport }) {
+  const [open, setOpen] = useState(false);
+  const tone =
+    health.tier === "excellent" ? { text: "text-success", bg: "bg-success/10", border: "border-success/30", bar: "bg-success" } :
+    health.tier === "good"      ? { text: "text-success", bg: "bg-success/5",  border: "border-success/20", bar: "bg-success/80" } :
+    health.tier === "review"    ? { text: "text-warning", bg: "bg-warning/10", border: "border-warning/30", bar: "bg-warning" } :
+                                  { text: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/30", bar: "bg-destructive" };
+  return (
+    <div className={cn("rounded-md border p-3", tone.border, tone.bg)}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Import Health Score</div>
+          <div className="flex items-baseline gap-2 mt-0.5">
+            <span className={cn("text-2xl font-bold tabular-nums", tone.text)}>{health.score}</span>
+            <span className="text-xs text-muted-foreground">/ 100</span>
+            <span className={cn("text-xs font-medium", tone.text)}>· {healthTierLabel(health.tier)}</span>
+          </div>
+        </div>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="text-[11px] underline text-muted-foreground hover:text-foreground"
+        >
+          {open ? "Hide breakdown" : "Why this score?"}
+        </button>
+      </div>
+      <div className="mt-2 h-1.5 bg-muted/40 rounded-full overflow-hidden">
+        <div className={cn("h-full transition-all", tone.bar)} style={{ width: `${health.score}%` }} />
+      </div>
+      {open && (
+        <div className="mt-3 space-y-1 text-[11px]">
+          {health.breakdown.length === 0 ? (
+            <div className="text-muted-foreground">No issues detected — perfect import.</div>
+          ) : health.breakdown.map((b) => (
+            <div key={b.key} className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">{b.label} <span className="opacity-60">× {b.count}</span></span>
+              <span className="font-mono tabular-nums text-destructive">−{b.penalty}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
