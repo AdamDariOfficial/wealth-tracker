@@ -94,6 +94,9 @@ export interface ParsedEntry {
   confidenceTier: "high" | "medium" | "low";
   usedDefaultAccount?: boolean;
   duplicateOf?: string | null;
+  duplicateOfLine?: number;
+  duplicateScore?: number;
+  duplicateReasons?: string[];
 }
 
 export interface ParseSummary {
@@ -112,6 +115,7 @@ export interface ParseSummary {
   net: number;
   errorCount: number;
   warningCount: number;
+  duplicateCount?: number;
 }
 
 export interface AccountLike {
