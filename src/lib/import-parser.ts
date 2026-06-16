@@ -119,6 +119,8 @@ export interface AccountLike {
 }
 export interface AssetLike {
   id: string; symbol: string; name?: string; current_price?: number; asset_class?: string;
+  aliases?: string[] | null;
+  isin?: string | null;
 }
 export interface GoalLike {
   id: string; name: string;
@@ -207,9 +209,16 @@ function resolveAccount(raw: string, accounts: AccountLike[], aliases?: ImportAl
   };
 }
 
-function resolveAsset(raw: string, assets: AssetLike[] | undefined, aliases?: ImportAlias[]): AssetRef {
+export interface AssetRefExt extends AssetRef {
+  /** non-null when the resolver found 2+ candidates above ambiguity threshold */
+  alternatives?: { id: string; symbol: string; name: string; score: number }[];
+}
+
+function resolveAsset(raw: string, assets: AssetLike[] | undefined, aliases?: ImportAlias[]): AssetRefExt {
   const target = norm(raw);
   if (!target || !assets) return { raw, matchedId: null, matchedSymbol: null, confidence: 0 };
+
+  // 1. user-defined import_alias rows (highest precedence)
   if (aliases?.length) {
     const a = aliases.find((al) => al.entity_type === "asset" && norm(al.alias) === target);
     if (a) {
@@ -217,20 +226,34 @@ function resolveAsset(raw: string, assets: AssetLike[] | undefined, aliases?: Im
       if (ass) return { raw, matchedId: ass.id, matchedSymbol: ass.symbol, confidence: 1 };
     }
   }
-  // exact symbol match wins
+  // 2. ISIN exact match
+  const upperRaw = raw.trim().toUpperCase();
+  const isinHit = assets.find((a) => (a.isin ?? "").toUpperCase() === upperRaw);
+  if (isinHit) return { raw, matchedId: isinHit.id, matchedSymbol: isinHit.symbol, confidence: 1 };
+  // 3. exact symbol match
   const symHit = assets.find((a) => norm(a.symbol) === target);
   if (symHit) return { raw, matchedId: symHit.id, matchedSymbol: symHit.symbol, confidence: 1 };
-  // fuzzy by symbol then name
-  let best: { id: string; symbol: string; score: number } | null = null;
-  for (const a of assets) {
-    const s = Math.max(
-      diceCoefficient(norm(a.symbol), target),
-      a.name ? diceCoefficient(norm(a.name), target) : 0,
+  // 4. asset-level aliases column (exact, normalized)
+  const aliasHit = assets.find((a) => (a.aliases ?? []).some((al) => norm(al) === target));
+  if (aliasHit) return { raw, matchedId: aliasHit.id, matchedSymbol: aliasHit.symbol, confidence: 0.98 };
+
+  // 5. fuzzy by symbol / name / alias — keep alternatives within band
+  const scored = assets.map((a) => {
+    const sSym = diceCoefficient(norm(a.symbol), target);
+    const sName = a.name ? diceCoefficient(norm(a.name), target) : 0;
+    const sAlias = (a.aliases ?? []).reduce(
+      (m, al) => Math.max(m, diceCoefficient(norm(al), target)), 0,
     );
-    if (!best || s > best.score) best = { id: a.id, symbol: a.symbol, score: s };
-  }
+    return { id: a.id, symbol: a.symbol, name: a.name ?? a.symbol, score: Math.max(sSym, sName, sAlias) };
+  }).sort((x, y) => y.score - x.score);
+
+  const best = scored[0];
   if (best && best.score >= 0.7) {
-    return { raw, matchedId: best.id, matchedSymbol: best.symbol, confidence: best.score };
+    const alts = scored.filter((s) => s.id !== best.id && s.score >= Math.max(0.6, best.score - 0.15)).slice(0, 3);
+    return {
+      raw, matchedId: best.id, matchedSymbol: best.symbol, confidence: best.score,
+      alternatives: alts.length ? alts : undefined,
+    };
   }
   return { raw, matchedId: null, matchedSymbol: null, confidence: best?.score ?? 0 };
 }
