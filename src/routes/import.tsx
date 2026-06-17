@@ -431,31 +431,35 @@ function ImportPage() {
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">simulation · no writes yet</span>
               </div>
               {health && <HealthCard health={health} />}
+              {impact && <ImpactPreview impact={impact} ccy={ccy} />}
               <div className="grid grid-cols-3 gap-2 text-xs">
-                <Stat label="Rows" value={parsed.summary.total.toString()} />
+                <Stat label="Rows" value={effectiveSummary.total.toString()} />
                 <Stat label="Ready" value={counts.ready.toString()} tone="success" />
                 <Stat label="Blocking" value={counts.error.toString()} tone={counts.error ? "destructive" : "muted"} />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                <Stat label="Deposits" value={parsed.summary.deposits.toString()} tone="success" icon={<ArrowDownToLine className="h-3 w-3" />} />
-                <Stat label="Expenses" value={parsed.summary.expenses.toString()} tone="destructive" icon={<ArrowUpFromLine className="h-3 w-3" />} />
-                <Stat label="Transfers" value={parsed.summary.transfers.toString()} tone="cyan" icon={<Repeat className="h-3 w-3" />} />
-                <Stat label="Buys" value={parsed.summary.buys.toString()} tone="success" icon={<TrendingUp className="h-3 w-3" />} />
-                <Stat label="Sells" value={parsed.summary.sells.toString()} tone="warning" icon={<TrendingDown className="h-3 w-3" />} />
-                <Stat label="Goal +" value={parsed.summary.goalContributions.toString()} tone="cyan" icon={<Target className="h-3 w-3" />} />
-                <Stat label="Acct open" value={parsed.summary.accountOpens.toString()} tone="muted" icon={<Wallet className="h-3 w-3" />} />
-                <Stat label="Asset open" value={parsed.summary.assetOpens.toString()} tone="muted" icon={<Coins className="h-3 w-3" />} />
+                <Stat label="Deposits" value={effectiveSummary.deposits.toString()} tone="success" icon={<ArrowDownToLine className="h-3 w-3" />} />
+                <Stat label="Expenses" value={effectiveSummary.expenses.toString()} tone="destructive" icon={<ArrowUpFromLine className="h-3 w-3" />} />
+                <Stat label="Transfers" value={effectiveSummary.transfers.toString()} tone="cyan" icon={<Repeat className="h-3 w-3" />} />
+                <Stat label="Buys" value={effectiveSummary.buys.toString()} tone="success" icon={<TrendingUp className="h-3 w-3" />} />
+                <Stat label="Sells" value={effectiveSummary.sells.toString()} tone="warning" icon={<TrendingDown className="h-3 w-3" />} />
+                <Stat label="Goal +" value={effectiveSummary.goalContributions.toString()} tone="cyan" icon={<Target className="h-3 w-3" />} />
+                <Stat label="Acct open" value={effectiveSummary.accountOpens.toString()} tone="muted" icon={<Wallet className="h-3 w-3" />} />
+                <Stat label="Asset open" value={effectiveSummary.assetOpens.toString()} tone="muted" icon={<Coins className="h-3 w-3" />} />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                <Stat label="Inflow" value={formatCurrency(parsed.summary.inflow, ccy)} tone="success" />
-                <Stat label="Outflow" value={formatCurrency(parsed.summary.outflow, ccy)} tone="destructive" />
-                <Stat label="Net impact" value={formatCurrency(parsed.summary.net, ccy)} tone={parsed.summary.net >= 0 ? "success" : "destructive"} />
-                <Stat label="Duplicates" value={(parsed.summary.duplicateCount ?? 0).toString()} tone={(parsed.summary.duplicateCount ?? 0) > 0 ? "warning" : "muted"} />
+                <Stat label="Inflow" value={formatCurrency(effectiveSummary.inflow, ccy)} tone="success" />
+                <Stat label="Outflow" value={formatCurrency(effectiveSummary.outflow, ccy)} tone="destructive" />
+                <Stat label="Net impact" value={formatCurrency(effectiveSummary.net, ccy)} tone={effectiveSummary.net >= 0 ? "success" : "destructive"} />
+                <Stat label="Duplicates" value={(effectiveSummary.duplicateCount ?? 0).toString()} tone={(effectiveSummary.duplicateCount ?? 0) > 0 ? "warning" : "muted"} />
               </div>
             </div>
           )}
         </Card>
       </div>
+
+      {/* QUICK ADD */}
+      <QuickActions onPick={handleQuickPick} />
 
       {/* SYNTAX GUIDE */}
       <SyntaxGuide onInsert={insertSnippet} />
@@ -506,11 +510,44 @@ function ImportPage() {
       )}
 
       {/* PREVIEW */}
-      {parsed && parsed.entries.length > 0 && (
+      {parsed && effectiveEntries.length > 0 && (
         <Card className="glass p-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-border/40 text-sm font-semibold flex items-center justify-between">
-            <span>Preview ({parsed.entries.length})</span>
-            <span className="text-xs text-muted-foreground font-normal">Review every row before confirming</span>
+          <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between gap-2 flex-wrap">
+            <div className="text-sm font-semibold">
+              Preview ({filteredEntries.length}{filteredEntries.length !== effectiveEntries.length ? ` of ${effectiveEntries.length}` : ""})
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                <Input
+                  value={search} onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search rows…"
+                  className="h-7 pl-7 pr-7 text-xs w-44"
+                />
+                {search && (
+                  <button onClick={() => setSearch("")} className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              <FilterChip active={issueFilter === "all" && kindFilter === "all"} onClick={() => { setIssueFilter("all"); setKindFilter("all"); }}>All</FilterChip>
+              <FilterChip active={issueFilter === "issues"} onClick={() => setIssueFilter(issueFilter === "issues" ? "all" : "issues")}>Issues</FilterChip>
+              <FilterChip active={issueFilter === "duplicates"} onClick={() => setIssueFilter(issueFilter === "duplicates" ? "all" : "duplicates")}>Duplicates</FilterChip>
+              <FilterChip active={issueFilter === "unresolved"} onClick={() => setIssueFilter(issueFilter === "unresolved" ? "all" : "unresolved")}>Unresolved</FilterChip>
+              <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as any)}
+                className="h-7 px-2 rounded-md bg-card/60 border border-border/40 text-xs">
+                <option value="all">Any kind</option>
+                <option value="deposit">Deposits</option>
+                <option value="expense">Expenses</option>
+                <option value="transfer">Transfers</option>
+                <option value="buy">Buys</option>
+                <option value="sell">Sells</option>
+                <option value="goal_contribution">Goal contribs</option>
+                <option value="goal_create">Goal create</option>
+                <option value="account_open">Account opens</option>
+                <option value="asset_open">Asset opens</option>
+              </select>
+            </div>
           </div>
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs">
@@ -522,22 +559,27 @@ function ImportPage() {
                   <th className="px-3 py-2 text-right">Amount</th>
                   <th className="px-3 py-2 text-left">Description</th>
                   <th className="px-3 py-2 text-left">Status</th>
+                  <th className="px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody>
-                {parsed.entries.map((e, i) => (
-                  <EntryRow key={i} e={e} ccy={ccy} issues={rowIssues(e)} onFix={openIssue} />
+                {filteredEntries.map((e, i) => (
+                  <EntryRow key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
                 ))}
               </tbody>
             </table>
           </div>
           <div className="md:hidden divide-y divide-border/40">
-            {parsed.entries.map((e, i) => (
-              <EntryCard key={i} e={e} ccy={ccy} issues={rowIssues(e)} onFix={openIssue} />
+            {filteredEntries.map((e, i) => (
+              <EntryCard key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
             ))}
           </div>
+          {filteredEntries.length === 0 && (
+            <div className="p-6 text-center text-xs text-muted-foreground">No rows match the current filters.</div>
+          )}
         </Card>
       )}
+
 
       {/* HISTORY */}
       <Card className="glass p-4">
