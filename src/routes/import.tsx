@@ -232,8 +232,8 @@ function ImportPage() {
 
 
   const canImport =
-    parsed && parsed.entries.length > 0 &&
-    parsed.entries.some((x) => x.severity !== "error");
+    parsed && effectiveEntries.length > 0 &&
+    effectiveEntries.some((x) => x.severity !== "error");
 
   function handleAcctResolved(r: AcctResolveResult) {
     if (r.kind === "ignored") {
@@ -265,24 +265,25 @@ function ImportPage() {
     try {
       const res = await executeImport({
         sourceText: text,
-        entries: parsed.entries,
-        summary: parsed.summary,
+        entries: effectiveEntries,
+        summary: effectiveSummary,
         label: label || undefined,
         skipDuplicates,
       });
       setLastResult({
         imported: res.imported, failed: res.failed,
-        inflow: parsed.summary.inflow,
-        outflow: parsed.summary.outflow,
-        net: parsed.summary.net,
+        inflow: effectiveSummary.inflow,
+        outflow: effectiveSummary.outflow,
+        net: effectiveSummary.net,
       });
       toast.success(`Imported ${res.imported} entries${res.failed ? ` (${res.failed} failed)` : ""}`);
-      setText(""); setLabel("");
+      setText(""); setLabel(""); setOverrides({});
       await refreshBatches();
     } catch (e: any) {
       toast.error(e?.message ?? "Import failed");
     } finally { setIsImporting(false); }
   }
+
 
   async function handleRollback(id: string) {
     if (!confirm("Roll back this import batch? All transactions created by it will be voided.")) return;
