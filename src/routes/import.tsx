@@ -797,8 +797,9 @@ function amountCell(e: ParsedEntry, ccy: string) {
   return <span className={cn("font-mono tabular-nums", color)}>{sign}{formatCurrency(e.amount, ccy)}</span>;
 }
 
-function EntryRow({ e, ccy, issues, onFix }: {
-  e: ParsedEntry; ccy: string; issues: ImportIssue[]; onFix: (i: ImportIssue) => void;
+function EntryRow({ e, ccy, edited, issues, onFix, onEdit }: {
+  e: ParsedEntry; ccy: string; edited: boolean; issues: ImportIssue[];
+  onFix: (i: ImportIssue) => void; onEdit: () => void;
 }) {
   const rowTone = e.severity === "error" ? "bg-destructive/5" : e.severity === "warning" ? "bg-warning/5" : "";
   return (
@@ -819,6 +820,7 @@ function EntryRow({ e, ccy, issues, onFix }: {
           <div className="flex items-center gap-1.5 flex-wrap">
             {statusBadge(e)}
             {confidenceBadge(e)}
+            {edited && <Badge variant="outline" className="text-[10px] border-cyan/40 text-cyan">edited</Badge>}
             {issues.map((iss, i) => (
               <Button key={i} size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => onFix(iss)}>
                 <Wrench className="h-2.5 w-2.5 mr-1" />Fix {iss.kind === "unknown_account" ? "account" : iss.kind === "unknown_asset" ? "asset" : "goal"}
@@ -833,33 +835,45 @@ function EntryRow({ e, ccy, issues, onFix }: {
           )}
         </div>
       </td>
+      <td className="px-2 py-2 align-top">
+        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onEdit} title="Edit row">
+          <Pencil className="h-3 w-3" />
+        </Button>
+      </td>
     </tr>
   );
 }
 
-function EntryCard({ e, ccy, issues, onFix }: {
-  e: ParsedEntry; ccy: string; issues: ImportIssue[]; onFix: (i: ImportIssue) => void;
+function EntryCard({ e, ccy, edited, issues, onFix, onEdit }: {
+  e: ParsedEntry; ccy: string; edited: boolean; issues: ImportIssue[];
+  onFix: (i: ImportIssue) => void; onEdit: () => void;
 }) {
   const tone = e.severity === "error" ? "bg-destructive/5" : e.severity === "warning" ? "bg-warning/5" : "";
   return (
     <div className={cn("p-3 space-y-1.5", tone)}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs min-w-0">
           {kindIcon(e.kind)} <span className="capitalize font-medium">{e.kind.replace("_", " ")}</span>
           <span className="text-muted-foreground">·</span>
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground truncate">
             {new Date(e.timestamp).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">{confidenceBadge(e)}{statusBadge(e)}</div>
+        <div className="flex items-center gap-1 shrink-0">
+          {confidenceBadge(e)}{statusBadge(e)}
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onEdit}>
+            <Pencil className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
-      <div className="flex items-center justify-between text-xs">
-        <span className="truncate">{detailLabel(e)}</span>
-        <span className="font-mono font-semibold">{amountCell(e, ccy)}</span>
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="truncate min-w-0">{detailLabel(e)}</span>
+        <span className="font-mono font-semibold shrink-0">{amountCell(e, ccy)}</span>
       </div>
-      {(e.description || e.category) && (
-        <div className="text-[11px] text-muted-foreground">
-          {e.description}{e.description && e.category ? " · " : ""}{e.category}
+      {(e.description || e.category || edited) && (
+        <div className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap">
+          {edited && <Badge variant="outline" className="text-[10px] border-cyan/40 text-cyan">edited</Badge>}
+          <span className="truncate">{e.description}{e.description && e.category ? " · " : ""}{e.category}</span>
         </div>
       )}
       {(e.errors.length > 0 || e.warnings.length > 0) && (
@@ -876,3 +890,20 @@ function EntryCard({ e, ccy, issues, onFix }: {
     </div>
   );
 }
+
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "h-7 px-2.5 rounded-md text-[11px] border transition",
+        active
+          ? "border-cyan/40 bg-cyan/10 text-cyan"
+          : "border-border/40 bg-card/40 text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
