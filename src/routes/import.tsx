@@ -324,6 +324,20 @@ function ImportPage() {
     setText((t) => (t.trim() ? t + "\n" + code : code));
   }
 
+  function handleQuickPick(a: QuickAction["kind"]) {
+    if (a === "open-account") setWizardTab("account");
+    else if (a === "open-asset") setWizardTab("asset");
+    else if (a === "open-goal") setWizardTab("goal");
+    else setQuickKind(a as QuickKind);
+  }
+
+  function saveOverride(lineNo: number, o: EntryEditOverride) {
+    setOverrides((p) => ({ ...p, [lineNo]: o }));
+  }
+
+  const editEntry = editLine != null ? effectiveEntries.find((e) => e.lineNo === editLine) ?? null : null;
+
+
   return (
     <div className="space-y-6">
       <PageHeader
