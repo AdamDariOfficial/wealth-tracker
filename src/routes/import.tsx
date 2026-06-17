@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   FileText, Play, RotateCcw, AlertTriangle, CheckCircle2, ArrowDownToLine,
   ArrowUpFromLine, Repeat, History, Sparkles, Wrench, Link2, Plus,
-  TrendingUp, TrendingDown, Target, Wallet, Coins,
+  TrendingUp, TrendingDown, Target, Wallet, Coins, Search, X, Pencil,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
@@ -13,14 +13,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useAccounts, useAssets, useTransactions } from "@/hooks/use-ledger";
+import { useAccounts, useAssets, useTransactions, useHoldings } from "@/hooks/use-ledger";
 import { useUserTable } from "@/hooks/use-user-table";
 import {
-  parseImportText, groupImportIssues,
-  type ParsedEntry, type ImportIssue, type ImportAlias,
+  parseImportText, groupImportIssues, applyEntryOverride, recomputeBatchAfterEdits,
+  type ParsedEntry, type ImportIssue, type ImportAlias, type EntryEditOverride,
 } from "@/lib/import-parser";
 import { executeImport, rollbackImport } from "@/lib/import-engine";
 import { computeImportHealth, healthTierLabel, type HealthReport } from "@/lib/import-health";
+import { simulateImpact } from "@/lib/import-analytics";
 import { formatMoney } from "@/lib/format-currency";
 const formatCurrency = (v: number, currency: string) => formatMoney(v, { currency });
 import { useAuth } from "@/lib/auth-store";
@@ -28,9 +29,15 @@ import { cn } from "@/lib/utils";
 import { IssueResolveModal, type ResolveResult as AcctResolveResult } from "@/components/import/IssueResolveModal";
 import { AssetResolveModal, GoalResolveModal, type ResolveResult } from "@/components/import/EntityResolveModals";
 import { SyntaxGuide } from "@/components/import/SyntaxGuide";
+import { ImpactPreview } from "@/components/import/ImpactPreview";
+import { OpeningPositionWizard, type WizardTab } from "@/components/import/OpeningPositionWizard";
+import { QuickEntryDialog, type QuickKind } from "@/components/import/QuickEntryDialog";
+import { QuickActions, type QuickAction } from "@/components/import/QuickActions";
+import { InlineEditDialog } from "@/components/import/InlineEditDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/import")({ component: ImportPage });
+
 
 type ImportBatch = {
   id: string; source_text: string;
@@ -41,7 +48,7 @@ type ImportBatch = {
   rolled_back_at: string | null;
 };
 
-type GoalRow = { id: string; name: string };
+type GoalRow = { id: string; name: string; current_amount: number; target_amount: number };
 
 const EXAMPLE = `Lunedì 11/05/26 00:00
 +240 Cash Wallet, salary
@@ -68,6 +75,7 @@ function ImportPage() {
   const { rows: accounts } = useAccounts();
   const { rows: assets } = useAssets();
   const { rows: existingTx } = useTransactions();
+  const { holdings } = useHoldings();
   const { rows: goals } = useUserTable<GoalRow>("goals", { col: "name", asc: true });
   const { rows: batches, refresh: refreshBatches } = useUserTable<ImportBatch>("import_batches", {
     col: "created_at", asc: false,
@@ -85,6 +93,19 @@ function ImportPage() {
   const [resolveAcctIssue, setResolveAcctIssue] = useState<ImportIssue | null>(null);
   const [resolveAssetIssue, setResolveAssetIssue] = useState<ImportIssue | null>(null);
   const [resolveGoalIssue, setResolveGoalIssue] = useState<ImportIssue | null>(null);
+
+  // Phase B: inline overrides (per lineNo).
+  const [overrides, setOverrides] = useState<Record<number, EntryEditOverride>>({});
+  const [editLine, setEditLine] = useState<number | null>(null);
+
+  // Phase B: filters.
+  const [search, setSearch] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | ParsedEntry["kind"]>("all");
+  const [issueFilter, setIssueFilter] = useState<"all" | "issues" | "duplicates" | "unresolved">("all");
+
+  // Phase B: wizards.
+  const [wizardTab, setWizardTab] = useState<WizardTab | null>(null);
+  const [quickKind, setQuickKind] = useState<QuickKind | null>(null);
 
   const [defaultAccountId, setDefaultAccountId] = useState<string>(() => {
     if (typeof window === "undefined") return "";
@@ -113,6 +134,9 @@ function ImportPage() {
     setAliases(data ?? []);
   }
 
+  // Reset overrides when text is cleared.
+  useEffect(() => { if (!text.trim()) setOverrides({}); }, [text]);
+
   const parsed = useMemo(() => {
     if (!text.trim()) return null;
     return parseImportText({
@@ -136,30 +160,80 @@ function ImportPage() {
     });
   }, [text, accounts, assets, goals, existingTx, aliases, ignoredAccts, ignoredAssets, ignoredGoals, defaultAccountId]);
 
+  // Apply overrides, then re-run duplicate/health pass to keep validation live.
+  const { entries: effectiveEntries, summary: effectiveSummary } = useMemo(() => {
+    if (!parsed) return { entries: [] as ParsedEntry[], summary: null as any };
+    const overridden = parsed.entries.map((e) => {
+      const o = overrides[e.lineNo];
+      return o ? applyEntryOverride(e, accounts, assets, goals, o) : e;
+    });
+    const existing = existingTx.map((t) => ({
+      id: t.id,
+      execution_timestamp: t.execution_timestamp,
+      fiat_value: Number(t.fiat_value),
+      source_account_id: t.source_account_id,
+      destination_account_id: t.destination_account_id,
+      note: t.note,
+    }));
+    const summary = recomputeBatchAfterEdits(overridden, existing);
+    return { entries: overridden, summary };
+  }, [parsed, overrides, accounts, assets, goals, existingTx]);
+
   const issues = useMemo<ImportIssue[]>(
-    () => parsed ? groupImportIssues(parsed.entries, accounts, assets, goals) : [],
-    [parsed, accounts, assets, goals],
+    () => parsed ? groupImportIssues(effectiveEntries, accounts, assets, goals) : [],
+    [parsed, effectiveEntries, accounts, assets, goals],
   );
 
   const health = useMemo<HealthReport | null>(
-    () => parsed ? computeImportHealth(parsed.entries, issues) : null,
-    [parsed, issues],
+    () => parsed ? computeImportHealth(effectiveEntries, issues) : null,
+    [parsed, effectiveEntries, issues],
+  );
+
+  const impact = useMemo(
+    () => parsed ? simulateImpact({
+      entries: effectiveEntries, accounts, assets, holdings,
+      goals: goals.map((g) => ({ id: g.id, name: g.name, current_amount: Number(g.current_amount ?? 0), target_amount: Number(g.target_amount ?? 0) })),
+    }) : null,
+    [parsed, effectiveEntries, accounts, assets, holdings, goals],
   );
 
   const counts = useMemo(() => {
-    if (!parsed) return { ready: 0, warning: 0, error: 0 };
+    if (!effectiveEntries.length) return { ready: 0, warning: 0, error: 0 };
     let r = 0, w = 0, e = 0;
-    for (const x of parsed.entries) {
+    for (const x of effectiveEntries) {
       if (x.severity === "error") e++;
       else if (x.severity === "warning") w++;
       else r++;
     }
     return { ready: r, warning: w, error: e };
-  }, [parsed]);
+  }, [effectiveEntries]);
+
+  // Phase B: filtered preview rows (filtering does NOT affect impact/health).
+  const filteredEntries = useMemo(() => {
+    let rows = effectiveEntries;
+    if (kindFilter !== "all") rows = rows.filter((e) => e.kind === kindFilter);
+    if (issueFilter === "issues") rows = rows.filter((e) => e.severity === "error" || e.warnings.length > 0);
+    else if (issueFilter === "duplicates") rows = rows.filter((e) => !!(e.duplicateOf || e.duplicateOfLine));
+    else if (issueFilter === "unresolved")
+      rows = rows.filter((e) => e.unresolvedAccounts.length || e.unresolvedAssets.length || e.unresolvedGoals.length);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      rows = rows.filter((e) =>
+        e.raw.toLowerCase().includes(q) ||
+        (e.description ?? "").toLowerCase().includes(q) ||
+        (e.category ?? "").toLowerCase().includes(q) ||
+        (e.account?.matchedName ?? e.account?.raw ?? "").toLowerCase().includes(q) ||
+        (e.asset?.matchedSymbol ?? e.asset?.raw ?? "").toLowerCase().includes(q) ||
+        (e.goal?.matchedName ?? e.goal?.raw ?? "").toLowerCase().includes(q),
+      );
+    }
+    return rows;
+  }, [effectiveEntries, kindFilter, issueFilter, search]);
+
 
   const canImport =
-    parsed && parsed.entries.length > 0 &&
-    parsed.entries.some((x) => x.severity !== "error");
+    parsed && effectiveEntries.length > 0 &&
+    effectiveEntries.some((x) => x.severity !== "error");
 
   function handleAcctResolved(r: AcctResolveResult) {
     if (r.kind === "ignored") {
@@ -191,24 +265,25 @@ function ImportPage() {
     try {
       const res = await executeImport({
         sourceText: text,
-        entries: parsed.entries,
-        summary: parsed.summary,
+        entries: effectiveEntries,
+        summary: effectiveSummary,
         label: label || undefined,
         skipDuplicates,
       });
       setLastResult({
         imported: res.imported, failed: res.failed,
-        inflow: parsed.summary.inflow,
-        outflow: parsed.summary.outflow,
-        net: parsed.summary.net,
+        inflow: effectiveSummary.inflow,
+        outflow: effectiveSummary.outflow,
+        net: effectiveSummary.net,
       });
       toast.success(`Imported ${res.imported} entries${res.failed ? ` (${res.failed} failed)` : ""}`);
-      setText(""); setLabel("");
+      setText(""); setLabel(""); setOverrides({});
       await refreshBatches();
     } catch (e: any) {
       toast.error(e?.message ?? "Import failed");
     } finally { setIsImporting(false); }
   }
+
 
   async function handleRollback(id: string) {
     if (!confirm("Roll back this import batch? All transactions created by it will be voided.")) return;
@@ -248,6 +323,20 @@ function ImportPage() {
   function insertSnippet(code: string) {
     setText((t) => (t.trim() ? t + "\n" + code : code));
   }
+
+  function handleQuickPick(a: QuickAction["kind"]) {
+    if (a === "open-account") setWizardTab("account");
+    else if (a === "open-asset") setWizardTab("asset");
+    else if (a === "open-goal") setWizardTab("goal");
+    else setQuickKind(a as QuickKind);
+  }
+
+  function saveOverride(lineNo: number, o: EntryEditOverride) {
+    setOverrides((p) => ({ ...p, [lineNo]: o }));
+  }
+
+  const editEntry = editLine != null ? effectiveEntries.find((e) => e.lineNo === editLine) ?? null : null;
+
 
   return (
     <div className="space-y-6">
@@ -356,31 +445,35 @@ function ImportPage() {
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">simulation · no writes yet</span>
               </div>
               {health && <HealthCard health={health} />}
+              {impact && <ImpactPreview impact={impact} ccy={ccy} />}
               <div className="grid grid-cols-3 gap-2 text-xs">
-                <Stat label="Rows" value={parsed.summary.total.toString()} />
+                <Stat label="Rows" value={effectiveSummary.total.toString()} />
                 <Stat label="Ready" value={counts.ready.toString()} tone="success" />
                 <Stat label="Blocking" value={counts.error.toString()} tone={counts.error ? "destructive" : "muted"} />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                <Stat label="Deposits" value={parsed.summary.deposits.toString()} tone="success" icon={<ArrowDownToLine className="h-3 w-3" />} />
-                <Stat label="Expenses" value={parsed.summary.expenses.toString()} tone="destructive" icon={<ArrowUpFromLine className="h-3 w-3" />} />
-                <Stat label="Transfers" value={parsed.summary.transfers.toString()} tone="cyan" icon={<Repeat className="h-3 w-3" />} />
-                <Stat label="Buys" value={parsed.summary.buys.toString()} tone="success" icon={<TrendingUp className="h-3 w-3" />} />
-                <Stat label="Sells" value={parsed.summary.sells.toString()} tone="warning" icon={<TrendingDown className="h-3 w-3" />} />
-                <Stat label="Goal +" value={parsed.summary.goalContributions.toString()} tone="cyan" icon={<Target className="h-3 w-3" />} />
-                <Stat label="Acct open" value={parsed.summary.accountOpens.toString()} tone="muted" icon={<Wallet className="h-3 w-3" />} />
-                <Stat label="Asset open" value={parsed.summary.assetOpens.toString()} tone="muted" icon={<Coins className="h-3 w-3" />} />
+                <Stat label="Deposits" value={effectiveSummary.deposits.toString()} tone="success" icon={<ArrowDownToLine className="h-3 w-3" />} />
+                <Stat label="Expenses" value={effectiveSummary.expenses.toString()} tone="destructive" icon={<ArrowUpFromLine className="h-3 w-3" />} />
+                <Stat label="Transfers" value={effectiveSummary.transfers.toString()} tone="cyan" icon={<Repeat className="h-3 w-3" />} />
+                <Stat label="Buys" value={effectiveSummary.buys.toString()} tone="success" icon={<TrendingUp className="h-3 w-3" />} />
+                <Stat label="Sells" value={effectiveSummary.sells.toString()} tone="warning" icon={<TrendingDown className="h-3 w-3" />} />
+                <Stat label="Goal +" value={effectiveSummary.goalContributions.toString()} tone="cyan" icon={<Target className="h-3 w-3" />} />
+                <Stat label="Acct open" value={effectiveSummary.accountOpens.toString()} tone="muted" icon={<Wallet className="h-3 w-3" />} />
+                <Stat label="Asset open" value={effectiveSummary.assetOpens.toString()} tone="muted" icon={<Coins className="h-3 w-3" />} />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                <Stat label="Inflow" value={formatCurrency(parsed.summary.inflow, ccy)} tone="success" />
-                <Stat label="Outflow" value={formatCurrency(parsed.summary.outflow, ccy)} tone="destructive" />
-                <Stat label="Net impact" value={formatCurrency(parsed.summary.net, ccy)} tone={parsed.summary.net >= 0 ? "success" : "destructive"} />
-                <Stat label="Duplicates" value={(parsed.summary.duplicateCount ?? 0).toString()} tone={(parsed.summary.duplicateCount ?? 0) > 0 ? "warning" : "muted"} />
+                <Stat label="Inflow" value={formatCurrency(effectiveSummary.inflow, ccy)} tone="success" />
+                <Stat label="Outflow" value={formatCurrency(effectiveSummary.outflow, ccy)} tone="destructive" />
+                <Stat label="Net impact" value={formatCurrency(effectiveSummary.net, ccy)} tone={effectiveSummary.net >= 0 ? "success" : "destructive"} />
+                <Stat label="Duplicates" value={(effectiveSummary.duplicateCount ?? 0).toString()} tone={(effectiveSummary.duplicateCount ?? 0) > 0 ? "warning" : "muted"} />
               </div>
             </div>
           )}
         </Card>
       </div>
+
+      {/* QUICK ADD */}
+      <QuickActions onPick={handleQuickPick} />
 
       {/* SYNTAX GUIDE */}
       <SyntaxGuide onInsert={insertSnippet} />
@@ -431,11 +524,44 @@ function ImportPage() {
       )}
 
       {/* PREVIEW */}
-      {parsed && parsed.entries.length > 0 && (
+      {parsed && effectiveEntries.length > 0 && (
         <Card className="glass p-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-border/40 text-sm font-semibold flex items-center justify-between">
-            <span>Preview ({parsed.entries.length})</span>
-            <span className="text-xs text-muted-foreground font-normal">Review every row before confirming</span>
+          <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between gap-2 flex-wrap">
+            <div className="text-sm font-semibold">
+              Preview ({filteredEntries.length}{filteredEntries.length !== effectiveEntries.length ? ` of ${effectiveEntries.length}` : ""})
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                <Input
+                  value={search} onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search rows…"
+                  className="h-7 pl-7 pr-7 text-xs w-44"
+                />
+                {search && (
+                  <button onClick={() => setSearch("")} className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              <FilterChip active={issueFilter === "all" && kindFilter === "all"} onClick={() => { setIssueFilter("all"); setKindFilter("all"); }}>All</FilterChip>
+              <FilterChip active={issueFilter === "issues"} onClick={() => setIssueFilter(issueFilter === "issues" ? "all" : "issues")}>Issues</FilterChip>
+              <FilterChip active={issueFilter === "duplicates"} onClick={() => setIssueFilter(issueFilter === "duplicates" ? "all" : "duplicates")}>Duplicates</FilterChip>
+              <FilterChip active={issueFilter === "unresolved"} onClick={() => setIssueFilter(issueFilter === "unresolved" ? "all" : "unresolved")}>Unresolved</FilterChip>
+              <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as any)}
+                className="h-7 px-2 rounded-md bg-card/60 border border-border/40 text-xs">
+                <option value="all">Any kind</option>
+                <option value="deposit">Deposits</option>
+                <option value="expense">Expenses</option>
+                <option value="transfer">Transfers</option>
+                <option value="buy">Buys</option>
+                <option value="sell">Sells</option>
+                <option value="goal_contribution">Goal contribs</option>
+                <option value="goal_create">Goal create</option>
+                <option value="account_open">Account opens</option>
+                <option value="asset_open">Asset opens</option>
+              </select>
+            </div>
           </div>
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs">
@@ -447,22 +573,27 @@ function ImportPage() {
                   <th className="px-3 py-2 text-right">Amount</th>
                   <th className="px-3 py-2 text-left">Description</th>
                   <th className="px-3 py-2 text-left">Status</th>
+                  <th className="px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody>
-                {parsed.entries.map((e, i) => (
-                  <EntryRow key={i} e={e} ccy={ccy} issues={rowIssues(e)} onFix={openIssue} />
+                {filteredEntries.map((e, i) => (
+                  <EntryRow key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
                 ))}
               </tbody>
             </table>
           </div>
           <div className="md:hidden divide-y divide-border/40">
-            {parsed.entries.map((e, i) => (
-              <EntryCard key={i} e={e} ccy={ccy} issues={rowIssues(e)} onFix={openIssue} />
+            {filteredEntries.map((e, i) => (
+              <EntryCard key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
             ))}
           </div>
+          {filteredEntries.length === 0 && (
+            <div className="p-6 text-center text-xs text-muted-foreground">No rows match the current filters.</div>
+          )}
         </Card>
       )}
+
 
       {/* HISTORY */}
       <Card className="glass p-4">
@@ -524,9 +655,33 @@ function ImportPage() {
         issue={resolveGoalIssue}
         onResolved={handleEntityResolved}
       />
+
+      <OpeningPositionWizard
+        open={wizardTab !== null}
+        defaultTab={wizardTab ?? "account"}
+        onClose={() => setWizardTab(null)}
+        onInsert={insertSnippet}
+      />
+      <QuickEntryDialog
+        open={quickKind !== null}
+        kind={quickKind ?? "deposit"}
+        onClose={() => setQuickKind(null)}
+        onInsert={insertSnippet}
+      />
+      <InlineEditDialog
+        open={editEntry !== null}
+        entry={editEntry}
+        override={editEntry ? (overrides[editEntry.lineNo] ?? {}) : {}}
+        accounts={accounts}
+        assets={assets}
+        goals={goals.map((g) => ({ id: g.id, name: g.name }))}
+        onClose={() => setEditLine(null)}
+        onSave={(o) => { if (editEntry) saveOverride(editEntry.lineNo, o); }}
+      />
     </div>
   );
 }
+
 
 function normLoose(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -666,8 +821,9 @@ function amountCell(e: ParsedEntry, ccy: string) {
   return <span className={cn("font-mono tabular-nums", color)}>{sign}{formatCurrency(e.amount, ccy)}</span>;
 }
 
-function EntryRow({ e, ccy, issues, onFix }: {
-  e: ParsedEntry; ccy: string; issues: ImportIssue[]; onFix: (i: ImportIssue) => void;
+function EntryRow({ e, ccy, edited, issues, onFix, onEdit }: {
+  e: ParsedEntry; ccy: string; edited: boolean; issues: ImportIssue[];
+  onFix: (i: ImportIssue) => void; onEdit: () => void;
 }) {
   const rowTone = e.severity === "error" ? "bg-destructive/5" : e.severity === "warning" ? "bg-warning/5" : "";
   return (
@@ -688,6 +844,7 @@ function EntryRow({ e, ccy, issues, onFix }: {
           <div className="flex items-center gap-1.5 flex-wrap">
             {statusBadge(e)}
             {confidenceBadge(e)}
+            {edited && <Badge variant="outline" className="text-[10px] border-cyan/40 text-cyan">edited</Badge>}
             {issues.map((iss, i) => (
               <Button key={i} size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => onFix(iss)}>
                 <Wrench className="h-2.5 w-2.5 mr-1" />Fix {iss.kind === "unknown_account" ? "account" : iss.kind === "unknown_asset" ? "asset" : "goal"}
@@ -702,33 +859,45 @@ function EntryRow({ e, ccy, issues, onFix }: {
           )}
         </div>
       </td>
+      <td className="px-2 py-2 align-top">
+        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onEdit} title="Edit row">
+          <Pencil className="h-3 w-3" />
+        </Button>
+      </td>
     </tr>
   );
 }
 
-function EntryCard({ e, ccy, issues, onFix }: {
-  e: ParsedEntry; ccy: string; issues: ImportIssue[]; onFix: (i: ImportIssue) => void;
+function EntryCard({ e, ccy, edited, issues, onFix, onEdit }: {
+  e: ParsedEntry; ccy: string; edited: boolean; issues: ImportIssue[];
+  onFix: (i: ImportIssue) => void; onEdit: () => void;
 }) {
   const tone = e.severity === "error" ? "bg-destructive/5" : e.severity === "warning" ? "bg-warning/5" : "";
   return (
     <div className={cn("p-3 space-y-1.5", tone)}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs min-w-0">
           {kindIcon(e.kind)} <span className="capitalize font-medium">{e.kind.replace("_", " ")}</span>
           <span className="text-muted-foreground">·</span>
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground truncate">
             {new Date(e.timestamp).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">{confidenceBadge(e)}{statusBadge(e)}</div>
+        <div className="flex items-center gap-1 shrink-0">
+          {confidenceBadge(e)}{statusBadge(e)}
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onEdit}>
+            <Pencil className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
-      <div className="flex items-center justify-between text-xs">
-        <span className="truncate">{detailLabel(e)}</span>
-        <span className="font-mono font-semibold">{amountCell(e, ccy)}</span>
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="truncate min-w-0">{detailLabel(e)}</span>
+        <span className="font-mono font-semibold shrink-0">{amountCell(e, ccy)}</span>
       </div>
-      {(e.description || e.category) && (
-        <div className="text-[11px] text-muted-foreground">
-          {e.description}{e.description && e.category ? " · " : ""}{e.category}
+      {(e.description || e.category || edited) && (
+        <div className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap">
+          {edited && <Badge variant="outline" className="text-[10px] border-cyan/40 text-cyan">edited</Badge>}
+          <span className="truncate">{e.description}{e.description && e.category ? " · " : ""}{e.category}</span>
         </div>
       )}
       {(e.errors.length > 0 || e.warnings.length > 0) && (
@@ -745,3 +914,20 @@ function EntryCard({ e, ccy, issues, onFix }: {
     </div>
   );
 }
+
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "h-7 px-2.5 rounded-md text-[11px] border transition",
+        active
+          ? "border-cyan/40 bg-cyan/10 text-cyan"
+          : "border-border/40 bg-card/40 text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+

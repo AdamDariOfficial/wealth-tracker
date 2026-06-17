@@ -737,3 +737,196 @@ export function groupAccountIssues(entries: ParsedEntry[], accounts: AccountLike
 }
 
 export { tryParseDate };
+
+// ============================================================
+// Inline editing helpers (Phase B — Inline Correction Center)
+// ============================================================
+
+export interface EntryEditOverride {
+  accountId?: string | null;
+  fromAccountId?: string | null;
+  toAccountId?: string | null;
+  assetId?: string | null;
+  goalId?: string | null;
+  amount?: number;
+  quantity?: number;
+  price?: number;
+  targetAmount?: number;
+  timestamp?: string;
+  description?: string | null;
+  category?: string | null;
+  tags?: string[];
+}
+
+function refForAccount(id: string | null, accounts: AccountLike[]): AccountRef | undefined {
+  if (!id) return undefined;
+  const a = accounts.find((x) => x.id === id);
+  if (!a) return undefined;
+  return { raw: a.name, matchedId: a.id, matchedName: a.name, confidence: 1, candidates: [{ id: a.id, name: a.name, score: 1 }] };
+}
+function refForAsset(id: string | null, assets: AssetLike[]): AssetRefExt | undefined {
+  if (!id) return undefined;
+  const a = assets.find((x) => x.id === id);
+  if (!a) return undefined;
+  return { raw: a.symbol, matchedId: a.id, matchedSymbol: a.symbol, confidence: 1 };
+}
+function refForGoal(id: string | null, goals: GoalLike[]): GoalRef | undefined {
+  if (!id) return undefined;
+  const g = goals.find((x) => x.id === id);
+  if (!g) return undefined;
+  return { raw: g.name, matchedId: g.id, matchedName: g.name, confidence: 1 };
+}
+
+/** Recompute confidence + severity from refs/errors/warnings (mirrors `finalize`). */
+function finalizeEdited(e: ParsedEntry): ParsedEntry {
+  const confs: number[] = [];
+  if (e.account) confs.push(e.account.matchedId ? e.account.confidence : 0);
+  if (e.fromAccount) confs.push(e.fromAccount.matchedId ? e.fromAccount.confidence : 0);
+  if (e.toAccount) confs.push(e.toAccount.matchedId ? e.toAccount.confidence : 0);
+  if (e.asset) confs.push(e.asset.matchedId ? e.asset.confidence : 0);
+  if (e.goal) confs.push(e.goal.matchedId ? e.goal.confidence : 0);
+  let conf = confs.length ? Math.min(...confs) : (e.kind === "goal_create" ? 1 : 0);
+  if (e.duplicateOf) conf = Math.min(conf, 0.5);
+  if (e.errors.length) conf = 0;
+  e.confidence = +conf.toFixed(2);
+  e.confidenceTier = conf >= 0.9 ? "high" : conf >= 0.6 ? "medium" : "low";
+  if (e.errors.length) e.severity = "error";
+  else if (e.warnings.length || e.duplicateOf) e.severity = "warning";
+  else e.severity = "ready";
+  return e;
+}
+
+/** Apply user override to a parsed entry → returns a new entry with fresh validation. */
+export function applyEntryOverride(
+  original: ParsedEntry,
+  accounts: AccountLike[],
+  assets: AssetLike[],
+  goals: GoalLike[],
+  o: EntryEditOverride,
+): ParsedEntry {
+  const e: ParsedEntry = {
+    ...original,
+    account: original.account ? { ...original.account } : undefined,
+    fromAccount: original.fromAccount ? { ...original.fromAccount } : undefined,
+    toAccount: original.toAccount ? { ...original.toAccount } : undefined,
+    asset: original.asset ? { ...original.asset } : undefined,
+    goal: original.goal ? { ...original.goal } : undefined,
+    errors: [],
+    warnings: [],
+    unresolvedAccounts: [],
+    unresolvedAssets: [],
+    unresolvedGoals: [],
+    duplicateOf: null,
+    duplicateScore: undefined,
+    duplicateReasons: undefined,
+    duplicateOfLine: undefined,
+  };
+
+  if (o.accountId !== undefined) e.account = refForAccount(o.accountId, accounts);
+  if (o.fromAccountId !== undefined) e.fromAccount = refForAccount(o.fromAccountId, accounts);
+  if (o.toAccountId !== undefined) e.toAccount = refForAccount(o.toAccountId, accounts);
+  if (o.assetId !== undefined) e.asset = refForAsset(o.assetId, assets);
+  if (o.goalId !== undefined) e.goal = refForGoal(o.goalId, goals);
+  if (o.amount !== undefined) e.amount = o.amount;
+  if (o.quantity !== undefined) e.quantity = o.quantity;
+  if (o.price !== undefined) e.price = o.price;
+  if (o.targetAmount !== undefined) e.targetAmount = o.targetAmount;
+  if (o.timestamp !== undefined) e.timestamp = o.timestamp;
+  if (o.description !== undefined) e.description = o.description;
+  if (o.category !== undefined) e.category = o.category;
+
+  // Recompute amount for buy/sell/asset_open when qty*price form.
+  if (e.kind === "buy" || e.kind === "sell" || e.kind === "asset_open") {
+    const q = e.quantity ?? 0;
+    const p = e.price ?? 0;
+    if (q > 0 && p > 0) e.amount = q * p;
+  }
+
+  // Revalidate required references.
+  if (["deposit", "expense", "account_open"].includes(e.kind) && !e.account?.matchedId)
+    e.errors.push("Missing account");
+  if (e.kind === "transfer") {
+    if (!e.fromAccount?.matchedId) e.errors.push("Missing source account");
+    if (!e.toAccount?.matchedId) e.errors.push("Missing destination account");
+    if (e.fromAccount?.matchedId && e.fromAccount.matchedId === e.toAccount?.matchedId)
+      e.errors.push("Source and destination are identical");
+  }
+  if (["buy", "sell"].includes(e.kind)) {
+    if (!e.asset?.matchedId) e.errors.push("Missing asset");
+    if (!e.account?.matchedId) e.errors.push("Missing account");
+    if (!e.quantity || e.quantity <= 0) e.errors.push("Invalid quantity");
+  }
+  if (e.kind === "asset_open") {
+    if (!e.asset?.matchedId) e.errors.push("Missing asset");
+    if (!e.quantity || e.quantity <= 0) e.errors.push("Invalid quantity");
+  }
+  if (e.kind === "goal_create") {
+    if (!e.targetAmount || e.targetAmount <= 0) e.errors.push("Invalid target");
+  }
+  if (e.kind === "goal_contribution") {
+    if (!e.goal?.matchedId) e.errors.push("Missing goal");
+    if (!e.amount || e.amount <= 0) e.errors.push("Invalid amount");
+  }
+  if (["deposit", "expense", "transfer", "account_open"].includes(e.kind)) {
+    if (!e.amount || e.amount <= 0) e.errors.push("Invalid amount");
+  }
+
+  return finalizeEdited(e);
+}
+
+/** Re-run duplicate detection + summary after edits. Returns a fresh summary. */
+export function recomputeBatchAfterEdits(
+  entries: ParsedEntry[],
+  existingTransactions: ParseInput["existingTransactions"] = [],
+): ParseSummary {
+  const dupInputs: DupInput[] = entries.map((e) => ({
+    lineNo: e.lineNo, kind: e.kind, timestamp: e.timestamp, amount: e.amount,
+    accountId: e.account?.matchedId ?? null,
+    fromAccountId: e.fromAccount?.matchedId ?? null,
+    toAccountId: e.toAccount?.matchedId ?? null,
+    description: e.description ?? null,
+  }));
+  const dupMap = detectDuplicates(dupInputs, existingTransactions);
+  for (const e of entries) {
+    e.duplicateOf = null;
+    e.duplicateScore = undefined;
+    e.duplicateReasons = undefined;
+    e.duplicateOfLine = undefined;
+    const m = dupMap.get(e.lineNo);
+    if (m) {
+      e.duplicateOf = m.existingId ?? null;
+      e.duplicateScore = m.score;
+      e.duplicateReasons = m.reasons;
+      if (m.duplicateOfLine) e.duplicateOfLine = m.duplicateOfLine;
+      e.warnings = e.warnings.filter((w) => !w.startsWith("Possible duplicate"));
+      e.warnings.push(
+        m.existingId
+          ? `Possible duplicate (${Math.round(m.score * 100)}%) of existing transaction — ${m.reasons.join(", ")}`
+          : `Possible duplicate of row ${m.duplicateOfLine} (${Math.round(m.score * 100)}%)`,
+      );
+    }
+    finalizeEdited(e);
+  }
+
+  let inflow = 0, outflow = 0;
+  const c = { deposits: 0, expenses: 0, transfers: 0, buys: 0, sells: 0, goalCreates: 0, goalContributions: 0, accountOpens: 0, assetOpens: 0 };
+  let errorCount = 0, warningCount = 0, duplicateCount = 0;
+  for (const e of entries) {
+    if (e.severity === "error") errorCount++;
+    warningCount += e.warnings.length;
+    if (e.duplicateOf || e.duplicateOfLine) duplicateCount++;
+    switch (e.kind) {
+      case "deposit": c.deposits++; inflow += e.amount; break;
+      case "expense": c.expenses++; outflow += e.amount; break;
+      case "transfer": c.transfers++; break;
+      case "buy": c.buys++; outflow += e.amount; break;
+      case "sell": c.sells++; inflow += e.amount; break;
+      case "goal_create": c.goalCreates++; break;
+      case "goal_contribution": c.goalContributions++; break;
+      case "account_open": c.accountOpens++; break;
+      case "asset_open": c.assetOpens++; break;
+    }
+  }
+  return { total: entries.length, ...c, inflow, outflow, net: inflow - outflow, errorCount, warningCount, duplicateCount };
+}
+
