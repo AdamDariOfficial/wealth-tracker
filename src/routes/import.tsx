@@ -48,7 +48,7 @@ type ImportBatch = {
   rolled_back_at: string | null;
 };
 
-type GoalRow = { id: string; name: string };
+type GoalRow = { id: string; name: string; current_amount: number; target_amount: number };
 
 const EXAMPLE = `Lunedì 11/05/26 00:00
 +240 Cash Wallet, salary
