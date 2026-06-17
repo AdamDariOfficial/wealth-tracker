@@ -75,6 +75,7 @@ function ImportPage() {
   const { rows: accounts } = useAccounts();
   const { rows: assets } = useAssets();
   const { rows: existingTx } = useTransactions();
+  const { holdings } = useHoldings();
   const { rows: goals } = useUserTable<GoalRow>("goals", { col: "name", asc: true });
   const { rows: batches, refresh: refreshBatches } = useUserTable<ImportBatch>("import_batches", {
     col: "created_at", asc: false,
@@ -92,6 +93,19 @@ function ImportPage() {
   const [resolveAcctIssue, setResolveAcctIssue] = useState<ImportIssue | null>(null);
   const [resolveAssetIssue, setResolveAssetIssue] = useState<ImportIssue | null>(null);
   const [resolveGoalIssue, setResolveGoalIssue] = useState<ImportIssue | null>(null);
+
+  // Phase B: inline overrides (per lineNo).
+  const [overrides, setOverrides] = useState<Record<number, EntryEditOverride>>({});
+  const [editLine, setEditLine] = useState<number | null>(null);
+
+  // Phase B: filters.
+  const [search, setSearch] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | ParsedEntry["kind"]>("all");
+  const [issueFilter, setIssueFilter] = useState<"all" | "issues" | "duplicates" | "unresolved">("all");
+
+  // Phase B: wizards.
+  const [wizardTab, setWizardTab] = useState<WizardTab | null>(null);
+  const [quickKind, setQuickKind] = useState<QuickKind | null>(null);
 
   const [defaultAccountId, setDefaultAccountId] = useState<string>(() => {
     if (typeof window === "undefined") return "";
@@ -120,6 +134,9 @@ function ImportPage() {
     setAliases(data ?? []);
   }
 
+  // Reset overrides when text is cleared.
+  useEffect(() => { if (!text.trim()) setOverrides({}); }, [text]);
+
   const parsed = useMemo(() => {
     if (!text.trim()) return null;
     return parseImportText({
@@ -143,26 +160,76 @@ function ImportPage() {
     });
   }, [text, accounts, assets, goals, existingTx, aliases, ignoredAccts, ignoredAssets, ignoredGoals, defaultAccountId]);
 
+  // Apply overrides, then re-run duplicate/health pass to keep validation live.
+  const { entries: effectiveEntries, summary: effectiveSummary } = useMemo(() => {
+    if (!parsed) return { entries: [] as ParsedEntry[], summary: null as any };
+    const overridden = parsed.entries.map((e) => {
+      const o = overrides[e.lineNo];
+      return o ? applyEntryOverride(e, accounts, assets, goals, o) : e;
+    });
+    const existing = existingTx.map((t) => ({
+      id: t.id,
+      execution_timestamp: t.execution_timestamp,
+      fiat_value: Number(t.fiat_value),
+      source_account_id: t.source_account_id,
+      destination_account_id: t.destination_account_id,
+      note: t.note,
+    }));
+    const summary = recomputeBatchAfterEdits(overridden, existing);
+    return { entries: overridden, summary };
+  }, [parsed, overrides, accounts, assets, goals, existingTx]);
+
   const issues = useMemo<ImportIssue[]>(
-    () => parsed ? groupImportIssues(parsed.entries, accounts, assets, goals) : [],
-    [parsed, accounts, assets, goals],
+    () => parsed ? groupImportIssues(effectiveEntries, accounts, assets, goals) : [],
+    [parsed, effectiveEntries, accounts, assets, goals],
   );
 
   const health = useMemo<HealthReport | null>(
-    () => parsed ? computeImportHealth(parsed.entries, issues) : null,
-    [parsed, issues],
+    () => parsed ? computeImportHealth(effectiveEntries, issues) : null,
+    [parsed, effectiveEntries, issues],
+  );
+
+  const impact = useMemo(
+    () => parsed ? simulateImpact({
+      entries: effectiveEntries, accounts, assets, holdings,
+      goals: goals.map((g) => ({ id: g.id, name: g.name, current_amount: Number(g.current_amount ?? 0), target_amount: Number(g.target_amount ?? 0) })),
+    }) : null,
+    [parsed, effectiveEntries, accounts, assets, holdings, goals],
   );
 
   const counts = useMemo(() => {
-    if (!parsed) return { ready: 0, warning: 0, error: 0 };
+    if (!effectiveEntries.length) return { ready: 0, warning: 0, error: 0 };
     let r = 0, w = 0, e = 0;
-    for (const x of parsed.entries) {
+    for (const x of effectiveEntries) {
       if (x.severity === "error") e++;
       else if (x.severity === "warning") w++;
       else r++;
     }
     return { ready: r, warning: w, error: e };
-  }, [parsed]);
+  }, [effectiveEntries]);
+
+  // Phase B: filtered preview rows (filtering does NOT affect impact/health).
+  const filteredEntries = useMemo(() => {
+    let rows = effectiveEntries;
+    if (kindFilter !== "all") rows = rows.filter((e) => e.kind === kindFilter);
+    if (issueFilter === "issues") rows = rows.filter((e) => e.severity === "error" || e.warnings.length > 0);
+    else if (issueFilter === "duplicates") rows = rows.filter((e) => !!(e.duplicateOf || e.duplicateOfLine));
+    else if (issueFilter === "unresolved")
+      rows = rows.filter((e) => e.unresolvedAccounts.length || e.unresolvedAssets.length || e.unresolvedGoals.length);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      rows = rows.filter((e) =>
+        e.raw.toLowerCase().includes(q) ||
+        (e.description ?? "").toLowerCase().includes(q) ||
+        (e.category ?? "").toLowerCase().includes(q) ||
+        (e.account?.matchedName ?? e.account?.raw ?? "").toLowerCase().includes(q) ||
+        (e.asset?.matchedSymbol ?? e.asset?.raw ?? "").toLowerCase().includes(q) ||
+        (e.goal?.matchedName ?? e.goal?.raw ?? "").toLowerCase().includes(q),
+      );
+    }
+    return rows;
+  }, [effectiveEntries, kindFilter, issueFilter, search]);
+
 
   const canImport =
     parsed && parsed.entries.length > 0 &&
