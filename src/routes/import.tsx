@@ -655,9 +655,33 @@ function ImportPage() {
         issue={resolveGoalIssue}
         onResolved={handleEntityResolved}
       />
+
+      <OpeningPositionWizard
+        open={wizardTab !== null}
+        defaultTab={wizardTab ?? "account"}
+        onClose={() => setWizardTab(null)}
+        onInsert={insertSnippet}
+      />
+      <QuickEntryDialog
+        open={quickKind !== null}
+        kind={quickKind ?? "deposit"}
+        onClose={() => setQuickKind(null)}
+        onInsert={insertSnippet}
+      />
+      <InlineEditDialog
+        open={editEntry !== null}
+        entry={editEntry}
+        override={editEntry ? (overrides[editEntry.lineNo] ?? {}) : {}}
+        accounts={accounts}
+        assets={assets}
+        goals={goals.map((g) => ({ id: g.id, name: g.name }))}
+        onClose={() => setEditLine(null)}
+        onSave={(o) => { if (editEntry) saveOverride(editEntry.lineNo, o); }}
+      />
     </div>
   );
 }
+
 
 function normLoose(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
