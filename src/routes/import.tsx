@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   FileText, Play, RotateCcw, AlertTriangle, CheckCircle2, ArrowDownToLine,
   ArrowUpFromLine, Repeat, History, Sparkles, Wrench, Link2, Plus,
-  TrendingUp, TrendingDown, Target, Wallet, Coins,
+  TrendingUp, TrendingDown, Target, Wallet, Coins, Search, X, Pencil,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
@@ -13,14 +13,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useAccounts, useAssets, useTransactions } from "@/hooks/use-ledger";
+import { useAccounts, useAssets, useTransactions, useHoldings } from "@/hooks/use-ledger";
 import { useUserTable } from "@/hooks/use-user-table";
 import {
-  parseImportText, groupImportIssues,
-  type ParsedEntry, type ImportIssue, type ImportAlias,
+  parseImportText, groupImportIssues, applyEntryOverride, recomputeBatchAfterEdits,
+  type ParsedEntry, type ImportIssue, type ImportAlias, type EntryEditOverride,
 } from "@/lib/import-parser";
 import { executeImport, rollbackImport } from "@/lib/import-engine";
 import { computeImportHealth, healthTierLabel, type HealthReport } from "@/lib/import-health";
+import { simulateImpact } from "@/lib/import-analytics";
 import { formatMoney } from "@/lib/format-currency";
 const formatCurrency = (v: number, currency: string) => formatMoney(v, { currency });
 import { useAuth } from "@/lib/auth-store";
@@ -28,9 +29,15 @@ import { cn } from "@/lib/utils";
 import { IssueResolveModal, type ResolveResult as AcctResolveResult } from "@/components/import/IssueResolveModal";
 import { AssetResolveModal, GoalResolveModal, type ResolveResult } from "@/components/import/EntityResolveModals";
 import { SyntaxGuide } from "@/components/import/SyntaxGuide";
+import { ImpactPreview } from "@/components/import/ImpactPreview";
+import { OpeningPositionWizard, type WizardTab } from "@/components/import/OpeningPositionWizard";
+import { QuickEntryDialog, type QuickKind } from "@/components/import/QuickEntryDialog";
+import { QuickActions, type QuickAction } from "@/components/import/QuickActions";
+import { InlineEditDialog } from "@/components/import/InlineEditDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/import")({ component: ImportPage });
+
 
 type ImportBatch = {
   id: string; source_text: string;
