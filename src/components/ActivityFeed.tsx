@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeftRight, ShieldCheck, BarChart3, Target, Wallet, Activity as ActivityIcon,
-  AlertTriangle, ChevronDown,
+  AlertTriangle, ChevronDown, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActivityFeed, type ActivityEvent, type ActivityKind, type ActivityFilters } from "@/hooks/use-activity-feed";
