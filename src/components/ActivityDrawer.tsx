@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeftRight, ShieldCheck, BarChart3, Target, Wallet,
   AlertTriangle, Activity as ActivityIcon, ChevronRight,
-  ExternalLink, Eye, EyeOff, Hash, GitBranch,
+  ExternalLink, Eye, EyeOff, Hash, GitBranch, Upload,
 } from "lucide-react";
 import type { ActivityEvent, ActivityKind } from "@/hooks/use-activity-feed";
 import { useActivityFeed } from "@/hooks/use-activity-feed";
@@ -25,6 +25,7 @@ const ICON: Record<ActivityKind, typeof ActivityIcon> = {
   weekly_report: BarChart3,
   goal: Target,
   account: Wallet,
+  import: Upload,
 };
 
 const TONE_RING: Record<string, string> = {
