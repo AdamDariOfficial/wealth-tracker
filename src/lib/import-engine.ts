@@ -194,7 +194,7 @@ export async function executeImport(args: {
 }
 
 // module-scoped Set used to dedupe assets across the loop
-const assets = new Set<string>();
+const assetSeen = new Set<string>();
 
 // ----- per-kind executors (return the created tx id(s)) -----
 
