@@ -695,6 +695,12 @@ function ImportPage() {
         goals={goals.map((g) => ({ id: g.id, name: g.name }))}
         onClose={() => setEditLine(null)}
         onSave={(o) => { if (editEntry) saveOverride(editEntry.lineNo, o); }}
+      <RollbackDialog
+        open={!!rollbackBatchId}
+        onClose={() => setRollbackBatchId(null)}
+        batchId={rollbackBatchId ?? ""}
+        ccy={ccy}
+        onDone={() => { void refreshBatches(); }}
       />
     </div>
   );
