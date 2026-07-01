@@ -62,6 +62,12 @@ type AuditRow = {
   message: string | null; diff: Record<string, unknown> | null;
   source: string | null; created_at: string;
 };
+type ImportBatchRow = {
+  id: string; label: string | null;
+  imported_count: number; error_count: number;
+  summary: any; created_at: string;
+  rolled_back_at: string | null;
+};
 
 function txEvent(t: Transaction, accounts: Account[], assets: Asset[]): ActivityEvent {
   const isTransfer = t.transaction_type === "transfer" || !!t.transfer_group_id;
