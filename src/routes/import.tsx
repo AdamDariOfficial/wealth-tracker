@@ -19,7 +19,7 @@ import {
   parseImportText, groupImportIssues, applyEntryOverride, recomputeBatchAfterEdits,
   type ParsedEntry, type ImportIssue, type ImportAlias, type EntryEditOverride,
 } from "@/lib/import-parser";
-import { executeImport, rollbackImport } from "@/lib/import-engine";
+import { executeImport } from "@/lib/import-engine";
 import { computeImportHealth, healthTierLabel, type HealthReport } from "@/lib/import-health";
 import { simulateImpact } from "@/lib/import-analytics";
 import { formatMoney } from "@/lib/format-currency";
