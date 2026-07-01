@@ -151,9 +151,11 @@ export async function executeImport(args: {
           rec.goalContribution = e.amount;
           imported++; break;
         }
-        default:
-          rec.error = `Unsupported kind: ${e.kind}`;
-          errors.push({ lineNo: e.lineNo, raw: e.raw, message: rec.error });
+        default: {
+          const msg = `Unsupported kind: ${e.kind}`;
+          rec.error = msg;
+          errors.push({ lineNo: e.lineNo, raw: e.raw, message: msg });
+        }
       }
     } catch (err: any) {
       const msg = err?.message ?? String(err);
