@@ -265,7 +265,7 @@ export function useActivityFeed(opts: ActivityFilters = {}) {
     if (opts.limit) out = out.slice(0, opts.limit);
     return out;
   }, [
-    txs, accounts, assets, reports, goals, audits,
+    txs, accounts, assets, reports, goals, audits, batches,
     opts.limit, opts.kinds?.join(","), opts.accountId, opts.assetId,
     opts.transferGroupId, opts.tag, opts.dateFrom, opts.dateTo, opts.q,
   ]);
