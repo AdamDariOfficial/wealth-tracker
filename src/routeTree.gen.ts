@@ -32,6 +32,7 @@ import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountsIdRouteImport } from './routes/accounts.$id'
+import { Route as ImportBatchesBatchIdRouteImport } from './routes/import.batches.$batchId'
 
 const TransactionsRoute = TransactionsRouteImport.update({
   id: '/transactions',
@@ -148,6 +149,11 @@ const AccountsIdRoute = AccountsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AccountsRoute,
 } as any)
+const ImportBatchesBatchIdRoute = ImportBatchesBatchIdRouteImport.update({
+  id: '/batches/$batchId',
+  path: '/batches/$batchId',
+  getParentRoute: () => ImportRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -161,7 +167,7 @@ export interface FileRoutesByFullPath {
   '/dev-tools': typeof DevToolsRoute
   '/etf': typeof EtfRoute
   '/goals': typeof GoalsRoute
-  '/import': typeof ImportRoute
+  '/import': typeof ImportRouteWithChildren
   '/investments': typeof InvestmentsRoute
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/trading-capital': typeof TradingCapitalRoute
   '/transactions': typeof TransactionsRoute
   '/accounts/$id': typeof AccountsIdRoute
+  '/import/batches/$batchId': typeof ImportBatchesBatchIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -186,7 +193,7 @@ export interface FileRoutesByTo {
   '/dev-tools': typeof DevToolsRoute
   '/etf': typeof EtfRoute
   '/goals': typeof GoalsRoute
-  '/import': typeof ImportRoute
+  '/import': typeof ImportRouteWithChildren
   '/investments': typeof InvestmentsRoute
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/trading-capital': typeof TradingCapitalRoute
   '/transactions': typeof TransactionsRoute
   '/accounts/$id': typeof AccountsIdRoute
+  '/import/batches/$batchId': typeof ImportBatchesBatchIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -212,7 +220,7 @@ export interface FileRoutesById {
   '/dev-tools': typeof DevToolsRoute
   '/etf': typeof EtfRoute
   '/goals': typeof GoalsRoute
-  '/import': typeof ImportRoute
+  '/import': typeof ImportRouteWithChildren
   '/investments': typeof InvestmentsRoute
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/trading-capital': typeof TradingCapitalRoute
   '/transactions': typeof TransactionsRoute
   '/accounts/$id': typeof AccountsIdRoute
+  '/import/batches/$batchId': typeof ImportBatchesBatchIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -251,6 +260,7 @@ export interface FileRouteTypes {
     | '/trading-capital'
     | '/transactions'
     | '/accounts/$id'
+    | '/import/batches/$batchId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -276,6 +286,7 @@ export interface FileRouteTypes {
     | '/trading-capital'
     | '/transactions'
     | '/accounts/$id'
+    | '/import/batches/$batchId'
   id:
     | '__root__'
     | '/'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/trading-capital'
     | '/transactions'
     | '/accounts/$id'
+    | '/import/batches/$batchId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -315,7 +327,7 @@ export interface RootRouteChildren {
   DevToolsRoute: typeof DevToolsRoute
   EtfRoute: typeof EtfRoute
   GoalsRoute: typeof GoalsRoute
-  ImportRoute: typeof ImportRoute
+  ImportRoute: typeof ImportRouteWithChildren
   InvestmentsRoute: typeof InvestmentsRoute
   JournalRoute: typeof JournalRoute
   LoginRoute: typeof LoginRoute
@@ -491,6 +503,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountsIdRouteImport
       parentRoute: typeof AccountsRoute
     }
+    '/import/batches/$batchId': {
+      id: '/import/batches/$batchId'
+      path: '/batches/$batchId'
+      fullPath: '/import/batches/$batchId'
+      preLoaderRoute: typeof ImportBatchesBatchIdRouteImport
+      parentRoute: typeof ImportRoute
+    }
   }
 }
 
@@ -506,6 +525,17 @@ const AccountsRouteWithChildren = AccountsRoute._addFileChildren(
   AccountsRouteChildren,
 )
 
+interface ImportRouteChildren {
+  ImportBatchesBatchIdRoute: typeof ImportBatchesBatchIdRoute
+}
+
+const ImportRouteChildren: ImportRouteChildren = {
+  ImportBatchesBatchIdRoute: ImportBatchesBatchIdRoute,
+}
+
+const ImportRouteWithChildren =
+  ImportRoute._addFileChildren(ImportRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountsRoute: AccountsRouteWithChildren,
@@ -518,7 +548,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevToolsRoute: DevToolsRoute,
   EtfRoute: EtfRoute,
   GoalsRoute: GoalsRoute,
-  ImportRoute: ImportRoute,
+  ImportRoute: ImportRouteWithChildren,
   InvestmentsRoute: InvestmentsRoute,
   JournalRoute: JournalRoute,
   LoginRoute: LoginRoute,
