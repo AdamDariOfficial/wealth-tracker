@@ -136,7 +136,7 @@ export async function executeImport(args: {
         case "asset_open": {
           const { txId, assetId } = await openAssetTagged(e, tag, user_id);
           rec.txIds.push(txId); rec.assetId = assetId ?? undefined;
-          if (assetId && !assets.has(assetId)) { createdAssetIds.push(assetId); assets.add(assetId); }
+          if (assetId && !assetSeen.has(assetId)) { createdAssetIds.push(assetId); assetSeen.add(assetId); }
           imported++; break;
         }
         case "goal_create": {
