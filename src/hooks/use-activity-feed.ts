@@ -4,7 +4,7 @@ import { useUserTable } from "@/hooks/use-user-table";
 
 export type ActivityKind =
   | "transaction" | "transfer" | "reconciliation" | "audit"
-  | "weekly_report" | "goal" | "account";
+  | "weekly_report" | "goal" | "account" | "import";
 
 export type ActivityEvent = {
   id: string;
