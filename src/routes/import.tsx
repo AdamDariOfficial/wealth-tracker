@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -19,7 +19,7 @@ import {
   parseImportText, groupImportIssues, applyEntryOverride, recomputeBatchAfterEdits,
   type ParsedEntry, type ImportIssue, type ImportAlias, type EntryEditOverride,
 } from "@/lib/import-parser";
-import { executeImport, rollbackImport } from "@/lib/import-engine";
+import { executeImport } from "@/lib/import-engine";
 import { computeImportHealth, healthTierLabel, type HealthReport } from "@/lib/import-health";
 import { simulateImpact } from "@/lib/import-analytics";
 import { formatMoney } from "@/lib/format-currency";
@@ -34,6 +34,7 @@ import { OpeningPositionWizard, type WizardTab } from "@/components/import/Openi
 import { QuickEntryDialog, type QuickKind } from "@/components/import/QuickEntryDialog";
 import { QuickActions, type QuickAction } from "@/components/import/QuickActions";
 import { InlineEditDialog } from "@/components/import/InlineEditDialog";
+import { RollbackDialog } from "@/components/import/RollbackDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/import")({ component: ImportPage });
@@ -70,6 +71,7 @@ ACCOUNT Cash Wallet balance 1375
 ASSET VWCE qty 25 avg 128.45`;
 
 function ImportPage() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const ccy = profile?.currency ?? "USD";
   const { rows: accounts } = useAccounts();
@@ -276,23 +278,24 @@ function ImportPage() {
         outflow: effectiveSummary.outflow,
         net: effectiveSummary.net,
       });
-      toast.success(`Imported ${res.imported} entries${res.failed ? ` (${res.failed} failed)` : ""}`);
+      toast.success(`Imported ${res.imported} entries${res.failed ? ` (${res.failed} failed)` : ""}`, {
+        action: {
+          label: "View report",
+          onClick: () => navigate({ to: "/import/batches/$batchId", params: { batchId: res.batchId } }),
+        },
+      });
       setText(""); setLabel(""); setOverrides({});
       await refreshBatches();
+      // Auto-open the receipt so the user lands in the reconciliation view.
+      navigate({ to: "/import/batches/$batchId", params: { batchId: res.batchId } });
     } catch (e: any) {
       toast.error(e?.message ?? "Import failed");
     } finally { setIsImporting(false); }
   }
 
 
-  async function handleRollback(id: string) {
-    if (!confirm("Roll back this import batch? All transactions created by it will be voided.")) return;
-    try {
-      const r = await rollbackImport(id);
-      toast.success(`Rolled back ${r.voided} transactions`);
-      await refreshBatches();
-    } catch (e: any) { toast.error(e?.message ?? "Rollback failed"); }
-  }
+  const [rollbackBatchId, setRollbackBatchId] = useState<string | null>(null);
+  function openRollback(id: string) { setRollbackBatchId(id); }
 
   function openIssue(iss: ImportIssue) {
     if (iss.kind === "unknown_account") setResolveAcctIssue(iss);
@@ -604,29 +607,44 @@ function ImportPage() {
           <div className="text-xs text-muted-foreground py-6 text-center">No imports yet.</div>
         ) : (
           <div className="space-y-2">
-            {batches.map((b) => (
-              <div key={b.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/40 bg-card/40 flex-wrap">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">
-                    {b.label || `Import · ${new Date(b.created_at).toLocaleString()}`}
-                    {b.rolled_back_at && (
-                      <Badge variant="outline" className="ml-2 text-[10px]">rolled back</Badge>
+            {batches.map((b) => {
+              const health = b.summary?.healthScore ?? b.summary?.health?.score;
+              return (
+                <div key={b.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/40 bg-card/40 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate flex items-center gap-2 flex-wrap">
+                      <Link to="/import/batches/$batchId" params={{ batchId: b.id }} className="hover:text-cyan">
+                        {b.label || `Import · ${new Date(b.created_at).toLocaleString()}`}
+                      </Link>
+                      {b.rolled_back_at && <Badge variant="outline" className="text-[10px]">rolled back</Badge>}
+                      {health != null && <Badge variant="outline" className="text-[10px]">health {health}/100</Badge>}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {b.imported_count} imported · {b.error_count} errors
+                      {b.summary?.duplicates_skipped ? ` · ${b.summary.duplicates_skipped} dup skipped` : ""}
+                      {b.summary?.created_goals ? ` · ${b.summary.created_goals} goal${b.summary.created_goals === 1 ? "" : "s"}` : ""}
+                      {b.summary?.created_assets ? ` · ${b.summary.created_assets} asset${b.summary.created_assets === 1 ? "" : "s"}` : ""}
+                      {b.summary?.created_accounts ? ` · ${b.summary.created_accounts} account${b.summary.created_accounts === 1 ? "" : "s"}` : ""}
+                      {b.summary?.net != null && ` · net ${formatCurrency(Number(b.summary.net), ccy)}`}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link to="/import/batches/$batchId" params={{ batchId: b.id }}>View report</Link>
+                    </Button>
+                    <Button variant="ghost" size="sm"
+                      onClick={() => { setText(b.source_text ?? ""); toast.success("Loaded batch source into editor"); }}>
+                      Duplicate
+                    </Button>
+                    {!b.rolled_back_at && (
+                      <Button variant="ghost" size="sm" onClick={() => openRollback(b.id)}>
+                        <RotateCcw className="h-3.5 w-3.5 mr-1" /> Rollback
+                      </Button>
                     )}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {b.imported_count} imported · {b.error_count} errors
-                    {b.summary?.created_goals ? ` · ${b.summary.created_goals} goal${b.summary.created_goals === 1 ? "" : "s"}` : ""}
-                    {b.summary?.created_assets ? ` · ${b.summary.created_assets} asset${b.summary.created_assets === 1 ? "" : "s"}` : ""}
-                    {b.summary?.net != null && ` · net ${formatCurrency(Number(b.summary.net), ccy)}`}
-                  </div>
                 </div>
-                {!b.rolled_back_at && (
-                  <Button variant="ghost" size="sm" onClick={() => handleRollback(b.id)}>
-                    <RotateCcw className="h-3.5 w-3.5 mr-1" /> Rollback
-                  </Button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
@@ -677,6 +695,13 @@ function ImportPage() {
         goals={goals.map((g) => ({ id: g.id, name: g.name }))}
         onClose={() => setEditLine(null)}
         onSave={(o) => { if (editEntry) saveOverride(editEntry.lineNo, o); }}
+      />
+      <RollbackDialog
+        open={!!rollbackBatchId}
+        onClose={() => setRollbackBatchId(null)}
+        batchId={rollbackBatchId ?? ""}
+        ccy={ccy}
+        onDone={() => { void refreshBatches(); }}
       />
     </div>
   );

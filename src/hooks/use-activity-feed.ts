@@ -4,7 +4,7 @@ import { useUserTable } from "@/hooks/use-user-table";
 
 export type ActivityKind =
   | "transaction" | "transfer" | "reconciliation" | "audit"
-  | "weekly_report" | "goal" | "account";
+  | "weekly_report" | "goal" | "account" | "import";
 
 export type ActivityEvent = {
   id: string;
@@ -62,6 +62,12 @@ type AuditRow = {
   message: string | null; diff: Record<string, unknown> | null;
   source: string | null; created_at: string;
 };
+type ImportBatchRow = {
+  id: string; label: string | null;
+  imported_count: number; error_count: number;
+  summary: any; created_at: string;
+  rolled_back_at: string | null;
+};
 
 function txEvent(t: Transaction, accounts: Account[], assets: Asset[]): ActivityEvent {
   const isTransfer = t.transaction_type === "transfer" || !!t.transfer_group_id;
@@ -117,11 +123,51 @@ export function useActivityFeed(opts: ActivityFilters = {}) {
   const { rows: reports } = useUserTable<WeeklyReport>("weekly_reports", { col: "week_start", asc: false });
   const { rows: goals } = useUserTable<Goal>("goals", { col: "updated_at", asc: false });
   const { rows: audits } = useUserTable<AuditRow>("audit_log", { col: "created_at", asc: false });
+  const { rows: batches } = useUserTable<ImportBatchRow>("import_batches", { col: "created_at", asc: false });
 
   return useMemo(() => {
     const events: ActivityEvent[] = [];
 
     for (const t of txs) events.push(txEvent(t, accounts, assets));
+
+    for (const b of batches) {
+      const s = b.summary ?? {};
+      const at = s.imported_at ?? b.created_at;
+      const created = (s.created_accounts ?? 0) + (s.created_assets ?? 0) + (s.created_goals ?? 0);
+      events.push({
+        id: `import:${b.id}`,
+        kind: "import",
+        at,
+        title: b.rolled_back_at
+          ? `Import rolled back${b.label ? ` — ${b.label}` : ""}`
+          : `Imported ${b.imported_count} row${b.imported_count === 1 ? "" : "s"}${b.label ? ` — ${b.label}` : ""}`,
+        subtitle: [
+          b.error_count ? `${b.error_count} error${b.error_count === 1 ? "" : "s"}` : null,
+          s.duplicates_skipped ? `${s.duplicates_skipped} dup skipped` : null,
+          created ? `${created} entit${created === 1 ? "y" : "ies"} created` : null,
+          s.net != null ? `net ${Number(s.net).toFixed(2)}` : null,
+        ].filter(Boolean).join(" · "),
+        amount: s.net != null ? Number(s.net) : null,
+        tone: b.rolled_back_at ? "warning" : (b.error_count ? "warning" : "neutral"),
+        refs: {},
+        tags: [`import:${b.id}`],
+        meta: { batchId: b.id, health: s.healthScore ?? s.health?.score, summary: s },
+      });
+      for (const ev of (s.rollback_events ?? [])) {
+        events.push({
+          id: `import-rb:${b.id}:${ev.at}`,
+          kind: "import",
+          at: ev.at,
+          title: `Rollback · ${ev.scope?.mode ?? "batch"}`,
+          subtitle: `${ev.voidedTx ?? 0} voided · ${(ev.archivedAssets ?? 0) + (ev.archivedGoals ?? 0) + (ev.archivedAccounts ?? 0)} archived`,
+          tone: "warning",
+          refs: {},
+          tags: [`import:${b.id}`, "rollback"],
+          meta: { batchId: b.id, event: ev },
+        });
+      }
+    }
+
 
     for (const r of reports) {
       events.push({
@@ -219,7 +265,7 @@ export function useActivityFeed(opts: ActivityFilters = {}) {
     if (opts.limit) out = out.slice(0, opts.limit);
     return out;
   }, [
-    txs, accounts, assets, reports, goals, audits,
+    txs, accounts, assets, reports, goals, audits, batches,
     opts.limit, opts.kinds?.join(","), opts.accountId, opts.assetId,
     opts.transferGroupId, opts.tag, opts.dateFrom, opts.dateTo, opts.q,
   ]);
