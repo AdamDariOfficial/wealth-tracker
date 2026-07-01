@@ -34,6 +34,7 @@ import { OpeningPositionWizard, type WizardTab } from "@/components/import/Openi
 import { QuickEntryDialog, type QuickKind } from "@/components/import/QuickEntryDialog";
 import { QuickActions, type QuickAction } from "@/components/import/QuickActions";
 import { InlineEditDialog } from "@/components/import/InlineEditDialog";
+import { RollbackDialog } from "@/components/import/RollbackDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/import")({ component: ImportPage });
