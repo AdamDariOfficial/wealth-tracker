@@ -156,8 +156,9 @@ export async function executeImport(args: {
           errors.push({ lineNo: e.lineNo, raw: e.raw, message: rec.error });
       }
     } catch (err: any) {
-      rec.error = err?.message ?? String(err);
-      errors.push({ lineNo: e.lineNo, raw: e.raw, message: rec.error });
+      const msg = err?.message ?? String(err);
+      rec.error = msg;
+      errors.push({ lineNo: e.lineNo, raw: e.raw, message: msg });
     }
     rowRecords.push(rec);
   }
