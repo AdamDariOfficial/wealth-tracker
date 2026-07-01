@@ -71,6 +71,7 @@ ACCOUNT Cash Wallet balance 1375
 ASSET VWCE qty 25 avg 128.45`;
 
 function ImportPage() {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const ccy = profile?.currency ?? "USD";
   const { rows: accounts } = useAccounts();
