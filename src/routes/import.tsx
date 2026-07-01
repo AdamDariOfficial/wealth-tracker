@@ -278,23 +278,24 @@ function ImportPage() {
         outflow: effectiveSummary.outflow,
         net: effectiveSummary.net,
       });
-      toast.success(`Imported ${res.imported} entries${res.failed ? ` (${res.failed} failed)` : ""}`);
+      toast.success(`Imported ${res.imported} entries${res.failed ? ` (${res.failed} failed)` : ""}`, {
+        action: {
+          label: "View report",
+          onClick: () => navigate({ to: "/import/batches/$batchId", params: { batchId: res.batchId } }),
+        },
+      });
       setText(""); setLabel(""); setOverrides({});
       await refreshBatches();
+      // Auto-open the receipt so the user lands in the reconciliation view.
+      navigate({ to: "/import/batches/$batchId", params: { batchId: res.batchId } });
     } catch (e: any) {
       toast.error(e?.message ?? "Import failed");
     } finally { setIsImporting(false); }
   }
 
 
-  async function handleRollback(id: string) {
-    if (!confirm("Roll back this import batch? All transactions created by it will be voided.")) return;
-    try {
-      const r = await rollbackImport(id);
-      toast.success(`Rolled back ${r.voided} transactions`);
-      await refreshBatches();
-    } catch (e: any) { toast.error(e?.message ?? "Rollback failed"); }
-  }
+  const [rollbackBatchId, setRollbackBatchId] = useState<string | null>(null);
+  function openRollback(id: string) { setRollbackBatchId(id); }
 
   function openIssue(iss: ImportIssue) {
     if (iss.kind === "unknown_account") setResolveAcctIssue(iss);
