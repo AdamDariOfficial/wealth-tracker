@@ -16,6 +16,7 @@ const ICON: Record<ActivityKind, typeof ActivityIcon> = {
   weekly_report: BarChart3,
   goal: Target,
   account: Wallet,
+  import: Upload,
 };
 
 const TONE: Record<string, string> = {
