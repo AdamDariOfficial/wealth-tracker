@@ -93,6 +93,8 @@ export interface ParsedEntry {
   confidence: number;
   confidenceTier: "high" | "medium" | "low";
   usedDefaultAccount?: boolean;
+  /** account_open only: source name did not match an existing account — engine will create it. */
+  willCreateAccount?: boolean;
   duplicateOf?: string | null;
   duplicateOfLine?: number;
   duplicateScore?: number;
@@ -394,7 +396,11 @@ function parseEntryLine(
     const e: ParsedEntry = { ...base, kind: "account_open", amount: balance, account: acct, description: `Opening balance: ${acctRaw}` };
     if (!acct.matchedId) {
       if (ignoredAcct.has(norm(acctRaw))) e.warnings.push(`Skipped: unknown account "${acctRaw}"`);
-      else { e.errors.push(`Unknown account "${acctRaw}"`); e.unresolvedAccounts.push(acctRaw); }
+      else {
+        // Preferred path: engine will inline-create the account and track it.
+        e.willCreateAccount = true;
+        e.warnings.push(`Will create new account "${acctRaw}"`);
+      }
     }
     if (!Number.isFinite(balance)) e.errors.push("Invalid balance");
     return finalize(e);
