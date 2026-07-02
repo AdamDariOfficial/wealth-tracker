@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   FileText, Play, RotateCcw, AlertTriangle, CheckCircle2, ArrowDownToLine,
@@ -35,6 +35,7 @@ import { QuickEntryDialog, type QuickKind } from "@/components/import/QuickEntry
 import { QuickActions, type QuickAction } from "@/components/import/QuickActions";
 import { InlineEditDialog } from "@/components/import/InlineEditDialog";
 import { RollbackDialog } from "@/components/import/RollbackDialog";
+import { VirtualEntryList, VIRTUALIZE_THRESHOLD } from "@/components/import/VirtualEntryList";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/import")({ component: ImportPage });
@@ -84,9 +85,13 @@ function ImportPage() {
   });
 
   const [text, setText] = useState("");
+  // Phase D: defer parsing so typing large text stays smooth; parser reruns
+  // against the deferred snapshot after the browser is idle.
+  const deferredText = useDeferredValue(text);
   const [label, setLabel] = useState("");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
+  const [commitProgress, setCommitProgress] = useState<{ done: number; total: number } | null>(null);
   const [aliases, setAliases] = useState<ImportAlias[]>([]);
   const [ignoredAccts, setIgnoredAccts] = useState<string[]>([]);
   const [ignoredAssets, setIgnoredAssets] = useState<string[]>([]);
@@ -140,9 +145,9 @@ function ImportPage() {
   useEffect(() => { if (!text.trim()) setOverrides({}); }, [text]);
 
   const parsed = useMemo(() => {
-    if (!text.trim()) return null;
+    if (!deferredText.trim()) return null;
     return parseImportText({
-      text,
+      text: deferredText,
       accounts,
       assets,
       goals,
@@ -160,7 +165,8 @@ function ImportPage() {
         note: t.note,
       })),
     });
-  }, [text, accounts, assets, goals, existingTx, aliases, ignoredAccts, ignoredAssets, ignoredGoals, defaultAccountId]);
+  }, [deferredText, accounts, assets, goals, existingTx, aliases, ignoredAccts, ignoredAssets, ignoredGoals, defaultAccountId]);
+  const parsePending = deferredText !== text;
 
   // Apply overrides, then re-run duplicate/health pass to keep validation live.
   const { entries: effectiveEntries, summary: effectiveSummary } = useMemo(() => {
@@ -264,6 +270,7 @@ function ImportPage() {
   async function handleImport() {
     if (!parsed) return;
     setIsImporting(true);
+    setCommitProgress({ done: 0, total: effectiveEntries.length });
     try {
       const res = await executeImport({
         sourceText: text,
@@ -271,6 +278,7 @@ function ImportPage() {
         summary: effectiveSummary,
         label: label || undefined,
         skipDuplicates,
+        onProgress: (done, total) => setCommitProgress({ done, total }),
       });
       setLastResult({
         imported: res.imported, failed: res.failed,
@@ -290,7 +298,7 @@ function ImportPage() {
       navigate({ to: "/import/batches/$batchId", params: { batchId: res.batchId } });
     } catch (e: any) {
       toast.error(e?.message ?? "Import failed");
-    } finally { setIsImporting(false); }
+    } finally { setIsImporting(false); setCommitProgress(null); }
   }
 
 
@@ -428,12 +436,16 @@ function ImportPage() {
               )}
               <Button onClick={handleImport} disabled={!canImport || isImporting} size="sm">
                 <Play className="h-3.5 w-3.5 mr-1.5" />
-                {isImporting ? "Importing…" : counts.error > 0
+                {isImporting
+                  ? (commitProgress ? `Committing ${commitProgress.done}/${commitProgress.total}…` : "Importing…")
+                  : counts.error > 0
                   ? `Import ${counts.ready + counts.warning} ready` : "Confirm import"}
               </Button>
+              {parsePending && <span className="text-[10px] text-muted-foreground">Parsing…</span>}
             </div>
           </div>
         </Card>
+
 
         {/* DRY-RUN SUMMARY */}
         <Card className="glass p-4">
@@ -566,31 +578,44 @@ function ImportPage() {
               </select>
             </div>
           </div>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/30 text-muted-foreground uppercase tracking-wider">
-                <tr>
-                  <th className="px-3 py-2 text-left">When</th>
-                  <th className="px-3 py-2 text-left">Type</th>
-                  <th className="px-3 py-2 text-left">Detail</th>
-                  <th className="px-3 py-2 text-right">Amount</th>
-                  <th className="px-3 py-2 text-left">Description</th>
-                  <th className="px-3 py-2 text-left">Status</th>
-                  <th className="px-3 py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
+          {filteredEntries.length > VIRTUALIZE_THRESHOLD ? (
+            <VirtualEntryList
+              entries={filteredEntries}
+              overrides={overrides}
+              rowIssues={rowIssues}
+              renderRow={(e) => (
+                <EntryCard e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
+              )}
+            />
+          ) : (
+            <>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/30 text-muted-foreground uppercase tracking-wider">
+                    <tr>
+                      <th className="px-3 py-2 text-left">When</th>
+                      <th className="px-3 py-2 text-left">Type</th>
+                      <th className="px-3 py-2 text-left">Detail</th>
+                      <th className="px-3 py-2 text-right">Amount</th>
+                      <th className="px-3 py-2 text-left">Description</th>
+                      <th className="px-3 py-2 text-left">Status</th>
+                      <th className="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEntries.map((e, i) => (
+                      <EntryRow key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="md:hidden divide-y divide-border/40">
                 {filteredEntries.map((e, i) => (
-                  <EntryRow key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
+                  <EntryCard key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="md:hidden divide-y divide-border/40">
-            {filteredEntries.map((e, i) => (
-              <EntryCard key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
-            ))}
-          </div>
+              </div>
+            </>
+          )}
           {filteredEntries.length === 0 && (
             <div className="p-6 text-center text-xs text-muted-foreground">No rows match the current filters.</div>
           )}
