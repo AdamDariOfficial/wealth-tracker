@@ -140,17 +140,18 @@ export async function computeRollbackImpact(
     for (const id of createdAssetIds) {
       const { count, error } = await (supabase as any)
         .from("transactions").select("id", { count: "exact", head: true })
-        .eq("asset_id", id).not("tags", "cs", `{${tag}}`);
+        .eq("asset_id", id).not("tags", "cs", `{${tag}}`).is("voided_at", null);
       if (error) { blocked.push({ kind: "asset", id, reason: error.message }); continue; }
       if ((count ?? 0) > 0) blocked.push({ kind: "asset", id, reason: `${count} external transaction(s) reference this asset` });
       else archivableAssetIds.push(id);
     }
-    // Accounts: any tx (source or dest) outside this batch blocks archive.
+    // Accounts: any active tx (source or dest) outside this batch blocks archive.
     for (const id of createdAccountIds) {
       const { count } = await (supabase as any)
         .from("transactions").select("id", { count: "exact", head: true })
         .or(`source_account_id.eq.${id},destination_account_id.eq.${id}`)
-        .not("tags", "cs", `{${tag}}`);
+        .not("tags", "cs", `{${tag}}`)
+        .is("voided_at", null);
       if ((count ?? 0) > 0) blocked.push({ kind: "account", id, reason: `${count} external transaction(s)` });
       else archivableAccountIds.push(id);
     }
