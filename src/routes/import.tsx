@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   FileText, Play, RotateCcw, AlertTriangle, CheckCircle2, ArrowDownToLine,
@@ -35,6 +35,7 @@ import { QuickEntryDialog, type QuickKind } from "@/components/import/QuickEntry
 import { QuickActions, type QuickAction } from "@/components/import/QuickActions";
 import { InlineEditDialog } from "@/components/import/InlineEditDialog";
 import { RollbackDialog } from "@/components/import/RollbackDialog";
+import { VirtualEntryList, VIRTUALIZE_THRESHOLD } from "@/components/import/VirtualEntryList";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/import")({ component: ImportPage });
@@ -84,9 +85,13 @@ function ImportPage() {
   });
 
   const [text, setText] = useState("");
+  // Phase D: defer parsing so typing large text stays smooth; parser reruns
+  // against the deferred snapshot after the browser is idle.
+  const deferredText = useDeferredValue(text);
   const [label, setLabel] = useState("");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
+  const [commitProgress, setCommitProgress] = useState<{ done: number; total: number } | null>(null);
   const [aliases, setAliases] = useState<ImportAlias[]>([]);
   const [ignoredAccts, setIgnoredAccts] = useState<string[]>([]);
   const [ignoredAssets, setIgnoredAssets] = useState<string[]>([]);
@@ -140,9 +145,9 @@ function ImportPage() {
   useEffect(() => { if (!text.trim()) setOverrides({}); }, [text]);
 
   const parsed = useMemo(() => {
-    if (!text.trim()) return null;
+    if (!deferredText.trim()) return null;
     return parseImportText({
-      text,
+      text: deferredText,
       accounts,
       assets,
       goals,
@@ -160,7 +165,8 @@ function ImportPage() {
         note: t.note,
       })),
     });
-  }, [text, accounts, assets, goals, existingTx, aliases, ignoredAccts, ignoredAssets, ignoredGoals, defaultAccountId]);
+  }, [deferredText, accounts, assets, goals, existingTx, aliases, ignoredAccts, ignoredAssets, ignoredGoals, defaultAccountId]);
+  const parsePending = deferredText !== text;
 
   // Apply overrides, then re-run duplicate/health pass to keep validation live.
   const { entries: effectiveEntries, summary: effectiveSummary } = useMemo(() => {
@@ -264,6 +270,7 @@ function ImportPage() {
   async function handleImport() {
     if (!parsed) return;
     setIsImporting(true);
+    setCommitProgress({ done: 0, total: effectiveEntries.length });
     try {
       const res = await executeImport({
         sourceText: text,
@@ -271,6 +278,7 @@ function ImportPage() {
         summary: effectiveSummary,
         label: label || undefined,
         skipDuplicates,
+        onProgress: (done, total) => setCommitProgress({ done, total }),
       });
       setLastResult({
         imported: res.imported, failed: res.failed,
@@ -290,7 +298,7 @@ function ImportPage() {
       navigate({ to: "/import/batches/$batchId", params: { batchId: res.batchId } });
     } catch (e: any) {
       toast.error(e?.message ?? "Import failed");
-    } finally { setIsImporting(false); }
+    } finally { setIsImporting(false); setCommitProgress(null); }
   }
 
 
