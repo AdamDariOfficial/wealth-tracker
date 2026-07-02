@@ -58,6 +58,8 @@ export async function executeImport(args: {
   summary: ParseSummary;
   label?: string;
   skipDuplicates?: boolean;
+  /** Optional progress callback for large imports (Phase D UX). */
+  onProgress?: (done: number, total: number) => void;
 }): Promise<ImportResult> {
   const user_id = await uid();
   const { data: batch, error: bErr } = await (supabase as any)
@@ -129,8 +131,13 @@ export async function executeImport(args: {
           imported++; break;
         }
         case "account_open": {
-          const id = await openAccountTagged(e, tag, user_id);
-          rec.txIds.push(id); rec.accountId = e.account?.matchedId ?? undefined;
+          const { txId, accountId, createdAccountId } = await openAccountTagged(e, tag, user_id);
+          rec.txIds.push(txId); rec.accountId = accountId;
+          if (createdAccountId && !accountSeen.has(createdAccountId)) {
+            rec.createdAccountId = createdAccountId;
+            createdAccountIds.push(createdAccountId);
+            accountSeen.add(createdAccountId);
+          }
           imported++; break;
         }
         case "asset_open": {
@@ -163,11 +170,11 @@ export async function executeImport(args: {
       errors.push({ lineNo: e.lineNo, raw: e.raw, message: msg });
     }
     rowRecords.push(rec);
+    args.onProgress?.(rowRecords.length, args.entries.length);
   }
 
-  // Local sets to dedupe within this run (accounts/assets can't be created here yet,
-  // but placeholder for future inline account creation).
-  const _ = { createdAccountIds };
+  // Local dedupe sets are declared at module scope (accountSeen / assetSeen).
+  void 0;
 
   const patchedSummary = {
     ...args.summary,
@@ -181,7 +188,7 @@ export async function executeImport(args: {
     imported_at: new Date().toISOString(),
     row_records: rowRecords,
   };
-  void _;
+
 
   await (supabase as any)
     .from("import_batches")
@@ -196,8 +203,9 @@ export async function executeImport(args: {
   return { batchId, imported, failed: errors.length, errors };
 }
 
-// module-scoped Set used to dedupe assets across the loop
+// module-scoped Sets used to dedupe entities across the loop
 const assetSeen = new Set<string>();
+const accountSeen = new Set<string>();
 
 // ----- per-kind executors (return the created tx id(s)) -----
 
@@ -301,28 +309,40 @@ async function sellTagged(e: ParsedEntry, tag: string, user_id: string) {
   return data.id as string;
 }
 
-async function openAccountTagged(e: ParsedEntry, tag: string, user_id: string) {
-  if (!e.account?.matchedId) throw new Error("Account not resolved");
-  await recordManualAdjustment({
-    accountId: e.account.matchedId,
+async function openAccountTagged(
+  e: ParsedEntry, tag: string, user_id: string,
+): Promise<{ txId: string; accountId: string; createdAccountId?: string }> {
+  let accountId = e.account?.matchedId ?? null;
+  let createdAccountId: string | undefined;
+
+  // Inline-create the account when the parser flagged it as new.
+  if (!accountId) {
+    const name = (e.account?.raw ?? "New account").trim() || "New account";
+    const { data, error } = await (supabase as any)
+      .from("accounts")
+      .insert({ user_id, name, current_balance: 0 })
+      .select("id")
+      .single();
+    if (error) throw new Error(`Failed to create account "${name}": ${error.message}`);
+    accountId = data.id as string;
+    createdAccountId = accountId;
+  }
+
+  // recordManualAdjustment returns the tx id it just inserted — no query-back,
+  // no created_at ordering, no reliance on sequential execution.
+  const txId = await recordManualAdjustment({
+    accountId,
     newBalance: e.amount,
     note: e.description ?? "Opening balance (import)",
   });
-  const { data, error } = await (supabase as any)
-    .from("transactions")
-    .select("id")
-    .eq("user_id", user_id)
-    .eq("destination_account_id", e.account.matchedId)
-    .eq("transaction_type", "manual_adjustment")
-    .order("created_at", { ascending: false })
-    .limit(1);
-  if (error) throw error;
-  const id = data?.[0]?.id as string | undefined;
-  if (id) {
-    await (supabase as any).from("transactions")
-      .update({ tags: [tag, "opening_balance"] }).eq("id", id);
-  }
-  return id ?? "";
+
+  // Tag the exact tx we just created — deterministic and race-free.
+  const { error: tagErr } = await (supabase as any).from("transactions")
+    .update({ tags: [tag, "opening_balance"] })
+    .eq("id", txId);
+  if (tagErr) throw tagErr;
+
+  return { txId, accountId, createdAccountId };
 }
 
 async function openAssetTagged(e: ParsedEntry, tag: string, user_id: string) {
