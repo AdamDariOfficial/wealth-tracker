@@ -436,12 +436,16 @@ function ImportPage() {
               )}
               <Button onClick={handleImport} disabled={!canImport || isImporting} size="sm">
                 <Play className="h-3.5 w-3.5 mr-1.5" />
-                {isImporting ? "Importing…" : counts.error > 0
+                {isImporting
+                  ? (commitProgress ? `Committing ${commitProgress.done}/${commitProgress.total}…` : "Importing…")
+                  : counts.error > 0
                   ? `Import ${counts.ready + counts.warning} ready` : "Confirm import"}
               </Button>
+              {parsePending && <span className="text-[10px] text-muted-foreground">Parsing…</span>}
             </div>
           </div>
         </Card>
+
 
         {/* DRY-RUN SUMMARY */}
         <Card className="glass p-4">
@@ -574,31 +578,44 @@ function ImportPage() {
               </select>
             </div>
           </div>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/30 text-muted-foreground uppercase tracking-wider">
-                <tr>
-                  <th className="px-3 py-2 text-left">When</th>
-                  <th className="px-3 py-2 text-left">Type</th>
-                  <th className="px-3 py-2 text-left">Detail</th>
-                  <th className="px-3 py-2 text-right">Amount</th>
-                  <th className="px-3 py-2 text-left">Description</th>
-                  <th className="px-3 py-2 text-left">Status</th>
-                  <th className="px-3 py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
+          {filteredEntries.length > VIRTUALIZE_THRESHOLD ? (
+            <VirtualEntryList
+              entries={filteredEntries}
+              overrides={overrides}
+              rowIssues={rowIssues}
+              renderRow={(e) => (
+                <EntryCard e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
+              )}
+            />
+          ) : (
+            <>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/30 text-muted-foreground uppercase tracking-wider">
+                    <tr>
+                      <th className="px-3 py-2 text-left">When</th>
+                      <th className="px-3 py-2 text-left">Type</th>
+                      <th className="px-3 py-2 text-left">Detail</th>
+                      <th className="px-3 py-2 text-right">Amount</th>
+                      <th className="px-3 py-2 text-left">Description</th>
+                      <th className="px-3 py-2 text-left">Status</th>
+                      <th className="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEntries.map((e, i) => (
+                      <EntryRow key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="md:hidden divide-y divide-border/40">
                 {filteredEntries.map((e, i) => (
-                  <EntryRow key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
+                  <EntryCard key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="md:hidden divide-y divide-border/40">
-            {filteredEntries.map((e, i) => (
-              <EntryCard key={i} e={e} ccy={ccy} edited={!!overrides[e.lineNo]} issues={rowIssues(e)} onFix={openIssue} onEdit={() => setEditLine(e.lineNo)} />
-            ))}
-          </div>
+              </div>
+            </>
+          )}
           {filteredEntries.length === 0 && (
             <div className="p-6 text-center text-xs text-muted-foreground">No rows match the current filters.</div>
           )}
