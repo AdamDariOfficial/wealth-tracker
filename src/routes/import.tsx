@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   FileText, Play, RotateCcw, AlertTriangle, CheckCircle2, ArrowDownToLine,
@@ -18,7 +18,9 @@ import { useUserTable } from "@/hooks/use-user-table";
 import {
   parseImportText, groupImportIssues, applyEntryOverride, recomputeBatchAfterEdits,
   type ParsedEntry, type ImportIssue, type ImportAlias, type EntryEditOverride,
+  type ParseSummary,
 } from "@/lib/import-parser";
+import { parseImportTextChunked, CHUNKED_PARSE_THRESHOLD, type ChunkedParseProgress } from "@/lib/import-chunked";
 import { executeImport } from "@/lib/import-engine";
 import { computeImportHealth, healthTierLabel, type HealthReport } from "@/lib/import-health";
 import { simulateImpact } from "@/lib/import-analytics";
@@ -144,29 +146,65 @@ function ImportPage() {
   // Reset overrides when text is cleared.
   useEffect(() => { if (!text.trim()) setOverrides({}); }, [text]);
 
-  const parsed = useMemo(() => {
-    if (!deferredText.trim()) return null;
-    return parseImportText({
-      text: deferredText,
-      accounts,
-      assets,
-      goals,
-      aliases,
-      ignoredAccounts: ignoredAccts,
-      ignoredAssets,
-      ignoredGoals,
-      defaultAccountId: defaultAccountId || undefined,
-      existingTransactions: existingTx.map((t) => ({
-        id: t.id,
-        execution_timestamp: t.execution_timestamp,
-        fiat_value: Number(t.fiat_value),
-        source_account_id: t.source_account_id,
-        destination_account_id: t.destination_account_id,
-        note: t.note,
-      })),
-    });
-  }, [deferredText, accounts, assets, goals, existingTx, aliases, ignoredAccts, ignoredAssets, ignoredGoals, defaultAccountId]);
-  const parsePending = deferredText !== text;
+  // Small/medium imports parse synchronously (memoized) — cheap and reactive.
+  // Large imports (> CHUNKED_PARSE_THRESHOLD lines) run through the chunked
+  // parser with progress reporting, and any newer edit cancels the stale run.
+  const [asyncParsed, setAsyncParsed] = useState<{ entries: ParsedEntry[]; summary: ParseSummary } | null>(null);
+  const [parseProgress, setParseProgress] = useState<ChunkedParseProgress | null>(null);
+  const parseTokenRef = useRef(0);
+
+  const lineCount = useMemo(() => (deferredText ? deferredText.split(/\r?\n/).length : 0), [deferredText]);
+  const isChunkedMode = lineCount > CHUNKED_PARSE_THRESHOLD;
+
+  const parseInput = useMemo(() => ({
+    text: deferredText,
+    accounts,
+    assets,
+    goals,
+    aliases,
+    ignoredAccounts: ignoredAccts,
+    ignoredAssets,
+    ignoredGoals,
+    defaultAccountId: defaultAccountId || undefined,
+    existingTransactions: existingTx.map((t) => ({
+      id: t.id,
+      execution_timestamp: t.execution_timestamp,
+      fiat_value: Number(t.fiat_value),
+      source_account_id: t.source_account_id,
+      destination_account_id: t.destination_account_id,
+      note: t.note,
+    })),
+  }), [deferredText, accounts, assets, goals, existingTx, aliases, ignoredAccts, ignoredAssets, ignoredGoals, defaultAccountId]);
+
+  const syncParsed = useMemo(() => {
+    if (!deferredText.trim() || isChunkedMode) return null;
+    return parseImportText(parseInput);
+  }, [deferredText, isChunkedMode, parseInput]);
+
+  useEffect(() => {
+    if (!deferredText.trim() || !isChunkedMode) {
+      setAsyncParsed(null);
+      setParseProgress(null);
+      return;
+    }
+    const token = ++parseTokenRef.current;
+    setParseProgress({ phase: "parsing", linesDone: 0, linesTotal: lineCount });
+    (async () => {
+      const result = await parseImportTextChunked(parseInput, (p) => {
+        if (parseTokenRef.current === token) setParseProgress(p);
+      });
+      if (parseTokenRef.current === token) {
+        setAsyncParsed(result);
+        setParseProgress(null);
+      }
+    })();
+    // Bump token on unmount/dep-change so any in-flight parse is ignored.
+    return () => { parseTokenRef.current++; };
+  }, [deferredText, isChunkedMode, lineCount, parseInput]);
+
+  const parsed = isChunkedMode ? asyncParsed : syncParsed;
+  const parsePending = deferredText !== text || (isChunkedMode && !!parseProgress);
+
 
   // Apply overrides, then re-run duplicate/health pass to keep validation live.
   const { entries: effectiveEntries, summary: effectiveSummary } = useMemo(() => {
@@ -278,6 +316,7 @@ function ImportPage() {
         summary: effectiveSummary,
         label: label || undefined,
         skipDuplicates,
+        defaultCurrency: ccy,
         onProgress: (done, total) => setCommitProgress({ done, total }),
       });
       setLastResult({
@@ -441,7 +480,13 @@ function ImportPage() {
                   : counts.error > 0
                   ? `Import ${counts.ready + counts.warning} ready` : "Confirm import"}
               </Button>
-              {parsePending && <span className="text-[10px] text-muted-foreground">Parsing…</span>}
+              {parsePending && (
+                <span className="text-[10px] text-muted-foreground">
+                  {parseProgress
+                    ? `${parseProgress.phase === "validating" ? "Validating" : "Parsing"} ${parseProgress.linesDone}/${parseProgress.linesTotal}`
+                    : "Parsing…"}
+                </span>
+              )}
             </div>
           </div>
         </Card>

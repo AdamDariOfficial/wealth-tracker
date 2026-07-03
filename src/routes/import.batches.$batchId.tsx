@@ -214,9 +214,32 @@ function BatchReport() {
             <ReceiptStat label="Assets"   value={String(summary.created_assets ?? 0)} icon={<Coins className="h-3.5 w-3.5" />} />
             <ReceiptStat label="Goals"    value={String(summary.created_goals ?? 0)} icon={<Target className="h-3.5 w-3.5" />} />
           </div>
+          {(summary.created_account_ids?.length ?? 0) > 0 && (
+            <div className="space-y-1 pt-1 border-t border-border/30">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Auto-created accounts</div>
+              {(summary.created_account_ids as string[]).map((id) => {
+                const a: any = acctById.get(id);
+                if (!a) return (
+                  <div key={id} className="text-[11px] text-muted-foreground font-mono">— archived / unavailable —</div>
+                );
+                const openRow = rows.find((r) => r.createdAccountId === id);
+                return (
+                  <div key={id} className="text-[11px] flex items-center justify-between gap-2">
+                    <span className="truncate">
+                      <span className="font-medium">{a.name}</span>
+                      <span className="text-muted-foreground"> · {a.type} · {a.currency}</span>
+                    </span>
+                    <span className="font-mono tabular-nums">
+                      {formatMoney(Number(openRow?.amount ?? a.current_balance ?? 0), { currency: a.currency })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="text-[11px] text-muted-foreground">
             {summary.duplicates_skipped ? `${summary.duplicates_skipped} duplicate row${summary.duplicates_skipped === 1 ? "" : "s"} skipped. ` : ""}
-            Every created record is archivable via rollback if unused elsewhere.
+            Every created record is archivable via rollback if unused elsewhere. Types are auto-inferred and editable in the account settings.
           </div>
         </Card>
       </div>

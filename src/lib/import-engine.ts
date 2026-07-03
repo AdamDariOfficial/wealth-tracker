@@ -58,6 +58,8 @@ export async function executeImport(args: {
   summary: ParseSummary;
   label?: string;
   skipDuplicates?: boolean;
+  /** Base currency for inline-created accounts. Defaults to USD. */
+  defaultCurrency?: string;
   /** Optional progress callback for large imports (Phase D UX). */
   onProgress?: (done: number, total: number) => void;
 }): Promise<ImportResult> {
@@ -131,7 +133,9 @@ export async function executeImport(args: {
           imported++; break;
         }
         case "account_open": {
-          const { txId, accountId, createdAccountId } = await openAccountTagged(e, tag, user_id);
+          const { txId, accountId, createdAccountId } = await openAccountTagged(
+            e, tag, user_id, args.defaultCurrency ?? "USD",
+          );
           rec.txIds.push(txId); rec.accountId = accountId;
           if (createdAccountId && !accountSeen.has(createdAccountId)) {
             rec.createdAccountId = createdAccountId;
@@ -309,8 +313,30 @@ async function sellTagged(e: ParsedEntry, tag: string, user_id: string) {
   return data.id as string;
 }
 
+/**
+ * Deterministic account-type inference from a raw account name.
+ * Uses simple keyword rules; falls back to "bank" when uncertain.
+ * All returned values are members of the `account_type` enum in the DB.
+ */
+export function inferAccountType(rawName: string):
+  | "bank" | "exchange" | "broker" | "crypto_wallet" | "cold_wallet"
+  | "cash" | "savings" | "investment" {
+  const n = rawName.toLowerCase();
+  const has = (...ws: string[]) => ws.some((w) => n.includes(w));
+  if (has("cold wallet", "hardware wallet", "ledger", "trezor", "cold storage")) return "cold_wallet";
+  if (has("metamask", "phantom", "trust wallet", "hot wallet", "crypto wallet")) return "crypto_wallet";
+  if (has("binance", "kraken", "coinbase", "kucoin", "bybit", "bitfinex", "okx", "gate.io", "crypto.com", "gemini", "exchange")) return "exchange";
+  if (has("interactive brokers", "ibkr", "trading 212", "trading212", "degiro", "etoro", "robinhood", "fineco", "directa", "broker")) return "broker";
+  if (has("axi", "trading account", "xau account", "mt4", "mt5", "prop firm", "ftmo")) return "broker";
+  if (has("savings", "risparmio", "risparmi", "libretto")) return "savings";
+  if (has("invest", "portfolio", "vanguard", "fidelity")) return "investment";
+  if (has("cash", "contanti", "contante", "wallet cash", "pocket")) return "cash";
+  if (has("bank", "banca", "revolut", "wise", "n26", "checking", "current account", "conto", "hype", "isybank", "isy bank", "unicredit", "intesa", "bnl", "poste")) return "bank";
+  return "bank";
+}
+
 async function openAccountTagged(
-  e: ParsedEntry, tag: string, user_id: string,
+  e: ParsedEntry, tag: string, user_id: string, defaultCurrency: string,
 ): Promise<{ txId: string; accountId: string; createdAccountId?: string }> {
   let accountId = e.account?.matchedId ?? null;
   let createdAccountId: string | undefined;
@@ -318,9 +344,15 @@ async function openAccountTagged(
   // Inline-create the account when the parser flagged it as new.
   if (!accountId) {
     const name = (e.account?.raw ?? "New account").trim() || "New account";
+    const inferredType = inferAccountType(name);
     const { data, error } = await (supabase as any)
       .from("accounts")
-      .insert({ user_id, name, current_balance: 0 })
+      .insert({
+        user_id, name,
+        type: inferredType,
+        currency: (defaultCurrency || "USD").toUpperCase(),
+        current_balance: 0,
+      })
       .select("id")
       .single();
     if (error) throw new Error(`Failed to create account "${name}": ${error.message}`);
