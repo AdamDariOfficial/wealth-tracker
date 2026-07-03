@@ -480,7 +480,13 @@ function ImportPage() {
                   : counts.error > 0
                   ? `Import ${counts.ready + counts.warning} ready` : "Confirm import"}
               </Button>
-              {parsePending && <span className="text-[10px] text-muted-foreground">Parsing…</span>}
+              {parsePending && (
+                <span className="text-[10px] text-muted-foreground">
+                  {parseProgress
+                    ? `${parseProgress.phase === "validating" ? "Validating" : "Parsing"} ${parseProgress.linesDone}/${parseProgress.linesTotal}`
+                    : "Parsing…"}
+                </span>
+              )}
             </div>
           </div>
         </Card>
