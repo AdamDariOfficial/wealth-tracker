@@ -58,6 +58,8 @@ export async function executeImport(args: {
   summary: ParseSummary;
   label?: string;
   skipDuplicates?: boolean;
+  /** Base currency for inline-created accounts. Defaults to USD. */
+  defaultCurrency?: string;
   /** Optional progress callback for large imports (Phase D UX). */
   onProgress?: (done: number, total: number) => void;
 }): Promise<ImportResult> {
