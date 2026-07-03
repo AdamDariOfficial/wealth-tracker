@@ -133,7 +133,9 @@ export async function executeImport(args: {
           imported++; break;
         }
         case "account_open": {
-          const { txId, accountId, createdAccountId } = await openAccountTagged(e, tag, user_id);
+          const { txId, accountId, createdAccountId } = await openAccountTagged(
+            e, tag, user_id, args.defaultCurrency ?? "USD",
+          );
           rec.txIds.push(txId); rec.accountId = accountId;
           if (createdAccountId && !accountSeen.has(createdAccountId)) {
             rec.createdAccountId = createdAccountId;
