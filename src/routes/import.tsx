@@ -316,6 +316,7 @@ function ImportPage() {
         summary: effectiveSummary,
         label: label || undefined,
         skipDuplicates,
+        defaultCurrency: ccy,
         onProgress: (done, total) => setCommitProgress({ done, total }),
       });
       setLastResult({
