@@ -7,8 +7,8 @@ The current repository contains the legacy application and its visual system. Th
 ## Current status
 
 ```text
-PHASE_0_REPOSITORY_FOUNDATION_PREPARED
-FUNCTIONAL_REBUILD_NOT_STARTED
+PHASE_0_REPOSITORY_FOUNDATION_MERGED
+PHASE_1A_FINANCIAL_VALUE_TYPES_IN_PROGRESS
 LEGACY_APPLICATION_PRESERVED_AS_REFERENCE
 NO_PRODUCTION_DATA_MIGRATION_AUTHORIZED
 ```
@@ -93,6 +93,7 @@ Populate `.env` locally. The Phase 0 change removes `.env` from the tracked repo
 ```powershell
 bun run format:check
 bun run typecheck
+bun run test:domain
 bun run lint
 bun run build
 ```
@@ -104,6 +105,7 @@ bun run build
 - `bun install --frozen-lockfile`: passes.
 - Phase 0 payload formatting: must pass.
 - `bun run typecheck`: passes.
+- `bun run test:domain`: introduced in Phase 1A for focused financial-domain tests.
 - Global Prettier: legacy baseline failures are recorded.
 - Global ESLint: legacy baseline failures are recorded.
 - Production build process: passes.
@@ -117,7 +119,8 @@ Do not run global formatting or automatic lint fixes without a separately approv
 - [`docs/REBUILD_BASELINE.md`](docs/REBUILD_BASELINE.md): approved objective, phases and exclusions;
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): target boundaries;
 - [`docs/VISUAL_SYSTEM.md`](docs/VISUAL_SYSTEM.md): visual identity and responsive rules;
-- [`docs/SECURITY.md`](docs/SECURITY.md): environment, Supabase and data-safety requirements.
+- [`docs/SECURITY.md`](docs/SECURITY.md): environment, Supabase and data-safety requirements;
+- [`docs/PHASE_1A_FINANCIAL_VALUES.md`](docs/PHASE_1A_FINANCIAL_VALUES.md): first functional rebuild slice and acceptance criteria.
 
 ## Safety
 
