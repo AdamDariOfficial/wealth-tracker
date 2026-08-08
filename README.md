@@ -8,7 +8,8 @@ The current repository contains the legacy application and its visual system. Th
 
 ```text
 PHASE_0_REPOSITORY_FOUNDATION_MERGED
-PHASE_1A_FINANCIAL_VALUE_TYPES_IN_PROGRESS
+PHASE_1_FINANCIAL_DOMAIN_IMPLEMENTED
+PHASE_2_SUPABASE_V2_FOUNDATION_NOT_STARTED
 LEGACY_APPLICATION_PRESERVED_AS_REFERENCE
 NO_PRODUCTION_DATA_MIGRATION_AUTHORIZED
 ```
@@ -100,16 +101,17 @@ bun run build
 
 `bun run check` is a strict fail-fast aggregate. It stops at the first failed command and is not currently expected to pass on the legacy baseline.
 
-### Known Phase 0 validation state
+### Known validation state
 
-- `bun install --frozen-lockfile`: passes.
-- Phase 0 payload formatting: must pass.
-- `bun run typecheck`: passes.
-- `bun run test:domain`: introduced in Phase 1A for focused financial-domain tests.
-- Global Prettier: legacy baseline failures are recorded.
-- Global ESLint: legacy baseline failures are recorded.
-- Production build process: passes.
-- The build deterministically regenerates `src/routeTree.gen.ts`; the controlled validator captures the diff, verifies the known generated state and restores the baseline file because `src/` is outside Phase 0.
+- `bun install --frozen-lockfile`: passes on the recorded controlled baselines.
+- `bun run typecheck`: passes on the Phase 0 and Phase 1A baselines.
+- `bun run test:domain`: covers decimal values, money, accounts, assets, transaction legs,
+  correction flows, ledger replay and valuation.
+- Scoped Prettier and ESLint must pass for every changed domain path.
+- Global Prettier and ESLint still contain recorded legacy failures outside the rebuild domain.
+- The production build succeeds on the recorded baselines.
+- The build deterministically regenerates `src/routeTree.gen.ts`; controlled validation captures,
+  verifies and restores that known generated drift when it is outside the approved scope.
 
 Do not run global formatting or automatic lint fixes without a separately approved scope.
 
@@ -120,7 +122,8 @@ Do not run global formatting or automatic lint fixes without a separately approv
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): target boundaries;
 - [`docs/VISUAL_SYSTEM.md`](docs/VISUAL_SYSTEM.md): visual identity and responsive rules;
 - [`docs/SECURITY.md`](docs/SECURITY.md): environment, Supabase and data-safety requirements;
-- [`docs/PHASE_1A_FINANCIAL_VALUES.md`](docs/PHASE_1A_FINANCIAL_VALUES.md): first functional rebuild slice and acceptance criteria.
+- [`docs/PHASE_1A_FINANCIAL_VALUES.md`](docs/PHASE_1A_FINANCIAL_VALUES.md): decimal and money foundation;
+- [`docs/PHASE_1_FINANCIAL_DOMAIN.md`](docs/PHASE_1_FINANCIAL_DOMAIN.md): complete pure-domain model, ledger and valuation rules.
 
 ## Safety
 
