@@ -1,6 +1,6 @@
 # Phase 1A - Financial Value Types
 
-**Status:** first functional rebuild slice
+**Status:** merged foundation for the completed Phase 1 financial domain
 
 **Baseline:** `main@093fb38d44b74aef5559e757c71eef4b673b46fe`
 
@@ -52,7 +52,7 @@ Currency conversion is not implicit. It requires:
 - an explicit result scale;
 - an explicit rounding mode.
 
-This slice does not define market-price provenance, FX timestamps, currency minor-unit metadata or valuation completeness. Those belong to subsequent Phase 1 slices.
+This foundation intentionally did not define market-price provenance, FX timestamps or valuation completeness. Those concerns are implemented by the later consolidated Phase 1 domain described in [`PHASE_1_FINANCIAL_DOMAIN.md`](PHASE_1_FINANCIAL_DOMAIN.md).
 
 ## 4. New source boundary
 
