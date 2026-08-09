@@ -9,7 +9,7 @@ The current repository contains the legacy application and its visual system. Th
 ```text
 PHASE_0_REPOSITORY_FOUNDATION_MERGED
 PHASE_1_FINANCIAL_DOMAIN_IMPLEMENTED
-PHASE_2_SUPABASE_V2_FOUNDATION_NOT_STARTED
+PHASE_2_SUPABASE_V2_FOUNDATION_IN_PROGRESS
 LEGACY_APPLICATION_PRESERVED_AS_REFERENCE
 NO_PRODUCTION_DATA_MIGRATION_AUTHORIZED
 ```
@@ -95,6 +95,7 @@ Populate `.env` locally. The Phase 0 change removes `.env` from the tracked repo
 bun run format:check
 bun run typecheck
 bun run test:domain
+bun run test:phase2
 bun run lint
 bun run build
 ```
@@ -107,7 +108,8 @@ bun run build
 - `bun run typecheck`: passes on the Phase 0 and Phase 1A baselines.
 - `bun run test:domain`: covers decimal values, money, accounts, assets, transaction legs,
   correction flows, ledger replay and valuation.
-- Scoped Prettier and ESLint must pass for every changed domain path.
+- `bun run test:phase2`: covers application services and the Supabase v2 adapter boundary in addition to the pure domain suite.
+- Scoped Prettier and ESLint must pass for every changed Phase 2 TypeScript path.
 - Global Prettier and ESLint still contain recorded legacy failures outside the rebuild domain.
 - The production build succeeds on the recorded baselines.
 - The build deterministically regenerates `src/routeTree.gen.ts`; controlled validation captures,
@@ -123,7 +125,8 @@ Do not run global formatting or automatic lint fixes without a separately approv
 - [`docs/VISUAL_SYSTEM.md`](docs/VISUAL_SYSTEM.md): visual identity and responsive rules;
 - [`docs/SECURITY.md`](docs/SECURITY.md): environment, Supabase and data-safety requirements;
 - [`docs/PHASE_1A_FINANCIAL_VALUES.md`](docs/PHASE_1A_FINANCIAL_VALUES.md): decimal and money foundation;
-- [`docs/PHASE_1_FINANCIAL_DOMAIN.md`](docs/PHASE_1_FINANCIAL_DOMAIN.md): complete pure-domain model, ledger and valuation rules.
+- [`docs/PHASE_1_FINANCIAL_DOMAIN.md`](docs/PHASE_1_FINANCIAL_DOMAIN.md): complete pure-domain model, ledger and valuation rules;
+- [`docs/PHASE_2_SUPABASE_V2.md`](docs/PHASE_2_SUPABASE_V2.md): v2 persistence, RLS, repository and local database validation contract.
 
 ## Safety
 
