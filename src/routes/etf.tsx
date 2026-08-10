@@ -1,4 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ETF } from "@/components/HoldingsPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/etf")({ component: ETF });
+export const Route = createFileRoute("/etf")({
+  beforeLoad: () => {
+    throw redirect({ to: "/investments", search: { view: "etf", q: "", asset: "" } });
+  },
+  component: () => null,
+});

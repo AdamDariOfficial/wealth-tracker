@@ -1,24 +1,25 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet,
+  HeadContent,
   Link,
+  Outlet,
+  Scripts,
   createRootRouteWithContext,
+  useNavigate,
   useRouter,
   useRouterState,
-  useNavigate,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { LogOut, Search } from "lucide-react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppMobileNavigation } from "@/components/AppMobileNavigation";
 import { AppSidebar } from "@/components/AppSidebar";
-import { Toaster } from "@/components/ui/sonner";
-import { useAuth } from "@/lib/auth-store";
 import { CommandPalette } from "@/components/CommandPalette";
-import { GlobalTransactionModal } from "@/components/GlobalTransactionModal";
-import { useUI } from "@/lib/ui-store";
-
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
+import { financialV2Keys } from "@/data/query-keys";
+import { CoreComposer } from "@/features/wealth-v2/CoreComposer";
+import { useAuth } from "@/lib/auth-store";
+import { useCoreUI } from "@/lib/core-ui-store";
 import appCss from "../styles.css?url";
 
 const PUBLIC_ROUTES = ["/login", "/signup"];
@@ -31,33 +32,30 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
-        </div>
+        <Link
+          to="/"
+          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
+        >
+          Go home
+        </Link>
       </div>
     </div>
   );
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
   const router = useRouter();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          This page didn&apos;t load
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          {error.message || "Something went wrong while loading this page."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -65,16 +63,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
           >
             Try again
           </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          <Link
+            to="/"
+            className="inline-flex min-h-11 items-center rounded-xl border border-input px-4 text-sm font-medium"
           >
             Go home
-          </a>
+          </Link>
         </div>
       </div>
     </div>
@@ -85,27 +83,35 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Wealth Tracker — Modern Portfolio & Trading Intelligence" },
-      { name: "description", content: "Premium dark-mode dashboard for ETFs, crypto, trading capital and long-term wealth." },
-      { name: "author", content: "Wealth Tracker" },
-      { property: "og:title", content: "Wealth Tracker — Modern Portfolio & Trading Intelligence" },
-      { property: "og:description", content: "Premium dark-mode dashboard for ETFs, crypto, trading capital and long-term wealth." },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
+      { title: "Nebula Wealth Hub" },
+      {
+        name: "description",
+        content: "Private wealth, portfolio and trading intelligence.",
+      },
+      { name: "author", content: "Nebula Wealth Hub" },
+      { property: "og:title", content: "Nebula Wealth Hub" },
+      {
+        property: "og:description",
+        content: "Private wealth, portfolio and trading intelligence.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Wealth Tracker — Modern Portfolio & Trading Intelligence" },
-      { name: "twitter:description", content: "Premium dark-mode dashboard for ETFs, crypto, trading capital and long-term wealth." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/429e2a8a-cdc5-4242-bf7f-4cd51893da42/id-preview-fe07af36--8adb20eb-ab1d-4518-b794-299f09610365.lovable.app-1779190663058.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/429e2a8a-cdc5-4242-bf7f-4cd51893da42/id-preview-fe07af36--8adb20eb-ab1d-4518-b794-299f09610365.lovable.app-1779190663058.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "anonymous",
+      },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@300;400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap",
       },
     ],
   }),
@@ -131,106 +137,111 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const path = useRouterState({ select: (r) => r.location.pathname });
+  const path = useRouterState({ select: (state) => state.location.pathname });
   const navigate = useNavigate();
   const { user, profile, loading, init, signOut } = useAuth();
-
-  // React error #418 root cause: this layout's rendered HTML depends on the
-  // browser-only Supabase session (zustand auth-store), framer-motion inline
-  // styles, and the Sonner portal — none of which can match the SSR snapshot
-  // deterministically. We gate ALL of that behind a post-mount flag so the
-  // server renders a stable empty shell and the client hydrates against the
-  // same shell, then swaps to the real UI.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => { if (mounted) init(); }, [mounted, init]);
+
+  const handleSignOut = useCallback(async () => {
+    await signOut();
+    queryClient.removeQueries({ queryKey: financialV2Keys.all });
+  }, [queryClient, signOut]);
+
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (mounted) {
+      void init().catch((error) => console.error("Auth initialization failed", error));
+    }
+  }, [mounted, init]);
+  useEffect(() => {
+    if (!mounted) return;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [mounted, path]);
 
   useEffect(() => {
-    if (loading) return;
+    if (!mounted || loading) return;
     const isPublic = PUBLIC_ROUTES.includes(path);
     const isOnboarding = path === ONBOARDING_ROUTE;
     if (!user && !isPublic) {
-      navigate({ to: "/login" });
-    } else if (user && isPublic) {
-      // Don't bounce off public routes until we know onboarding status,
-      // otherwise new users briefly land on / before being sent to onboarding.
-      if (!profile) return;
-      navigate({ to: profile.onboarded ? "/" : "/onboarding" });
+      void navigate({ to: "/login", replace: true });
+    } else if (user && !profile && !isOnboarding) {
+      void navigate({ to: "/onboarding", replace: true });
     } else if (user && profile && !profile.onboarded && !isOnboarding) {
-      navigate({ to: "/onboarding" });
-    } else if (user && profile?.onboarded && isOnboarding) {
-      navigate({ to: "/" });
+      void navigate({ to: "/onboarding", replace: true });
+    } else if (user && profile?.onboarded && (isPublic || isOnboarding)) {
+      void navigate({ to: "/", replace: true });
     }
-  }, [user, profile, loading, path, navigate]);
-
-  const isPublic = PUBLIC_ROUTES.includes(path);
-  const bare = isPublic || path === ONBOARDING_ROUTE || !user;
-  // Authenticated but profile not yet loaded — never render protected shell
-  // with a null profile (prevents flashes and breaks any child code that
-  // assumes profile is present after auth).
-  const authedWaitingForProfile = !!user && !profile && !isPublic && path !== ONBOARDING_ROUTE;
+  }, [mounted, user, profile, loading, path, navigate]);
 
   if (!mounted) {
-    // Stable SSR shell — no auth-dependent content, no portals, no animations.
     return <div className="min-h-screen bg-background" suppressHydrationWarning />;
   }
 
-  if (authedWaitingForProfile || loading) {
-    return <div className="min-h-screen bg-background" />;
-  }
+  const isPublic = PUBLIC_ROUTES.includes(path);
+  const isOnboarding = path === ONBOARDING_ROUTE;
+  const bare = isPublic || isOnboarding || !user;
+  const protectedWaiting = !!user && !profile && !isOnboarding;
 
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster />
-      {bare ? (
+      {loading || protectedWaiting ? (
+        <div className="min-h-screen bg-background" />
+      ) : bare ? (
         <Outlet />
       ) : (
         <SidebarProvider>
-          <div className="min-h-screen flex w-full">
+          <div className="flex min-h-screen w-full">
             <AppSidebar />
-            <div className="flex-1 flex flex-col min-w-0">
-              <AppHeader path={path} userInitials={(profile?.display_name ?? user?.email ?? "U").slice(0, 2).toUpperCase()} onSignOut={() => signOut()} />
-              <main className="flex-1 px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8 max-w-[1600px] w-full mx-auto safe-x mb-safe">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <AppHeader
+                userInitials={(profile?.displayName ?? user.email ?? "U").slice(0, 2).toUpperCase()}
+                onSignOut={() => void handleSignOut()}
+              />
+              <main className="safe-x mx-auto w-full max-w-[1600px] flex-1 px-3 py-4 pb-24 sm:px-5 sm:py-6 md:pb-6 lg:px-8 lg:py-8">
                 <Outlet />
               </main>
             </div>
           </div>
+          <AppMobileNavigation />
           <CommandPalette />
-          <GlobalTransactionModal />
+          <CoreComposer />
         </SidebarProvider>
       )}
     </QueryClientProvider>
-
   );
 }
 
-function AppHeader({ path, userInitials, onSignOut }: { path: string; userInitials: string; onSignOut: () => void }) {
-  const togglePalette = useUI((s) => s.togglePalette);
+function AppHeader({ userInitials, onSignOut }: { userInitials: string; onSignOut: () => void }) {
+  const togglePalette = useCoreUI((state) => state.togglePalette);
+
   return (
-    <header className="h-14 sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 border-b border-border/50 backdrop-blur-xl bg-background/60 safe-top">
-      <SidebarTrigger className="touch-target" />
-      <div className="text-xs font-mono text-muted-foreground hidden sm:block truncate">{path}</div>
+    <header className="safe-top sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-border/50 bg-background/70 px-3 backdrop-blur-xl sm:px-4">
+      <SidebarTrigger className="touch-target hidden md:inline-flex" />
       <button
         onClick={() => togglePalette(true)}
-        className="ml-2 sm:ml-3 flex items-center gap-2 h-9 px-3 rounded-lg glass text-xs text-muted-foreground hover:text-foreground transition-colors flex-1 md:flex-none md:w-72 max-w-xs touch-target"
-        title="Open command palette"
+        className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border/50 bg-card/40 px-3 text-xs text-muted-foreground transition-colors hover:text-foreground md:ml-2 md:max-w-sm"
+        aria-label="Open command palette"
       >
-        <Search className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate hidden sm:inline">Search or run a command…</span>
-        <span className="truncate sm:hidden">Search…</span>
-        <kbd className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50 border border-border/50 hidden md:inline">⌘K</kbd>
+        <Search className="h-4 w-4 shrink-0" />
+        <span className="truncate">Search or run a command…</span>
+        <kbd className="ml-auto hidden rounded border border-border/50 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] md:inline">
+          ⌘K
+        </kbd>
       </button>
-      <div className="ml-auto flex items-center gap-3">
-        <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-          <div className="h-1.5 w-1.5 rounded-full bg-success pulse-dot" />
-          <span className="font-mono">LIVE</span>
-        </div>
-        <button onClick={onSignOut} className="h-8 w-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors" title="Sign out">
-          <LogOut className="h-3.5 w-3.5" />
-        </button>
-        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-cyan to-cyan-glow flex items-center justify-center text-background text-xs font-semibold">
-          {userInitials}
-        </div>
+      <button
+        onClick={onSignOut}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/50 text-muted-foreground hover:text-foreground"
+        title="Sign out"
+        aria-label="Sign out"
+      >
+        <LogOut className="h-4 w-4" />
+      </button>
+      <div
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-cyan-glow text-xs font-semibold text-background"
+        aria-label="User profile"
+      >
+        {userInitials}
       </div>
     </header>
   );

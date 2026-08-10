@@ -1,13 +1,33 @@
 import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+import type { UserProfile } from "@/application/profile";
+import { supabase } from "@/integrations/supabase/client";
+import { financialV2Repository } from "@/lib/v2-runtime";
 
-type Profile = { id: string; display_name: string | null; avatar_url: string | null; currency: string; onboarded: boolean };
+export type AuthProfile = UserProfile &
+  Readonly<{
+    id: string;
+    display_name: string | null;
+    currency: string;
+    avatar_url: string | null;
+  }>;
+
+function adaptProfile(user: User, profile: UserProfile | null): AuthProfile | null {
+  if (!profile) return null;
+
+  return Object.freeze({
+    ...profile,
+    id: user.id,
+    display_name: profile.displayName,
+    currency: profile.baseCurrency?.toString() ?? "USD",
+    avatar_url: null,
+  });
+}
 
 type AuthState = {
   user: User | null;
   session: Session | null;
-  profile: Profile | null;
+  profile: AuthProfile | null;
   loading: boolean;
   init: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -18,106 +38,131 @@ type AuthState = {
 
 let initialized = false;
 
-function getFallbackDisplayName(user: User) {
-  return (
-    (user.user_metadata?.display_name as string | undefined) ??
-    (user.email ? user.email.split("@")[0] : null)
-  );
-}
-
 export const useAuth = create<AuthState>((set, get) => ({
   user: null,
   session: null,
   profile: null,
   loading: true,
+
   init: async () => {
     if (initialized) return;
     initialized = true;
-    supabase.auth.onAuthStateChange((_event, session) => {
-      set({ session, user: session?.user ?? null });
-      if (session?.user) {
-        setTimeout(() => get().refreshProfile(), 0);
-      } else {
-        set({ profile: null });
-      }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null;
+      set({ session, user, profile: null, loading: user !== null });
+      if (!user) return;
+
+      const expectedUserId = user.id;
+      window.setTimeout(() => {
+        void get()
+          .refreshProfile()
+          .catch((error) => console.error("Profile refresh failed", error))
+          .finally(() => {
+            if (get().user?.id === expectedUserId) {
+              set({ loading: false });
+            }
+          });
+      }, 0);
     });
-    const { data } = await supabase.auth.getSession();
-    set({ session: data.session, user: data.session?.user ?? null, loading: false });
-    if (data.session?.user) await get().refreshProfile();
+
+    let initializationUserId: string | null = null;
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      const user = data.session?.user ?? null;
+      initializationUserId = user?.id ?? null;
+      set({ session: data.session, user, profile: null });
+      if (user) await get().refreshProfile();
+    } catch (error) {
+      authListener.subscription.unsubscribe();
+      initialized = false;
+      throw error;
+    } finally {
+      const currentUserId = get().user?.id ?? null;
+      if (currentUserId === initializationUserId || currentUserId === null) {
+        set({ loading: false });
+      }
+    }
   },
+
   refreshProfile: async () => {
-    const u = get().user;
-    if (!u) return;
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", u.id).maybeSingle();
-    if (data) {
-      set({ profile: data as Profile });
+    if (!get().user) {
+      set({ profile: null });
       return;
     }
-    if (error) throw error;
+    const user = get().user;
+    if (!user) {
+      set({ profile: null });
+      return;
+    }
 
-    // Existing/remixed projects can have valid auth sessions without a matching
-    // profile row. Create the missing profile immediately so protected routes
-    // don't wait forever on a blank shell.
-    const fallbackProfile = {
-      id: u.id,
-      display_name: getFallbackDisplayName(u),
-    };
-    const { data: created, error: createError } = await supabase
-      .from("profiles")
-      .insert(fallbackProfile)
-      .select("*")
-      .single();
-
-    if (createError) throw createError;
-    set({ profile: created as Profile });
+    const state = await financialV2Repository.loadState();
+    if (get().user?.id !== user.id) return;
+    set({ profile: adaptProfile(user, state.profile) });
   },
+
   signIn: async (email, password) => {
     const maxAttempts = 3;
-    let lastError: any = null;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
           lastError = error;
-          // Don't retry on real auth failures (bad credentials, etc.)
-          const status = (error as any).status;
+          const status = error.status;
           const isTransient = !status || status === 404 || status === 0 || status >= 500;
           if (!isTransient) throw error;
-          // Clear potentially stale session before retry
-          try { await supabase.auth.signOut({ scope: "local" } as any); } catch {}
+          try {
+            await supabase.auth.signOut({ scope: "local" });
+          } catch {
+            // Best-effort local cleanup before retrying a transient auth failure.
+          }
           if (attempt < maxAttempts) {
-            await new Promise((r) => setTimeout(r, 400 * attempt));
+            await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
             continue;
           }
           throw error;
         }
-        if (data?.session) return;
+        if (data.session) return;
         lastError = new Error("No session returned");
-      } catch (err: any) {
-        lastError = err;
-        const status = err?.status;
+      } catch (error) {
+        lastError = error;
+        const candidate = error as { status?: number; name?: string; message?: string };
+        const status = candidate.status;
         const isTransient =
-          err?.name === "AuthRetryableFetchError" ||
-          /fetch|network|failed to fetch|404/i.test(err?.message ?? "") ||
-          status === 404 || status === 0 || (typeof status === "number" && status >= 500);
-        if (!isTransient || attempt === maxAttempts) throw err;
-        try { await supabase.auth.signOut({ scope: "local" } as any); } catch {}
-        await new Promise((r) => setTimeout(r, 400 * attempt));
+          candidate.name === "AuthRetryableFetchError" ||
+          /fetch|network|failed to fetch|404/i.test(candidate.message ?? "") ||
+          status === 404 ||
+          status === 0 ||
+          (typeof status === "number" && status >= 500);
+        if (!isTransient || attempt === maxAttempts) throw error;
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch {
+          // Best-effort local cleanup before retrying a transient auth failure.
+        }
+        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
       }
     }
-    throw lastError ?? new Error("Sign in failed");
+    throw lastError instanceof Error ? lastError : new Error("Sign in failed");
   },
+
   signUp: async (email, password, displayName) => {
-    const redirectUrl = `${window.location.origin}/`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: redirectUrl, data: { display_name: displayName } },
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: { display_name: displayName },
+      },
     });
     if (error) throw error;
   },
+
   signOut: async () => {
-    await supabase.auth.signOut();
-    set({ user: null, session: null, profile: null });
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    set({ user: null, session: null, profile: null, loading: false });
   },
 }));
