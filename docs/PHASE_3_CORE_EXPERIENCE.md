@@ -1,8 +1,10 @@
 # Phase 3 - Core Experience
 
-**Status:** implementation complete; final integration evidence is tracked separately; merge pending
+**Status:** implementation complete; merged and validated; final integration evidence is tracked separately
 
 **Baseline:** `main@186007236aa6093ca85070bdb24f60c7b0cee352`
+
+**Integration:** PR #5; merge commit `d22b7ab4e7226f39f4ae24aa1a9839b9b3e38bbf`
 
 ## 1. Objective
 
