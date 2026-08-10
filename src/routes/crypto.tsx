@@ -1,4 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Crypto } from "@/components/HoldingsPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/crypto")({ component: Crypto });
+export const Route = createFileRoute("/crypto")({
+  beforeLoad: () => {
+    throw redirect({ to: "/investments", search: { view: "crypto", q: "", asset: "" } });
+  },
+  component: () => null,
+});
