@@ -10,363 +10,151 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
-      accounts: {
+      v2_accounts: {
         Row: {
           archived_at: string | null
-          color: string | null
           created_at: string
-          currency: string
-          current_balance: number
-          description: string | null
-          icon: string | null
           id: string
           include_in_net_worth: boolean
+          kind: string
           name: string
-          provider: string | null
-          type: Database["public"]["Enums"]["account_type"]
+          opened_at: string | null
+          ownership: string
           updated_at: string
           user_id: string
-          visible: boolean
         }
         Insert: {
           archived_at?: string | null
-          color?: string | null
           created_at?: string
-          currency?: string
-          current_balance?: number
-          description?: string | null
-          icon?: string | null
+          id: string
+          include_in_net_worth: boolean
+          kind: string
+          name: string
+          opened_at?: string | null
+          ownership: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
           id?: string
           include_in_net_worth?: boolean
-          name: string
-          provider?: string | null
-          type?: Database["public"]["Enums"]["account_type"]
-          updated_at?: string
-          user_id: string
-          visible?: boolean
-        }
-        Update: {
-          archived_at?: string | null
-          color?: string | null
-          created_at?: string
-          currency?: string
-          current_balance?: number
-          description?: string | null
-          icon?: string | null
-          id?: string
-          include_in_net_worth?: boolean
+          kind?: string
           name?: string
-          provider?: string | null
-          type?: Database["public"]["Enums"]["account_type"]
+          opened_at?: string | null
+          ownership?: string
           updated_at?: string
           user_id?: string
-          visible?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "v2_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
-      assets: {
+      v2_assets: {
         Row: {
-          aliases: string[]
-          archived_at: string | null
-          asset_class: Database["public"]["Enums"]["asset_class"]
-          color: string | null
           created_at: string
-          current_price: number
-          custom_asset: boolean
-          icon: string | null
+          fiat_currency: string | null
           id: string
-          isin: string | null
+          kind: string
           name: string
+          precision: number
           symbol: string
-          tracking_enabled: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
-          aliases?: string[]
-          archived_at?: string | null
-          asset_class?: Database["public"]["Enums"]["asset_class"]
-          color?: string | null
           created_at?: string
-          current_price?: number
-          custom_asset?: boolean
-          icon?: string | null
-          id?: string
-          isin?: string | null
+          fiat_currency?: string | null
+          id: string
+          kind: string
           name: string
+          precision: number
           symbol: string
-          tracking_enabled?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
-          aliases?: string[]
-          archived_at?: string | null
-          asset_class?: Database["public"]["Enums"]["asset_class"]
-          color?: string | null
           created_at?: string
-          current_price?: number
-          custom_asset?: boolean
-          icon?: string | null
+          fiat_currency?: string | null
           id?: string
-          isin?: string | null
+          kind?: string
           name?: string
-          symbol?: string
-          tracking_enabled?: boolean
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      audit_log: {
-        Row: {
-          account_id: string | null
-          after_balance: number | null
-          before_balance: number | null
-          created_at: string
-          delta: number | null
-          diff: Json | null
-          entity_id: string | null
-          entity_type: string | null
-          event_type: string
-          id: string
-          message: string | null
-          metadata: Json
-          source: string
-          transaction_id: string | null
-          user_id: string
-        }
-        Insert: {
-          account_id?: string | null
-          after_balance?: number | null
-          before_balance?: number | null
-          created_at?: string
-          delta?: number | null
-          diff?: Json | null
-          entity_id?: string | null
-          entity_type?: string | null
-          event_type: string
-          id?: string
-          message?: string | null
-          metadata?: Json
-          source?: string
-          transaction_id?: string | null
-          user_id: string
-        }
-        Update: {
-          account_id?: string | null
-          after_balance?: number | null
-          before_balance?: number | null
-          created_at?: string
-          delta?: number | null
-          diff?: Json | null
-          entity_id?: string | null
-          entity_type?: string | null
-          event_type?: string
-          id?: string
-          message?: string | null
-          metadata?: Json
-          source?: string
-          transaction_id?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      cash_reserves: {
-        Row: {
-          balance: number
-          created_at: string
-          id: string
-          label: string
-          purpose: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          balance?: number
-          created_at?: string
-          id?: string
-          label: string
-          purpose?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          balance?: number
-          created_at?: string
-          id?: string
-          label?: string
-          purpose?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      crypto_holdings: {
-        Row: {
-          avg_cost: number
-          created_at: string
-          current_price: number
-          id: string
-          name: string | null
-          quantity: number
-          symbol: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          avg_cost?: number
-          created_at?: string
-          current_price?: number
-          id?: string
-          name?: string | null
-          quantity?: number
-          symbol: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          avg_cost?: number
-          created_at?: string
-          current_price?: number
-          id?: string
-          name?: string | null
-          quantity?: number
+          precision?: number
           symbol?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "v2_assets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
-      dca_plans: {
-        Row: {
-          active: boolean
-          amount_fiat: number
-          asset_id: string
-          created_at: string
-          destination_account_id: string
-          frequency: string
-          id: string
-          next_run_at: string
-          source_account_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          active?: boolean
-          amount_fiat?: number
-          asset_id: string
-          created_at?: string
-          destination_account_id: string
-          frequency?: string
-          id?: string
-          next_run_at?: string
-          source_account_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          active?: boolean
-          amount_fiat?: number
-          asset_id?: string
-          created_at?: string
-          destination_account_id?: string
-          frequency?: string
-          id?: string
-          next_run_at?: string
-          source_account_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      etfs: {
-        Row: {
-          avg_cost: number
-          created_at: string
-          current_price: number
-          id: string
-          monthly_contribution: number
-          name: string
-          quantity: number
-          ticker: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          avg_cost?: number
-          created_at?: string
-          current_price?: number
-          id?: string
-          monthly_contribution?: number
-          name: string
-          quantity?: number
-          ticker?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          avg_cost?: number
-          created_at?: string
-          current_price?: number
-          id?: string
-          monthly_contribution?: number
-          name?: string
-          quantity?: number
-          ticker?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      fx_rates: {
+      v2_fx_rates: {
         Row: {
           as_of: string
-          as_of_date: string | null
-          base: string
           created_at: string
-          id: string
-          quote: string
+          id: number
           rate: number
           source: string
+          source_currency: string
+          target_currency: string
+          user_id: string
         }
         Insert: {
-          as_of?: string
-          as_of_date?: string | null
-          base: string
+          as_of: string
           created_at?: string
-          id?: string
-          quote: string
+          id?: never
           rate: number
           source?: string
+          source_currency: string
+          target_currency: string
+          user_id: string
         }
         Update: {
           as_of?: string
-          as_of_date?: string | null
-          base?: string
           created_at?: string
-          id?: string
-          quote?: string
+          id?: never
           rate?: number
           source?: string
+          source_currency?: string
+          target_currency?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "v2_fx_rates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
-      goals: {
+      v2_goals: {
         Row: {
           archived_at: string | null
-          category: string | null
           created_at: string
-          current_amount: number
           id: string
-          kind: Database["public"]["Enums"]["goal_kind"]
+          kind: string
           name: string
           target_account_id: string | null
-          target_amount: number
+          target_amount: number | null
           target_asset_id: string | null
           target_date: string | null
           target_quantity: number | null
@@ -375,14 +163,12 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
-          category?: string | null
           created_at?: string
-          current_amount?: number
-          id?: string
-          kind?: Database["public"]["Enums"]["goal_kind"]
+          id: string
+          kind: string
           name: string
           target_account_id?: string | null
-          target_amount?: number
+          target_amount?: number | null
           target_asset_id?: string | null
           target_date?: string | null
           target_quantity?: number | null
@@ -391,319 +177,196 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
-          category?: string | null
           created_at?: string
-          current_amount?: number
           id?: string
-          kind?: Database["public"]["Enums"]["goal_kind"]
+          kind?: string
           name?: string
           target_account_id?: string | null
-          target_amount?: number
+          target_amount?: number | null
           target_asset_id?: string | null
           target_date?: string | null
           target_quantity?: number | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "v2_goals_account_fk"
+            columns: ["user_id", "target_account_id"]
+            isOneToOne: false
+            referencedRelation: "v2_accounts"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_goals_asset_fk"
+            columns: ["user_id", "target_asset_id"]
+            isOneToOne: false
+            referencedRelation: "v2_assets"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
-      import_aliases: {
+      v2_import_batch_transactions: {
         Row: {
-          alias: string
-          created_at: string
-          entity_id: string
-          entity_type: string
-          id: string
+          batch_id: string
+          ordinal: number
+          transaction_id: string
           user_id: string
         }
         Insert: {
-          alias: string
-          created_at?: string
-          entity_id: string
-          entity_type: string
-          id?: string
+          batch_id: string
+          ordinal: number
+          transaction_id: string
           user_id: string
         }
         Update: {
-          alias?: string
-          created_at?: string
-          entity_id?: string
-          entity_type?: string
-          id?: string
+          batch_id?: string
+          ordinal?: number
+          transaction_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "v2_import_batch_transactions_batch_fk"
+            columns: ["user_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "v2_import_batches"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_import_batch_transactions_transaction_fk"
+            columns: ["user_id", "transaction_id"]
+            isOneToOne: false
+            referencedRelation: "v2_transactions"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
       }
-      import_batches: {
+      v2_import_batches: {
         Row: {
           created_at: string
-          error_count: number
-          errors: Json
           id: string
-          imported_count: number
           label: string | null
           rolled_back_at: string | null
           source_text: string
-          summary: Json
+          transaction_count: number
           user_id: string
         }
         Insert: {
           created_at?: string
-          error_count?: number
-          errors?: Json
-          id?: string
-          imported_count?: number
+          id: string
           label?: string | null
           rolled_back_at?: string | null
           source_text: string
-          summary?: Json
+          transaction_count: number
           user_id: string
         }
         Update: {
           created_at?: string
-          error_count?: number
-          errors?: Json
           id?: string
-          imported_count?: number
           label?: string | null
           rolled_back_at?: string | null
           source_text?: string
-          summary?: Json
+          transaction_count?: number
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "v2_import_batches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
-      investments: {
+      v2_price_quotes: {
         Row: {
-          asset_class: string
-          avg_cost: number
-          created_at: string
-          current_price: number
-          id: string
-          name: string
-          notes: string | null
-          quantity: number
-          ticker: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          asset_class?: string
-          avg_cost?: number
-          created_at?: string
-          current_price?: number
-          id?: string
-          name: string
-          notes?: string | null
-          quantity?: number
-          ticker?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          asset_class?: string
-          avg_cost?: number
-          created_at?: string
-          current_price?: number
-          id?: string
-          name?: string
-          notes?: string | null
-          quantity?: number
-          ticker?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      onboarding_data: {
-        Row: {
-          financial: Json
-          investment: Json
-          trading: Json
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          financial?: Json
-          investment?: Json
-          trading?: Json
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          financial?: Json
-          investment?: Json
-          trading?: Json
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      performance_snapshots: {
-        Row: {
-          cash_value: number
-          crypto_value: number
-          id: string
-          investments_value: number
-          net_worth: number
-          snapshot_date: string
-          trading_value: number
-          user_id: string
-        }
-        Insert: {
-          cash_value?: number
-          crypto_value?: number
-          id?: string
-          investments_value?: number
-          net_worth?: number
-          snapshot_date?: string
-          trading_value?: number
-          user_id: string
-        }
-        Update: {
-          cash_value?: number
-          crypto_value?: number
-          id?: string
-          investments_value?: number
-          net_worth?: number
-          snapshot_date?: string
-          trading_value?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      portfolio_snapshots_v2: {
-        Row: {
-          breakdown: Json
-          granularity: string
-          id: string
-          invested_value: number
-          liquid_value: number
-          net_worth: number
-          realized_pnl: number
-          taken_at: string
-          unrealized_pnl: number
-          user_id: string
-        }
-        Insert: {
-          breakdown?: Json
-          granularity?: string
-          id?: string
-          invested_value?: number
-          liquid_value?: number
-          net_worth?: number
-          realized_pnl?: number
-          taken_at?: string
-          unrealized_pnl?: number
-          user_id: string
-        }
-        Update: {
-          breakdown?: Json
-          granularity?: string
-          id?: string
-          invested_value?: number
-          liquid_value?: number
-          net_worth?: number
-          realized_pnl?: number
-          taken_at?: string
-          unrealized_pnl?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
+          amount: number
+          as_of: string
+          asset_id: string
           created_at: string
           currency: string
+          id: number
+          source: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          as_of: string
+          asset_id: string
+          created_at?: string
+          currency: string
+          id?: never
+          source?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          as_of?: string
+          asset_id?: string
+          created_at?: string
+          currency?: string
+          id?: never
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_price_quotes_asset_fk"
+            columns: ["user_id", "asset_id"]
+            isOneToOne: false
+            referencedRelation: "v2_assets"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_price_quotes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      v2_profiles: {
+        Row: {
+          base_currency: string | null
+          created_at: string
           display_name: string | null
-          id: string
-          locale: string
-          notifications: Json
+          locale: string | null
           onboarded: boolean
           updated_at: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          currency?: string
-          display_name?: string | null
-          id: string
-          locale?: string
-          notifications?: Json
-          onboarded?: boolean
-          updated_at?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          currency?: string
-          display_name?: string | null
-          id?: string
-          locale?: string
-          notifications?: Json
-          onboarded?: boolean
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      trades: {
-        Row: {
-          asset: string
-          created_at: string
-          direction: string
-          entry: number | null
-          id: string
-          notes: string | null
-          pnl: number
-          rating: number
-          rr: number | null
-          session: string | null
-          setup: string | null
-          stop_loss: number | null
-          take_profit: number | null
-          trade_date: string
           user_id: string
         }
         Insert: {
-          asset: string
+          base_currency?: string | null
           created_at?: string
-          direction?: string
-          entry?: number | null
-          id?: string
-          notes?: string | null
-          pnl?: number
-          rating?: number
-          rr?: number | null
-          session?: string | null
-          setup?: string | null
-          stop_loss?: number | null
-          take_profit?: number | null
-          trade_date?: string
+          display_name?: string | null
+          locale?: string | null
+          onboarded?: boolean
+          updated_at?: string
           user_id: string
         }
         Update: {
-          asset?: string
+          base_currency?: string | null
           created_at?: string
-          direction?: string
-          entry?: number | null
-          id?: string
-          notes?: string | null
-          pnl?: number
-          rating?: number
-          rr?: number | null
-          session?: string | null
-          setup?: string | null
-          stop_loss?: number | null
-          take_profit?: number | null
-          trade_date?: string
+          display_name?: string | null
+          locale?: string | null
+          onboarded?: boolean
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
-      trading_account: {
+      v2_trading_settings: {
         Row: {
-          balance: number
           default_risk_pct: number
           max_daily_loss_pct: number
           primary_asset: string | null
@@ -713,7 +376,6 @@ export type Database = {
           weekly_loss_limit_pct: number
         }
         Insert: {
-          balance?: number
           default_risk_pct?: number
           max_daily_loss_pct?: number
           primary_asset?: string | null
@@ -723,7 +385,6 @@ export type Database = {
           weekly_loss_limit_pct?: number
         }
         Update: {
-          balance?: number
           default_risk_pct?: number
           max_daily_loss_pct?: number
           primary_asset?: string | null
@@ -731,123 +392,130 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weekly_loss_limit_pct?: number
-        }
-        Relationships: []
-      }
-      transactions: {
-        Row: {
-          asset_currency: string | null
-          asset_id: string | null
-          asset_price: number | null
-          base_currency: string | null
-          base_value: number | null
-          created_at: string
-          destination_account_id: string | null
-          exchange_rate: number | null
-          execution_timestamp: string
-          fee_amount: number
-          fee_asset_id: string | null
-          fee_base_value: number | null
-          fiat_value: number
-          id: string
-          note: string | null
-          quantity: number
-          source_account_id: string | null
-          tags: string[]
-          transaction_type: Database["public"]["Enums"]["transaction_type"]
-          transfer_group_id: string | null
-          updated_at: string
-          user_id: string
-          voided_at: string | null
-          voided_reason: string | null
-        }
-        Insert: {
-          asset_currency?: string | null
-          asset_id?: string | null
-          asset_price?: number | null
-          base_currency?: string | null
-          base_value?: number | null
-          created_at?: string
-          destination_account_id?: string | null
-          exchange_rate?: number | null
-          execution_timestamp?: string
-          fee_amount?: number
-          fee_asset_id?: string | null
-          fee_base_value?: number | null
-          fiat_value?: number
-          id?: string
-          note?: string | null
-          quantity?: number
-          source_account_id?: string | null
-          tags?: string[]
-          transaction_type: Database["public"]["Enums"]["transaction_type"]
-          transfer_group_id?: string | null
-          updated_at?: string
-          user_id: string
-          voided_at?: string | null
-          voided_reason?: string | null
-        }
-        Update: {
-          asset_currency?: string | null
-          asset_id?: string | null
-          asset_price?: number | null
-          base_currency?: string | null
-          base_value?: number | null
-          created_at?: string
-          destination_account_id?: string | null
-          exchange_rate?: number | null
-          execution_timestamp?: string
-          fee_amount?: number
-          fee_asset_id?: string | null
-          fee_base_value?: number | null
-          fiat_value?: number
-          id?: string
-          note?: string | null
-          quantity?: number
-          source_account_id?: string | null
-          tags?: string[]
-          transaction_type?: Database["public"]["Enums"]["transaction_type"]
-          transfer_group_id?: string | null
-          updated_at?: string
-          user_id?: string
-          voided_at?: string | null
-          voided_reason?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "transactions_asset_id_fkey"
-            columns: ["asset_id"]
-            isOneToOne: false
-            referencedRelation: "assets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_destination_account_id_fkey"
-            columns: ["destination_account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_fee_asset_id_fkey"
-            columns: ["fee_asset_id"]
-            isOneToOne: false
-            referencedRelation: "assets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_source_account_id_fkey"
-            columns: ["source_account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
+            foreignKeyName: "v2_trading_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
-      weekly_reports: {
+      v2_transaction_legs: {
+        Row: {
+          account_id: string
+          asset_id: string
+          created_at: string
+          id: string
+          memo: string | null
+          quantity: number
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          asset_id: string
+          created_at?: string
+          id: string
+          memo?: string | null
+          quantity: number
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          asset_id?: string
+          created_at?: string
+          id?: string
+          memo?: string | null
+          quantity?: number
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_transaction_legs_account_fk"
+            columns: ["user_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "v2_accounts"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_transaction_legs_asset_fk"
+            columns: ["user_id", "asset_id"]
+            isOneToOne: false
+            referencedRelation: "v2_assets"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_transaction_legs_transaction_fk"
+            columns: ["user_id", "transaction_id"]
+            isOneToOne: false
+            referencedRelation: "v2_transactions"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_transaction_legs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      v2_transactions: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          occurred_at: string
+          purpose: string
+          recorded_at: string
+          related_transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id: string
+          occurred_at: string
+          purpose?: string
+          recorded_at: string
+          related_transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          occurred_at?: string
+          purpose?: string
+          recorded_at?: string
+          related_transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_transactions_related_fk"
+            columns: ["user_id", "related_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "v2_transactions"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      v2_weekly_reviews: {
         Row: {
           avg_rr: number
-          broker_account_id: string | null
           consistency_score: number
           created_at: string
           discipline_score: number
@@ -855,43 +523,37 @@ export type Database = {
           id: string
           is_draft: boolean
           lessons: string | null
-          max_drawdown: number
+          max_drawdown_pct: number
           notes: string | null
-          num_trades: number
-          pnl: number
-          posted_transaction_id: string | null
           psychology_score: number
-          screenshots: string[]
+          reported_pnl: number
+          trade_count: number
           updated_at: string
           user_id: string
           week_start: string
-          winrate: number
+          win_rate: number
         }
         Insert: {
           avg_rr?: number
-          broker_account_id?: string | null
           consistency_score?: number
           created_at?: string
           discipline_score?: number
           finalized_at?: string | null
-          id?: string
+          id: string
           is_draft?: boolean
           lessons?: string | null
-          max_drawdown?: number
+          max_drawdown_pct?: number
           notes?: string | null
-          num_trades?: number
-          pnl?: number
-          posted_transaction_id?: string | null
           psychology_score?: number
-          screenshots?: string[]
+          reported_pnl?: number
+          trade_count?: number
           updated_at?: string
           user_id: string
           week_start: string
-          winrate?: number
+          win_rate?: number
         }
         Update: {
           avg_rr?: number
-          broker_account_id?: string | null
           consistency_score?: number
           created_at?: string
           discipline_score?: number
@@ -899,71 +561,68 @@ export type Database = {
           id?: string
           is_draft?: boolean
           lessons?: string | null
-          max_drawdown?: number
+          max_drawdown_pct?: number
           notes?: string | null
-          num_trades?: number
-          pnl?: number
-          posted_transaction_id?: string | null
           psychology_score?: number
-          screenshots?: string[]
+          reported_pnl?: number
+          trade_count?: number
           updated_at?: string
           user_id?: string
           week_start?: string
-          winrate?: number
+          win_rate?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "v2_weekly_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      recompute_account_balance: {
-        Args: { _account_id: string }
+      v2_append_fx_rate: { Args: { p_rate: Json }; Returns: undefined }
+      v2_append_price_quote: { Args: { p_quote: Json }; Returns: undefined }
+      v2_archive_goal: { Args: { p_goal_id: string }; Returns: undefined }
+      v2_complete_onboarding: { Args: { p_profile: Json }; Returns: Json }
+      v2_delete_weekly_review: {
+        Args: { p_review_id: string }
+        Returns: undefined
+      }
+      v2_export_backup: { Args: never; Returns: Json }
+      v2_finalize_weekly_review: {
+        Args: { p_review_id: string }
+        Returns: undefined
+      }
+      v2_get_advanced_state: { Args: never; Returns: Json }
+      v2_get_financial_state: { Args: never; Returns: Json }
+      v2_import_batch: { Args: { p_batch: Json }; Returns: undefined }
+      v2_post_transaction: { Args: { p_transaction: Json }; Returns: string }
+      v2_put_account: { Args: { p_account: Json }; Returns: undefined }
+      v2_put_asset: { Args: { p_asset: Json }; Returns: undefined }
+      v2_put_goal: { Args: { p_goal: Json }; Returns: undefined }
+      v2_put_trading_settings: {
+        Args: { p_settings: Json }
+        Returns: undefined
+      }
+      v2_put_weekly_review: { Args: { p_review: Json }; Returns: undefined }
+      v2_reset_workspace: {
+        Args: { p_confirmation: string }
+        Returns: undefined
+      }
+      v2_restore_backup: { Args: { p_backup: Json }; Returns: undefined }
+      v2_rollback_import_batch: {
+        Args: { p_batch_id: string }
         Returns: undefined
       }
     }
     Enums: {
-      account_type:
-        | "bank"
-        | "exchange"
-        | "broker"
-        | "crypto_wallet"
-        | "cold_wallet"
-        | "cash"
-        | "savings"
-        | "investment"
-        | "external"
-      asset_class:
-        | "fiat"
-        | "crypto"
-        | "etf"
-        | "stock"
-        | "commodity"
-        | "forex"
-        | "cash"
-        | "stablecoin"
-        | "custom"
-      goal_kind:
-        | "net_worth"
-        | "liquid"
-        | "account_balance"
-        | "asset_quantity"
-        | "asset_value"
-        | "custom"
-      transaction_type:
-        | "deposit"
-        | "withdrawal"
-        | "transfer"
-        | "buy"
-        | "sell"
-        | "convert"
-        | "fee"
-        | "dividend"
-        | "interest"
-        | "staking_reward"
-        | "profit_realization"
-        | "manual_adjustment"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1090,51 +749,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      account_type: [
-        "bank",
-        "exchange",
-        "broker",
-        "crypto_wallet",
-        "cold_wallet",
-        "cash",
-        "savings",
-        "investment",
-        "external",
-      ],
-      asset_class: [
-        "fiat",
-        "crypto",
-        "etf",
-        "stock",
-        "commodity",
-        "forex",
-        "cash",
-        "stablecoin",
-        "custom",
-      ],
-      goal_kind: [
-        "net_worth",
-        "liquid",
-        "account_balance",
-        "asset_quantity",
-        "asset_value",
-        "custom",
-      ],
-      transaction_type: [
-        "deposit",
-        "withdrawal",
-        "transfer",
-        "buy",
-        "sell",
-        "convert",
-        "fee",
-        "dividend",
-        "interest",
-        "staking_reward",
-        "profit_realization",
-        "manual_adjustment",
-      ],
-    },
+    Enums: {},
   },
 } as const
