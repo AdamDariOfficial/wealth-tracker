@@ -9,15 +9,17 @@ select is(
      'v2_transaction_legs', 'v2_price_quotes', 'v2_fx_rates'
    ) and c.relkind = 'r'),
   7,
-  'all seven v2 tables exist'
+  'all seven Phase 2 v2 tables exist'
 );
 
 select is(
   (select count(*)::integer from pg_class c join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname = 'public' and c.relname like 'v2_%' and c.relkind = 'r'
-     and c.relrowsecurity and c.relforcerowsecurity),
+   where n.nspname = 'public' and c.relname in (
+     'v2_profiles', 'v2_accounts', 'v2_assets', 'v2_transactions',
+     'v2_transaction_legs', 'v2_price_quotes', 'v2_fx_rates'
+   ) and c.relkind = 'r' and c.relrowsecurity and c.relforcerowsecurity),
   7,
-  'all v2 tables enable and force RLS'
+  'all seven Phase 2 v2 tables enable and force RLS'
 );
 
 select ok(
@@ -27,7 +29,7 @@ select ok(
      'v2_profiles', 'v2_accounts', 'v2_assets', 'v2_transactions',
      'v2_transaction_legs', 'v2_price_quotes', 'v2_fx_rates'
    )),
-  'authenticated has direct SELECT on every v2 table'
+  'authenticated has direct SELECT on every Phase 2 v2 table'
 );
 
 select ok(
@@ -41,7 +43,7 @@ select ok(
      'v2_profiles', 'v2_accounts', 'v2_assets', 'v2_transactions',
      'v2_transaction_legs', 'v2_price_quotes', 'v2_fx_rates'
    )),
-  'authenticated has no direct v2 write privileges'
+  'authenticated has no direct Phase 2 v2 write privileges'
 );
 
 select ok(
@@ -51,15 +53,18 @@ select ok(
      'v2_profiles', 'v2_accounts', 'v2_assets', 'v2_transactions',
      'v2_transaction_legs', 'v2_price_quotes', 'v2_fx_rates'
    )),
-  'anon cannot read any v2 table'
+  'anon cannot read any Phase 2 v2 table'
 );
 
 select is(
   (select count(*)::integer from pg_policy p join pg_class c on c.oid = p.polrelid
    join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname = 'public' and c.relname like 'v2_%' and p.polcmd = 'r'),
+   where n.nspname = 'public' and c.relname in (
+     'v2_profiles', 'v2_accounts', 'v2_assets', 'v2_transactions',
+     'v2_transaction_legs', 'v2_price_quotes', 'v2_fx_rates'
+   ) and p.polcmd = 'r'),
   7,
-  'each v2 table has an explicit select policy'
+  'each Phase 2 v2 table has an explicit select policy'
 );
 
 select ok(
@@ -68,8 +73,11 @@ select ok(
    from pg_policy p
    join pg_class c on c.oid = p.polrelid
    join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname = 'public' and c.relname like 'v2_%' and p.polcmd = 'r'),
-  'every v2 select policy scopes rows to auth.uid()'
+   where n.nspname = 'public' and c.relname in (
+     'v2_profiles', 'v2_accounts', 'v2_assets', 'v2_transactions',
+     'v2_transaction_legs', 'v2_price_quotes', 'v2_fx_rates'
+   ) and p.polcmd = 'r'),
+  'every Phase 2 v2 select policy scopes rows to auth.uid()'
 );
 
 select ok(
@@ -161,7 +169,7 @@ select ok(
   and not has_function_privilege('anon', 'public.v2_append_price_quote(jsonb)', 'EXECUTE')
   and not has_function_privilege('anon', 'public.v2_append_fx_rate(jsonb)', 'EXECUTE')
   and not has_function_privilege('anon', 'public.v2_get_financial_state()', 'EXECUTE'),
-  'anon cannot execute v2 RPC functions'
+  'anon cannot execute Phase 2 v2 RPC functions'
 );
 
 select ok(
@@ -172,7 +180,7 @@ select ok(
   and has_function_privilege('authenticated', 'public.v2_append_price_quote(jsonb)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.v2_append_fx_rate(jsonb)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.v2_get_financial_state()', 'EXECUTE'),
-  'authenticated can execute the reviewed v2 RPC surface'
+  'authenticated can execute the reviewed Phase 2 v2 RPC surface'
 );
 
 select ok(
@@ -182,7 +190,7 @@ select ok(
      'v2_complete_onboarding', 'v2_put_account', 'v2_put_asset', 'v2_post_transaction',
      'v2_append_price_quote', 'v2_append_fx_rate'
    )),
-  'all six v2 write RPCs are security definer functions'
+  'all six Phase 2 v2 write RPCs are security definer functions'
 );
 
 select ok(
@@ -193,7 +201,7 @@ select ok(
      'v2_complete_onboarding', 'v2_put_account', 'v2_put_asset', 'v2_post_transaction',
      'v2_append_price_quote', 'v2_append_fx_rate'
    )),
-  'security definer RPCs pin search_path'
+  'Phase 2 security definer RPCs pin search_path'
 );
 
 select ok(
@@ -204,7 +212,7 @@ select ok(
      'v2_complete_onboarding', 'v2_put_account', 'v2_put_asset', 'v2_post_transaction',
      'v2_append_price_quote', 'v2_append_fx_rate'
    )),
-  'every write RPC acquires the per-user transaction-scoped advisory lock'
+  'every Phase 2 write RPC acquires the per-user transaction-scoped advisory lock'
 );
 
 select ok(
@@ -215,7 +223,7 @@ select ok(
       and not p.prosecdef
       and array_to_string(p.proconfig, ',') like '%search_path=public, pg_temp%'
   ),
-  'read RPC is security invoker with a pinned search_path'
+  'Phase 2 read RPC is security invoker with a pinned search_path'
 );
 
 select * from finish();
