@@ -146,6 +146,147 @@ export type Database = {
           },
         ]
       }
+      v2_goals: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          target_account_id: string | null
+          target_amount: number | null
+          target_asset_id: string | null
+          target_date: string | null
+          target_quantity: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id: string
+          kind: string
+          name: string
+          target_account_id?: string | null
+          target_amount?: number | null
+          target_asset_id?: string | null
+          target_date?: string | null
+          target_quantity?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          target_account_id?: string | null
+          target_amount?: number | null
+          target_asset_id?: string | null
+          target_date?: string | null
+          target_quantity?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_goals_account_fk"
+            columns: ["user_id", "target_account_id"]
+            isOneToOne: false
+            referencedRelation: "v2_accounts"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_goals_asset_fk"
+            columns: ["user_id", "target_asset_id"]
+            isOneToOne: false
+            referencedRelation: "v2_assets"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      v2_import_batch_transactions: {
+        Row: {
+          batch_id: string
+          ordinal: number
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          ordinal: number
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          ordinal?: number
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_import_batch_transactions_batch_fk"
+            columns: ["user_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "v2_import_batches"
+            referencedColumns: ["user_id", "id"]
+          },
+          {
+            foreignKeyName: "v2_import_batch_transactions_transaction_fk"
+            columns: ["user_id", "transaction_id"]
+            isOneToOne: false
+            referencedRelation: "v2_transactions"
+            referencedColumns: ["user_id", "id"]
+          },
+        ]
+      }
+      v2_import_batches: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          rolled_back_at: string | null
+          source_text: string
+          transaction_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          label?: string | null
+          rolled_back_at?: string | null
+          source_text: string
+          transaction_count: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          rolled_back_at?: string | null
+          source_text?: string
+          transaction_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_import_batches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       v2_price_quotes: {
         Row: {
           amount: number
@@ -223,6 +364,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      v2_trading_settings: {
+        Row: {
+          default_risk_pct: number
+          max_daily_loss_pct: number
+          primary_asset: string | null
+          reserve: number
+          updated_at: string
+          user_id: string
+          weekly_loss_limit_pct: number
+        }
+        Insert: {
+          default_risk_pct?: number
+          max_daily_loss_pct?: number
+          primary_asset?: string | null
+          reserve?: number
+          updated_at?: string
+          user_id: string
+          weekly_loss_limit_pct?: number
+        }
+        Update: {
+          default_risk_pct?: number
+          max_daily_loss_pct?: number
+          primary_asset?: string | null
+          reserve?: number
+          updated_at?: string
+          user_id?: string
+          weekly_loss_limit_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_trading_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       v2_transaction_legs: {
         Row: {
@@ -334,6 +513,74 @@ export type Database = {
           },
         ]
       }
+      v2_weekly_reviews: {
+        Row: {
+          avg_rr: number
+          consistency_score: number
+          created_at: string
+          discipline_score: number
+          finalized_at: string | null
+          id: string
+          is_draft: boolean
+          lessons: string | null
+          max_drawdown_pct: number
+          notes: string | null
+          psychology_score: number
+          reported_pnl: number
+          trade_count: number
+          updated_at: string
+          user_id: string
+          week_start: string
+          win_rate: number
+        }
+        Insert: {
+          avg_rr?: number
+          consistency_score?: number
+          created_at?: string
+          discipline_score?: number
+          finalized_at?: string | null
+          id: string
+          is_draft?: boolean
+          lessons?: string | null
+          max_drawdown_pct?: number
+          notes?: string | null
+          psychology_score?: number
+          reported_pnl?: number
+          trade_count?: number
+          updated_at?: string
+          user_id: string
+          week_start: string
+          win_rate?: number
+        }
+        Update: {
+          avg_rr?: number
+          consistency_score?: number
+          created_at?: string
+          discipline_score?: number
+          finalized_at?: string | null
+          id?: string
+          is_draft?: boolean
+          lessons?: string | null
+          max_drawdown_pct?: number
+          notes?: string | null
+          psychology_score?: number
+          reported_pnl?: number
+          trade_count?: number
+          updated_at?: string
+          user_id?: string
+          week_start?: string
+          win_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "v2_weekly_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v2_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -341,11 +588,38 @@ export type Database = {
     Functions: {
       v2_append_fx_rate: { Args: { p_rate: Json }; Returns: undefined }
       v2_append_price_quote: { Args: { p_quote: Json }; Returns: undefined }
+      v2_archive_goal: { Args: { p_goal_id: string }; Returns: undefined }
       v2_complete_onboarding: { Args: { p_profile: Json }; Returns: Json }
+      v2_delete_weekly_review: {
+        Args: { p_review_id: string }
+        Returns: undefined
+      }
+      v2_export_backup: { Args: never; Returns: Json }
+      v2_finalize_weekly_review: {
+        Args: { p_review_id: string }
+        Returns: undefined
+      }
+      v2_get_advanced_state: { Args: never; Returns: Json }
       v2_get_financial_state: { Args: never; Returns: Json }
+      v2_import_batch: { Args: { p_batch: Json }; Returns: undefined }
       v2_post_transaction: { Args: { p_transaction: Json }; Returns: string }
       v2_put_account: { Args: { p_account: Json }; Returns: undefined }
       v2_put_asset: { Args: { p_asset: Json }; Returns: undefined }
+      v2_put_goal: { Args: { p_goal: Json }; Returns: undefined }
+      v2_put_trading_settings: {
+        Args: { p_settings: Json }
+        Returns: undefined
+      }
+      v2_put_weekly_review: { Args: { p_review: Json }; Returns: undefined }
+      v2_reset_workspace: {
+        Args: { p_confirmation: string }
+        Returns: undefined
+      }
+      v2_restore_backup: { Args: { p_backup: Json }; Returns: undefined }
+      v2_rollback_import_batch: {
+        Args: { p_batch_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
