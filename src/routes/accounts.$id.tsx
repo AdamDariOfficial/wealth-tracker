@@ -1,3 +1,4 @@
+import { MetricCard } from "@/components/MetricCard";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowLeftRight, Pencil, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -19,7 +20,7 @@ import { useCoreUI } from "@/lib/core-ui-store";
 type SearchState = { edit: boolean };
 
 export const Route = createFileRoute("/accounts/$id")({
-  validateSearch: (search: Record<string, unknown>): SearchState => ({
+  validateSearch: (search: Partial<Record<keyof SearchState, unknown>>): SearchState => ({
     edit: search.edit === true || search.edit === "true" || search.edit === "1",
   }),
   component: AccountDetail,
@@ -44,7 +45,11 @@ function AccountDetail() {
     return (
       <div className="rounded-2xl border border-dashed border-border/70 p-8 text-center">
         <div className="font-display font-semibold">Account not found</div>
-        <Link to="/accounts" className="mt-3 inline-flex text-xs font-semibold text-cyan">
+        <Link
+          to="/accounts"
+          search={{ q: "", archived: false }}
+          className="mt-3 inline-flex text-xs font-semibold text-cyan"
+        >
           Back to Accounts
         </Link>
       </div>
@@ -83,7 +88,7 @@ function AccountDetail() {
               variant="outline"
               onClick={() =>
                 void navigate({
-                  search: (previous: SearchState) => ({ ...previous, edit: true }),
+                  search: { ...search, edit: true },
                 })
               }
             >
@@ -114,7 +119,7 @@ function AccountDetail() {
       <section className="glass rounded-2xl p-4 sm:p-5">
         <h2 className="font-display font-semibold">Balances</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Derived by deterministic replay of immutable transaction legs.
+          Calculated from every transaction recorded on this account.
         </p>
         <div className="mt-4 divide-y divide-border/40">
           {positions.length === 0 ? (
@@ -192,7 +197,7 @@ function AccountDetail() {
         onOpenChange={(open) => {
           if (!open) {
             void navigate({
-              search: (previous: SearchState) => ({ ...previous, edit: false }),
+              search: { ...search, edit: false },
               replace: true,
             });
           }
@@ -202,7 +207,8 @@ function AccountDetail() {
           <DialogHeader>
             <DialogTitle>Edit account</DialogTitle>
             <DialogDescription>
-              Update account metadata through the validated v2 repository boundary.
+              Change the account name, type and ownership. Your transaction history stays exactly as
+              recorded.
             </DialogDescription>
           </DialogHeader>
           <AccountForm
@@ -210,7 +216,7 @@ function AccountDetail() {
             existing={account}
             onSaved={() =>
               void navigate({
-                search: (previous: SearchState) => ({ ...previous, edit: false }),
+                search: { ...search, edit: false },
                 replace: true,
               })
             }
@@ -222,12 +228,5 @@ function AccountDetail() {
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="glass rounded-2xl p-3 sm:p-5">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">
-        {label}
-      </div>
-      <div className="mt-2 truncate font-display text-lg font-semibold sm:text-2xl">{value}</div>
-    </div>
-  );
+  return <MetricCard label={label} value={value} />;
 }

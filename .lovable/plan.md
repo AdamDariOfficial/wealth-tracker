@@ -1,92 +1,86 @@
-# Nebula Wealth Hub — Full Visual / UX Repolish
+# Import Data 3.0 — Production-Grade Integrity Phase
 
-**Mode:** presentation-only repolish. No financial-logic, schema, RLS, RPC, or data-flow changes. No new dependencies. Preserves the charcoal-and-cyan identity defined in `docs/VISUAL_SYSTEM.md` and the source hierarchy in `AGENTS.md`.
+**Non-negotiable rule:** Import remains an input layer only. All math flows through the existing ledger / holdings / goals / analytics / reconstruction engines. No parallel aggregations, no new portfolio calculators.
 
-**Baseline:** `main@d798032` (pre-repolish route-closure). Working tree HEAD is one WIP commit ahead containing only lockfile + `routeTree.gen.ts` drift — no UI edits yet.
-
----
-
-## Guardrails (non-negotiable)
-
-- Charcoal canvas, cyan accent, Sora/Manrope/JetBrains Mono — unchanged.
-- Mobile-first: verify 320 / 375 / 390 / 430 / 768 / 1024 / 1440 / 1600.
-- No horizontal overflow; ≥44px touch targets; safe-area aware; 16px mobile inputs.
-- `prefers-reduced-motion` disables non-essential transforms and animated counters.
-- Positive/negative states carry icon + text, not color alone.
-- No Tretnix / AI-tool attribution. Brand reads "Nebula Wealth Hub" everywhere.
-- No edits to domain, application, repository, RLS, migrations, or financial hooks' math.
+Single source of truth stays: `transactions`, `accounts`, `assets`, `goals`. Every created row keeps the `import:<batchId>` tag so the existing rollback path keeps working.
 
 ---
 
-## Workstream 1 — Shared metric primitive (consolidation)
+## Phase A — Integrity Core (ship first)
 
-Today there are **5 near-duplicate** metric/stat components with inconsistent spacing, font sizes and feature sets:
-`StatCard.tsx` (global), Dashboard `Metric`, Accounts `Summary`, Calendar `SummaryCard`, Trading `StatCard`, Portfolio `Summary`.
+The minimum that makes large historical imports safe.
 
-- Create one `src/components/MetricCard.tsx` with variants: `accent` (cyan gradient + glow ring), `tone` (success/destructive/warning/cyan), optional `delta`, `icon`, `hint`, `compact`.
-- Replace the local duplicates on Dashboard, Portfolio, Accounts, Calendar, Trading with `MetricCard`. Pure presentation swap — identical data props.
-- Add a shared `EmptyState` (`src/components/EmptyState.tsx`): icon, title, hint, optional action. Replaces the ad-hoc dashed boxes on Transactions, Accounts, Portfolio so empty states are branded and consistent.
+1. **Duplicate Detection Engine** (`src/lib/import-duplicates.ts`)
+   - Compares new parsed rows against: other rows in the same batch + existing `transactions` within ±3 days of the row date, scoped to user.
+   - Signal weights: date proximity, amount equality, account match, asset/qty match, description similarity (token Jaccard), transfer-pair symmetry.
+   - Emits `confidence 0–100` + `duplicateOf?: txId | rowIndex`.
+   - Per-row action in preview: **Import / Skip / Merge** (merge = drop the new row and tag the existing tx with the alias/description from the new row).
+   - Surfaces aggregated count in Dry Run ("3 possible duplicates").
 
-**Files:** new `MetricCard.tsx`, `EmptyState.tsx`; edit `index.tsx`, `investments.tsx`, `accounts.tsx`, `calendar.tsx`, `trading.tsx`, `transactions.tsx`. `StatCard.tsx` deprecated in place (not deleted this pass to avoid touching every importer).
+2. **Import Health Score** (`src/lib/import-health.ts`)
+   - Pure function over parsed rows + issues + duplicate report → `{ score, tier, breakdown[] }`.
+   - Deductions: unresolved account/asset/goal, missing price, duplicate prob, invalid date, malformed row.
+   - Rendered as a single header card with tier (Excellent / Good / Needs Review / High Risk) and a click-to-expand breakdown.
 
-## Workstream 2 — Dashboard elevation (flagship)
+3. **Smarter Entity Matching**
+   - Extend `assets` with `aliases text[]` and `isin text` via migration (additive, nullable).
+   - `import-parser.ts` resolver: exact symbol → ISIN → alias → fuzzy (existing). When >1 candidate within score threshold, emit `ambiguous_asset` issue.
+   - `EntityResolveModals.tsx` gets an "Alternative matches" list with confidence; "Map" persists into `import_aliases` AND appends to `assets.aliases` so future imports skip the modal.
 
-The Dashboard currently shows 4 flat tiles + a **text-list "allocation"** + recent transactions **without amounts**. Elevate to a premium wealth cockpit using only data that already exists:
-
-1. **Net-worth trend chart.** `useNetworthSeries` + `lib/history-reconstruction` already exist and are unused on the dashboard. Render a Recharts `AreaChart` (charcoal fill, cyan stroke, cyan glow under line) over the reconstructed series. Unknown segments render as a dashed/gapped region — never as zero (honours "unknown ≠ zero").
-2. **Allocation donut.** Replace the text row-list with a compact Recharts `PieChart` donut + center total. Keep the legend rows below it (known values only).
-3. **Recent transactions with amounts.** Surface the signed net amount per transaction (derivable from legs, no new math) next to description/date.
-4. **Valuation coverage badge.** Compact "known / total" ring or pill instead of the bare text.
-
-**Files:** edit `src/routes/index.tsx`; verify `src/hooks/use-networth-series.ts`, `src/lib/history-reconstruction.ts` expose what the chart needs (read-only check; adapt only if signature gaps block rendering).
-
-## Workstream 3 — Route-aware loading & empty states
-
-- Replace `FinancialLoading`'s 3 generic pulsing bars with **route-shaped skeletons** (card-grid skeleton) that mirror each page layout, eliminating layout shift on load. Respect `motion-reduce`.
-- Apply `EmptyState` consistently so every empty list reads the same brand language.
-
-**Files:** edit `src/features/wealth-v2/FinancialStatePanel.tsx`; consumers unchanged (same export shape).
-
-## Workstream 4 — Auth & onboarding surfaces
-
-- **Login:** fix the "Wealth Tracker" label → "Nebula Wealth Hub" (consistency bug). Add `grid-bg` + the radial cyan glow already used elsewhere; keep the centered glass card. Verify safe-area + 16px inputs + 44px submit.
-- **Onboarding:** align brand string; keep the validated v2 form untouched.
-
-**Files:** edit `src/routes/login.tsx`, `src/routes/onboarding.tsx` (copy/brand only).
-
-## Workstream 5 — Motion guard pass
-
-`StatCard.tsx` animates unconditionally (no `useReducedMotion`). Audit every framer-motion surface and gate non-essential transforms behind `useReducedMotion` per VISUAL_SYSTEM §7. No animated financial counters that delay comprehension.
-
-**Files:** edit `src/components/StatCard.tsx`; scan `PageHeader.tsx`, `Modal.tsx`, `CoreComposer.tsx`, list reveals.
-
-## Workstream 6 — Contrast & a11y pass (VISUAL_SYSTEM §8)
-
-- Verify contrast on glass surfaces, muted labels, and chart legends/tooltip (shared `chart-style.ts`).
-- Ensure tone-only signals (e.g. Trading P&L tone, allocation row color) always pair with an icon or sign.
-- Focus-visible on all interactive elements; keyboard dismiss on overlays already present.
-
-**Files:** `src/lib/chart-style.ts`, `src/components/trading/*`, `src/routes/trading.tsx` (add icons/signs alongside tone).
-
-## Workstream 7 — Mobile density verification
-
-No code edits unless a defect is found: drive the 8 target viewports and confirm no overflow, reachable primary action, chart tooltips not clipped, and the trading weekly-review list reads as cards on mobile (it currently uses `flex-wrap` rows — verify it doesn't collapse awkwardly at 320px).
+4. **Auto Categorization Engine** (`src/lib/import-categorize.ts`)
+   - Rule table (keyword → category/tag): salary→income, rent/groceries/utilities→expense buckets, BTC/ETH→crypto, VWCE/SWDA→etf, AAPL/MSFT→stock.
+   - Runs after parse, before preview. Fills `category`/`tags` only when empty. User edit in preview wins.
 
 ---
 
-## Out of scope (explicitly untouched)
+## Phase B — Confidence & Analytics (after A lands)
 
-- Domain / application / repository / RPC / RLS / migrations.
-- `use-portfolio`, `use-ledger`, `use-positions` math; `history-reconstruction` algorithm.
-- Information architecture, navigation groups, route topology.
-- Import engine, rollback, parser.
-- Dependencies (Recharts, Framer Motion, react-virtual already present).
+5. **Import Analytics Preview** — expand existing `DryRunSummary` with: Net Worth delta, allocation delta per class, per-goal progress delta. Derived by feeding the simulated rows through existing `use-portfolio` / goals selectors against a cloned in-memory ledger (no new aggregator).
 
-## Verification
+6. **Inline Correction Center** — finish making preview cells fully editable (account, asset, goal, qty, price, amount, date, description, tags) with live re-derivation of issues, duplicates, and health score. No re-parse.
 
-- `bun run typecheck`, `bun run build` (per AGENTS.md; no global lint/format auto-fix without separate scope).
-- Browser: all 8 target viewports, dashboard chart render + tooltip contrast, reduced-motion, empty/loading, direct URL + refresh + Back/Forward, keyboard overlay dismiss.
+7. **Opening Position Wizard** (`src/components/import/OpeningPositionWizard.tsx`) — three tabs (Account / Asset / Goal). On submit it inserts the corresponding syntax line into the import textarea — does not bypass the parser.
 
-## Open question
+---
 
-Workstream 2's net-worth chart depends on `use-networth-series` producing a usable series from the validated state. If that hook returns empty for fresh accounts, the chart degrades to an empty-state (no false zero). Confirm you're happy with that graceful fallback, or want a "first transaction" empty-state instead.
+## Phase C — Post-import & Rollback (after B)
+
+8. **Import Statistics Report** — replaces the post-commit toast with a results screen on `/import?batch=<id>`: counts per op kind, inflow/outflow bars, created-entities list, "View in Activity" deep link.
+
+9. **Advanced Rollback** — extend existing batch rollback with:
+   - Rollback selected rows (checkbox list in batch detail).
+   - Rollback by operation kind (e.g. only the buys).
+   - Pre-rollback impact preview ("Will remove 12 tx, 2 transfers, 1 goal contribution").
+   - Reuses existing void/delete primitives; no new SQL paths.
+
+10. **Audit Trail + Activity Feed wiring** — `import_batches.summary` already stores per-batch metadata; piggyback on the existing `audit_log` triggers (no new triggers). Add lightweight client-side mapper in `use-activity-feed.ts` so import events render as: "Imported N rows", "Created asset X", "Mapped A→B", "Skipped duplicate", "Rolled back batch".
+
+---
+
+## Phase D — Performance (last)
+
+11. Chunked parsing via `requestIdleCallback` (50-row chunks).
+12. `@tanstack/react-virtual` on preview + batch detail tables.
+13. Memoize duplicate matrix and health score selectors keyed by `rowsHash`.
+14. Single batched insert per op kind on commit (already mostly true — verify).
+
+Target: 1000+ rows parsing < 1s on a mid-range laptop, scrolling stays at 60fps.
+
+---
+
+## Files (Phase A only — concrete)
+
+- **Migration:** add `aliases text[] default '{}'`, `isin text` to `assets`; index on `isin`.
+- **New:** `src/lib/import-duplicates.ts`, `src/lib/import-health.ts`, `src/lib/import-categorize.ts`.
+- **Edit:** `src/lib/import-parser.ts` (ambiguous_asset, ISIN/alias resolution, hook categorizer), `src/components/import/EntityResolveModals.tsx` (alt matches + persist alias to asset), `src/routes/import.tsx` (health card, duplicate column + per-row action, dup count in dry-run).
+- **No edits** to: `ledger-engine.ts`, `ledger-actions.ts`, `use-portfolio.ts`, `use-holdings`, goals selectors, reconstruction engine.
+
+---
+
+## Question
+
+Ship **Phase A only** first (recommended — it's the actual integrity layer and unblocks safe historical imports), then B/C/D as follow-ups? Reply:
+
+- **"go"** → ship Phase A now.
+- **"go ab"** / **"go abc"** / **"all"** → ship more phases this turn (longer, more files at once).
+- Or name the specific items you want first (e.g. "duplicates + health only").

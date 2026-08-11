@@ -138,7 +138,7 @@ export function AccountForm({ onSaved, existing }: { onSaved: () => void; existi
         <div>
           <div className="text-sm font-medium">Include in net worth</div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Only owned accounts can contribute to canonical net worth.
+            Only accounts you own count towards your net worth.
           </p>
         </div>
         <Switch

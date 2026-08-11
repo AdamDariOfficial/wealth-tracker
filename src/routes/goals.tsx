@@ -163,7 +163,7 @@ function GoalsPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Goals"
-        subtitle="Targets derive live from the canonical ledger and valuation; progress is never stored as a competing balance."
+        subtitle="Track what you are saving towards. Progress is calculated from your real balances, always up to date."
         action={
           <Button
             className="min-h-11 bg-cyan text-background hover:bg-cyan/90"
@@ -304,7 +304,7 @@ function GoalsPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Edit goal" : "New goal"}</DialogTitle>
             <DialogDescription>
-              Targets are stored; current progress is always derived from canonical state.
+              You set the target — progress is calculated automatically from your accounts.
             </DialogDescription>
           </DialogHeader>
 

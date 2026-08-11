@@ -56,6 +56,7 @@ export function AppMobileNavigation() {
         </Link>
         <Link
           to="/investments"
+          search={{ view: "all", q: "", asset: "" }}
           className={cn(
             navClass,
             active(path, "/investments") ? "text-cyan" : "text-muted-foreground",

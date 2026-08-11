@@ -85,7 +85,7 @@ export function WeeklyTab() {
   const toggleFinalize = async (r: WeeklyReport) => {
     try {
       await weeklyApi.update(r.id, { finalized_at: r.finalized_at ? null : new Date().toISOString() } as any);
-      toast.success(r.finalized_at ? "Report unlocked" : "Report finalized — now immutable");
+      toast.success(r.finalized_at ? "Report reopened" : "Report finalized and locked");
     } catch (e: any) {
       toast.error(e.message ?? "Update failed");
     }
@@ -103,7 +103,7 @@ export function WeeklyTab() {
         <div>
           <h2 className="font-display text-lg font-semibold">Weekly Reviews</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Finalized reports are immutable to preserve long-term analytics integrity.
+            Once finalized, a report is locked so your long-term performance stats stay reliable.
           </p>
         </div>
         <Button className="bg-cyan text-background hover:bg-cyan/90" onClick={() => setOpen(true)}>

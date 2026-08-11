@@ -41,7 +41,7 @@ export function CoreComposer() {
           <SheetHeader className="text-left">
             <SheetTitle>Core composer</SheetTitle>
             <SheetDescription>
-              Create canonical v2 records through validated application commands.
+              Add an account, transaction or asset to your workspace.
             </SheetDescription>
           </SheetHeader>
         </div>

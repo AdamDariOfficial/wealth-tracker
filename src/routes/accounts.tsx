@@ -1,3 +1,4 @@
+import { MetricCard } from "@/components/MetricCard";
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -31,7 +32,7 @@ import { financialV2Repository } from "@/lib/v2-runtime";
 type SearchState = { q: string; archived: boolean };
 
 export const Route = createFileRoute("/accounts")({
-  validateSearch: (search: Record<string, unknown>): SearchState => ({
+  validateSearch: (search: Partial<Record<keyof SearchState, unknown>>): SearchState => ({
     q: typeof search.q === "string" ? search.q : "",
     archived: search.archived === true || search.archived === "true" || search.archived === "1",
   }),
@@ -109,7 +110,7 @@ function AccountsPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Accounts"
-        subtitle="Canonical capital containers. Balances are derived from transaction legs, never stored as competing totals."
+        subtitle="Every bank, brokerage and wallet you hold. Balances update automatically from your recorded activity."
         action={
           <Button
             onClick={() => openComposer("account")}
@@ -170,7 +171,12 @@ function AccountsPage() {
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <Link to="/accounts/$id" params={{ id: account.id }} className="min-w-0 flex-1">
+                  <Link
+                    to="/accounts/$id"
+                    search={{ q: "", archived: false, edit: false }}
+                    params={{ id: account.id }}
+                    className="min-w-0 flex-1"
+                  >
                     <div className="truncate font-display font-semibold">{account.name}</div>
                     <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
                       {humanize(account.kind)} · {humanize(account.ownership)}
@@ -222,19 +228,5 @@ function Summary({
   value: string;
   warning?: boolean;
 }) {
-  return (
-    <div className="glass rounded-2xl p-3 sm:p-5">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-2 truncate font-display text-lg font-semibold sm:text-2xl",
-          warning && "text-warning",
-        )}
-      >
-        {value}
-      </div>
-    </div>
-  );
+  return <MetricCard label={label} value={value} tone={warning ? "warning" : "neutral"} />;
 }

@@ -171,7 +171,7 @@ function SettingsPage() {
       await advancedV2Repository.restoreBackup(restoreCandidate);
       await refreshProfile();
       await invalidateCanonicalCaches();
-      toast.success("Backup restored atomically");
+      toast.success("Backup restored");
       setRestoreCandidate(null);
       setRestoreFilename(null);
     } catch (error) {
@@ -186,7 +186,7 @@ function SettingsPage() {
     try {
       await advancedV2Repository.resetWorkspace(resetConfirmation);
       await invalidateCanonicalCaches();
-      toast.success("Canonical workspace reset; profile preserved");
+      toast.success("Workspace reset. Your account was preserved.");
       setResetConfirmation("");
       setResetDialogOpen(false);
     } catch (error) {
@@ -200,7 +200,7 @@ function SettingsPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Settings"
-        subtitle="Canonical profile, backup safety and destructive workspace controls."
+        subtitle="Your profile, currency, backups and workspace controls."
         action={
           <Button variant="outline" onClick={() => void handleSignOut()} className="min-h-11">
             <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -213,7 +213,7 @@ function SettingsPage() {
         <SettingsCard
           icon={UserRound}
           title="Profile"
-          description="Stored in v2_profiles and used as the canonical valuation context."
+          description="Used to display every balance, total and chart across the app."
         >
           <form onSubmit={saveProfile} className="space-y-4">
             <div className="space-y-2">
@@ -291,7 +291,7 @@ function SettingsPage() {
         <SettingsCard
           icon={Database}
           title="Backup and restore"
-          description="Schema-versioned export and all-or-none restore of canonical and advanced v2 data."
+          description="Download a complete copy of your data, or restore it in full from an earlier backup."
         >
           <div className="space-y-4">
             <div className="rounded-xl border border-border/50 bg-muted/15 p-4 text-sm text-muted-foreground">
@@ -332,7 +332,7 @@ function SettingsPage() {
         <SettingsCard
           icon={Trash2}
           title="Reset workspace"
-          description="Deletes canonical workspace data while preserving your authenticated profile."
+          description="Permanently removes your financial data. Your account and sign-in stay intact."
         >
           <div className="space-y-4">
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-muted-foreground">
@@ -365,21 +365,20 @@ function SettingsPage() {
 
         <SettingsCard
           icon={ShieldCheck}
-          title="Safety boundary"
-          description="Phase 4 prepares and locally validates schema changes; remote migration remains a separate gate."
+          title="How your data is protected"
+          description="The safeguards that sit behind every change you make."
         >
           <div className="space-y-2 text-sm leading-6 text-muted-foreground">
             <p>
-              Financial writes continue through reviewed v2 RPCs and preserve immutable posted
-              history.
+              Recorded history is never overwritten. Corrections are added as new entries, so you
+              always keep a full audit trail.
             </p>
             <p>
-              Backup restore and reset run as atomic database operations behind explicit
-              confirmations.
+              Restoring a backup or resetting your workspace happens in a single step, behind an
+              explicit confirmation. It either completes fully or not at all.
             </p>
             <p>
-              Remote migration, legacy-data migration and deployment are not authorized by this
-              workflow.
+              Your data belongs to you. You can export a complete backup at any time.
             </p>
           </div>
         </SettingsCard>
@@ -398,7 +397,7 @@ function SettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Restore this backup?</AlertDialogTitle>
             <AlertDialogDescription>
-              {restoreFilename ?? "Selected backup"} will replace the current canonical workspace in
+              {restoreFilename ?? "Selected backup"} will replace everything currently in your workspace in
               one database transaction. If any restored record violates schema or ledger invariants,
               the existing workspace remains unchanged.
             </AlertDialogDescription>
@@ -413,7 +412,7 @@ function SettingsPage() {
               }}
             >
               <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
-              {restoring ? "Restoring…" : "Restore atomically"}
+              {restoring ? "Restoring…" : "Restore backup"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -422,10 +421,10 @@ function SettingsPage() {
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reset the canonical workspace?</AlertDialogTitle>
+            <AlertDialogTitle>Reset your workspace?</AlertDialogTitle>
             <AlertDialogDescription>
               This destructive action cannot be undone without a valid backup. Your profile remains,
-              but all canonical workspace and advanced workflow data will be removed.
+              but every account, transaction, asset and goal will be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

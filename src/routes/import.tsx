@@ -1,3 +1,4 @@
+import { MetricCard, metricToneFromClass } from "@/components/MetricCard";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -82,7 +83,7 @@ function ImportPage() {
         transactions: preview.transactions,
       });
       await refreshCanonicalState();
-      toast.success(`Imported ${preview.transactionCount} transaction(s) atomically.`);
+      toast.success(`Imported ${preview.transactionCount} transaction(s).`);
       setSourceText("");
       setLabel("");
     } catch (error) {
@@ -98,7 +99,7 @@ function ImportPage() {
     try {
       await advancedV2Repository.rollbackImportBatch(rollbackId);
       await refreshCanonicalState();
-      toast.success("Import batch rolled back with immutable reversal transactions.");
+      toast.success("Import undone. Reversals were recorded for every affected transaction.");
       setRollbackId(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Rollback failed");
@@ -122,7 +123,7 @@ function ImportPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Import"
-        subtitle="Strict ledger CSV with row-level preview, one atomic commit and audit-safe rollback."
+        subtitle="Bring in your history from a spreadsheet. Review every row before anything is saved, and undo the whole import at any time."
       />
 
       <section className="glass rounded-2xl p-4 sm:p-6">
@@ -130,12 +131,12 @@ function ImportPage() {
           <div className="max-w-3xl">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-cyan" aria-hidden="true" />
-              <h2 className="font-display font-semibold">Canonical ledger CSV</h2>
+              <h2 className="font-display font-semibold">Import from CSV</h2>
             </div>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Every transaction spans two or more rows with the same transaction_id. Amounts are
-              exact decimal strings. The complete batch is validated against the current v2 ledger
-              before any database write occurs.
+              Each transaction uses two or more rows that share the same transaction id. Amounts are
+              written exactly as you type them. The whole file is checked before anything is saved —
+              if one row is wrong, nothing is imported.
             </p>
           </div>
           <Button
@@ -232,7 +233,7 @@ function ImportPage() {
             <div className="border-b border-border/40 p-4 sm:p-5">
               <h2 className="font-display font-semibold">Row preview</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Preview values are exact strings; no canonical amount is converted through Number.
+                Preview shows the exact values that will be saved.
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -275,7 +276,7 @@ function ImportPage() {
               onClick={() => void commit()}
             >
               <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-              {committing ? "Committing…" : `Commit ${preview.transactionCount} atomically`}
+              {committing ? "Importing…" : `Import ${preview.transactionCount} transactions`}
             </Button>
           </div>
         </section>
@@ -292,9 +293,7 @@ function ImportPage() {
         </p>
 
         {receipts.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            No canonical imports yet.
-          </div>
+          <div className="py-10 text-center text-sm text-muted-foreground">No imports yet.</div>
         ) : (
           <div className="mt-5 space-y-3">
             {receipts.map((receipt) => (
@@ -338,9 +337,9 @@ function ImportPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Roll back this import?</AlertDialogTitle>
             <AlertDialogDescription>
-              Every transaction in the receipt will receive an exact immutable reversal. If any
-              imported transaction has already been corrected, the entire rollback fails without
-              partial changes.
+              Every transaction from this import will be reversed exactly. If any imported
+              transaction has already been corrected, the entire rollback fails without partial
+              changes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -371,10 +370,5 @@ function Metric({
   value: string;
   tone?: string;
 }) {
-  return (
-    <div className="glass rounded-xl p-4">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`mt-1 font-mono text-lg font-semibold ${tone}`}>{value}</div>
-    </div>
-  );
+  return <MetricCard label={label} value={value} tone={metricToneFromClass(tone)} />;
 }
