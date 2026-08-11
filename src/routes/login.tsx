@@ -1,26 +1,54 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { AlertCircle, ArrowRight, Lock, Mail } from "lucide-react";
 import { useState } from "react";
-import { Lock, Mail, ArrowRight, Sparkles, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+import { AuthShell } from "@/components/AuthShell";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-store";
-import { toast } from "sonner";
 
-export const Route = createFileRoute("/login")({ component: LoginPage });
+export const Route = createFileRoute("/login")({
+  head: () => ({
+    meta: [
+      { title: "Sign in — Nebula Wealth Hub" },
+      {
+        name: "description",
+        content: "Sign in to Nebula Wealth Hub to track your accounts, portfolio and net worth.",
+      },
+      { property: "og:title", content: "Sign in — Nebula Wealth Hub" },
+      {
+        property: "og:description",
+        content: "Sign in to track your accounts, portfolio and net worth.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: LoginPage,
+});
 
-function formatAuthError(err: any): string {
-  const status = err?.status;
-  const msg = err?.message ?? "Sign in failed";
-  if (status === 404) {
-    return "Auth endpoint returned 404. This usually happens inside the Lovable preview's fetch proxy — try again, or test on the published URL.";
+/** Turns auth failures into something a person can act on. */
+function formatAuthError(error: unknown): string {
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? (error as { status?: number }).status
+      : undefined;
+  const raw = error instanceof Error ? error.message : "";
+
+  if (status === 404 || /failed to fetch|networkerror|fetch/i.test(raw)) {
+    return "We couldn't reach the sign-in service. Check your connection and try again.";
   }
-  if (/failed to fetch|networkerror|fetch/i.test(msg)) {
-    return `Network error reaching auth service: ${msg}`;
+  if (status === 400 || /invalid login credentials/i.test(raw)) {
+    return "That email and password don't match. Please try again.";
   }
-  if (status) return `[${status}] ${msg}`;
-  return msg;
+  if (/email not confirmed/i.test(raw)) {
+    return "Please confirm your email address first, then sign in.";
+  }
+  if (status === 429 || /rate limit/i.test(raw)) {
+    return "Too many attempts. Please wait a moment and try again.";
+  }
+  return raw || "We couldn't sign you in. Please try again.";
 }
 
 function LoginPage() {
@@ -31,16 +59,16 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setErrorMsg(null);
     try {
       await signIn(email, password);
       toast.success("Welcome back");
-      navigate({ to: "/" });
-    } catch (err: any) {
-      const message = formatAuthError(err);
+      void navigate({ to: "/" });
+    } catch (error: unknown) {
+      const message = formatAuthError(error);
       setErrorMsg(message);
       toast.error(message);
     } finally {
@@ -49,52 +77,85 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,oklch(0.82_0.15_210_/_0.12),transparent_60%)] pointer-events-none" />
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-3xl p-8 w-full max-w-md relative">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-cyan to-cyan-glow flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-background" />
-          </div>
-          <span className="font-display font-semibold tracking-tight">Wealth Tracker</span>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to pick up where you left off."
+      footer={
+        <>
+          New here?{" "}
+          <Link to="/signup" className="font-medium text-cyan hover:underline">
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      {errorMsg && (
+        <div
+          role="alert"
+          className="mt-6 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="leading-6">{errorMsg}</span>
         </div>
-        <h1 className="font-display text-3xl font-semibold mt-6">Welcome back</h1>
-        <p className="text-sm text-muted-foreground mt-1">Sign in to your wealth operating system.</p>
+      )}
 
-        {errorMsg && (
-          <div
-            role="alert"
-            className="mt-6 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
-          >
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span className="leading-snug">{errorMsg}</span>
+      <form onSubmit={onSubmit} className="mt-7 space-y-4" noValidate>
+        <div className="space-y-1.5">
+          <Label htmlFor="login-email">Email</Label>
+          <div className="relative">
+            <Mail
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="login-email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              type="email"
+              autoComplete="email"
+              required
+              className="pl-9"
+              placeholder="you@example.com"
+            />
           </div>
-        )}
+        </div>
 
-        <form onSubmit={onSubmit} className="space-y-4 mt-8">
-          <div>
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label>
-            <div className="relative mt-1.5">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required className="pl-9" placeholder="you@example.com" />
-            </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="login-password">Password</Label>
+          <div className="relative">
+            <Lock
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="login-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              type="password"
+              autoComplete="current-password"
+              required
+              minLength={6}
+              className="pl-9"
+              placeholder="••••••••"
+            />
           </div>
-          <div>
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Password</Label>
-            <div className="relative mt-1.5">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required minLength={6} className="pl-9" placeholder="••••••••" />
-            </div>
-          </div>
-          <Button disabled={loading} className="w-full bg-cyan text-background hover:bg-cyan/90 mt-2">
-            {loading ? "Signing in…" : <>Sign in <ArrowRight className="h-4 w-4 ml-1" /></>}
-          </Button>
-        </form>
+        </div>
 
-        <p className="text-xs text-muted-foreground mt-6 text-center">
-          New here? <Link to="/signup" className="text-cyan hover:underline">Create an account</Link>
-        </p>
-      </motion.div>
-    </div>
+        <Button
+          type="submit"
+          disabled={loading}
+          size="lg"
+          className="mt-2 w-full bg-cyan text-background hover:bg-cyan/90"
+        >
+          {loading ? (
+            "Signing in…"
+          ) : (
+            <>
+              Sign in <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+            </>
+          )}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

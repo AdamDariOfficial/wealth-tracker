@@ -1,3 +1,4 @@
+import { MetricCard } from "@/components/MetricCard";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -110,7 +111,7 @@ function TransactionsPage() {
       });
       await postValidatedTransaction(financialV2Repository, reversal);
       await queryClient.invalidateQueries({ queryKey: financialV2Keys.all });
-      toast.success("Transaction voided with immutable reversal");
+      toast.success("Transaction voided. A matching reversal was recorded.");
       setVoidTarget(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not void transaction";
@@ -173,7 +174,7 @@ function TransactionsPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Transactions"
-        subtitle="Immutable canonical ledger. Corrections are recorded as explicit reversals rather than edits or deletes."
+        subtitle="A permanent record of your money. Corrections are added as reversals, so nothing is ever silently rewritten."
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={exportCsv}>
@@ -353,12 +354,5 @@ function TransactionsPage() {
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="glass rounded-2xl p-3 sm:p-5">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">
-        {label}
-      </div>
-      <div className="mt-2 font-display text-lg font-semibold sm:text-2xl">{value}</div>
-    </div>
-  );
+  return <MetricCard label={label} value={value} />;
 }

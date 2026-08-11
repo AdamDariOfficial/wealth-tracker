@@ -202,7 +202,7 @@ export function TransactionForm({ onSaved }: { onSaved: () => void }) {
         disabled={saving || !description.trim() || !balanced}
         className="w-full bg-cyan text-background hover:bg-cyan/90"
       >
-        {saving ? "Posting…" : "Post immutable transaction"}
+        {saving ? "Recording…" : "Record transaction"}
       </Button>
     </form>
   );

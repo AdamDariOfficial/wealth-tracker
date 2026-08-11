@@ -1,3 +1,4 @@
+import { MetricCard, metricToneFromClass } from "@/components/MetricCard";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -93,7 +94,7 @@ function TradingWorkspace() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Trading Workspace"
-        subtitle="Ledger-derived trading capital, exact risk settings and auditable weekly reviews."
+        subtitle="Your trading capital, risk rules and weekly performance reviews in one workspace."
       />
 
       <Tabs value={tab} onValueChange={(value) => void navigate({ search: { tab: value as Tab } })}>
@@ -142,17 +143,7 @@ function StatCard({
   hint: string;
   tone?: string;
 }) {
-  return (
-    <div className="glass min-w-0 rounded-2xl p-4 sm:p-5">
-      <div className="truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
-      </div>
-      <div className={cn("mt-2 truncate font-display text-xl font-semibold sm:text-2xl", tone)}>
-        {value}
-      </div>
-      <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
-    </div>
-  );
+  return <MetricCard label={label} value={value} hint={hint} tone={metricToneFromClass(tone)} />;
 }
 
 function OverviewPanel({ trading, locale }: { trading: TradingOverview; locale: string }) {
@@ -193,13 +184,11 @@ function OverviewPanel({ trading, locale }: { trading: TradingOverview; locale: 
         <div className="flex items-start gap-3">
           <Activity className="mt-0.5 h-5 w-5 shrink-0 text-cyan" aria-hidden="true" />
           <div>
-            <h2 className="font-display font-semibold">
-              Separation of capital and journal metrics
-            </h2>
+            <h2 className="font-display font-semibold">How trading capital is counted</h2>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Trading capital is derived from owned broker, exchange and investment positions in the
-              canonical ledger. Weekly reported P&amp;L is journal metadata for review analytics and
-              is never added to account balances automatically.
+              Your trading capital comes from the broker, exchange and investment accounts you own.
+              The profit and loss you log in a weekly review is used for your performance stats only
+              — it never changes an account balance on its own.
             </p>
           </div>
         </div>
@@ -468,7 +457,7 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
         <div>
           <h2 className="font-display font-semibold">Weekly reviews</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Finalization is one-way. A finalized review is immutable.
+            Finalizing locks the review. You can reopen it later if you need to.
           </p>
         </div>
         <Button className="min-h-11 bg-cyan text-background hover:bg-cyan/90" onClick={openCreate}>
@@ -798,7 +787,7 @@ function InsightsPanel({ trading, locale }: { trading: TradingOverview; locale: 
         <StatCard
           label="Finalized"
           value={`${trading.finalizedReviewCount}/${trading.reviewCount}`}
-          hint="Immutable weekly reviews"
+          hint="Finalized weekly reviews"
         />
         <StatCard
           label="Consistency"

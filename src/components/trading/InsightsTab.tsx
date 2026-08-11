@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 import { chartTooltipProps } from "@/lib/chart-style";
 
 /**
- * Insights tab — performance-driven analytics derived from the canonical
- * ledger + immutable weekly reports. Replaces the broker-terminal-style
+ * Insights tab — performance analytics derived from recorded activity
+ * and finalized weekly reports. Replaces the broker-terminal-style
  * trades table with consistency, distribution and drawdown views.
  *
  * NO aggregation logic lives here — everything is pulled from

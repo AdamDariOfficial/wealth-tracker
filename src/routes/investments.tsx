@@ -1,3 +1,4 @@
+import { MetricCard } from "@/components/MetricCard";
 import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Pencil, Plus, Search, SlidersHorizontal } from "lucide-react";
@@ -25,7 +26,7 @@ type PortfolioView = (typeof views)[number];
 type SearchState = { view: PortfolioView; q: string; asset: string };
 
 export const Route = createFileRoute("/investments")({
-  validateSearch: (search: Record<string, unknown>): SearchState => ({
+  validateSearch: (search: Partial<Record<keyof SearchState, unknown>>): SearchState => ({
     view: views.includes(search.view as PortfolioView) ? (search.view as PortfolioView) : "all",
     q: typeof search.q === "string" ? search.q : "",
     asset: typeof search.asset === "string" ? search.asset : "",
@@ -85,7 +86,7 @@ function PortfolioPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Portfolio"
-        subtitle="One canonical portfolio across cash, ETFs, crypto, equities, funds and commodities."
+        subtitle="Everything you own in one view — cash, ETFs, crypto, equities, funds and commodities."
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => openComposer("market-data")}>
@@ -208,7 +209,7 @@ function PortfolioPage() {
           <div>
             <h2 className="font-display font-semibold">Asset registry</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Canonical asset metadata. Ledger history remains immutable when metadata changes.
+              Details for this asset. Renaming it never changes your recorded transaction history.
             </p>
           </div>
           <div className="text-xs text-muted-foreground">
@@ -263,7 +264,7 @@ function PortfolioPage() {
           <DialogHeader>
             <DialogTitle>Edit asset</DialogTitle>
             <DialogDescription>
-              Update canonical metadata through the validated v2 repository boundary.
+              Update the asset name, ticker and class. Your holdings and history are unaffected.
             </DialogDescription>
           </DialogHeader>
           {selectedAsset && (
@@ -289,19 +290,5 @@ function Summary({
   value: string;
   warning?: boolean;
 }) {
-  return (
-    <div className="glass min-w-0 rounded-2xl p-3 sm:p-5">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-2 truncate font-display text-lg font-semibold sm:text-2xl",
-          warning && "text-warning",
-        )}
-      >
-        {value}
-      </div>
-    </div>
-  );
+  return <MetricCard label={label} value={value} tone={warning ? "warning" : "neutral"} />;
 }

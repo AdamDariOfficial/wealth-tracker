@@ -66,7 +66,7 @@ export function CommandPalette() {
     <CommandDialog open={open} onOpenChange={(nextOpen) => togglePalette(nextOpen)}>
       <DialogTitle className="sr-only">Nebula command palette</DialogTitle>
       <DialogDescription className="sr-only">
-        Create canonical financial records or navigate to a Wealth Hub section.
+        Jump to a section or create something new.
       </DialogDescription>
       <CommandInput placeholder="Search or run a command…" />
       <CommandList>
@@ -106,6 +106,7 @@ export function CommandPalette() {
                       navigate({
                         to: "/accounts/$id",
                         params: { id: account.id },
+                        search: { q: "", archived: false, edit: false },
                       }),
                     )
                   }

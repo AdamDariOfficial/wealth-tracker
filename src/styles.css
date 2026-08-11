@@ -236,5 +236,91 @@
     background: oklch(1 0 0 / 0.18);
     margin: 6px auto 10px;
   }
+
+  /* ====================================================================
+     Surface hierarchy — three deliberate levels.
+     1. canvas   : the page background (body)
+     2. section  : calm grouped content, no glow, subtle border
+     3. elevated : focal content — dialogs, composer, hero metrics
+     Not every card is equal; glow is reserved for focal elements only.
+     ==================================================================== */
+
+  .surface-section {
+    background: oklch(0.175 0.007 240 / 0.72);
+    border: 1px solid oklch(1 0 0 / 0.045);
+    border-radius: var(--radius-2xl);
+  }
+
+  .surface-elevated {
+    background: oklch(0.2 0.009 240 / 0.9);
+    border: 1px solid oklch(1 0 0 / 0.08);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* Focal hero surface — the single most important value on a page. */
+  .surface-focal {
+    background:
+      radial-gradient(120% 140% at 0% 0%, oklch(0.82 0.15 210 / 0.09), transparent 60%),
+      oklch(0.2 0.009 240 / 0.9);
+    border: 1px solid oklch(0.82 0.15 210 / 0.18);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Quiet inner row inside a section — lists, legs, allocation rows. */
+  .surface-quiet {
+    background: oklch(0.22 0.008 240 / 0.35);
+    border: 1px solid oklch(1 0 0 / 0.035);
+    border-radius: var(--radius-lg);
+  }
+
+  /* ====================================================================
+     Financial typography — money must never be blindly truncated.
+     ==================================================================== */
+
+  .text-money {
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: none;
+  }
+
+  /* Calm section label — replaces repeated 10px ultra-tracked uppercase. */
+  .label-muted {
+    font-size: 0.75rem;
+    line-height: 1.1rem;
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    letter-spacing: 0.005em;
+  }
+
+  /* Fluid hero money value — scales instead of clipping. */
+  .text-money-hero {
+    font-size: clamp(1.5rem, 1rem + 2.6vw, 2.5rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+  }
+  .text-money-lg {
+    font-size: clamp(1.125rem, 0.95rem + 1vw, 1.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* ======================================================================
+   Motion discipline — restrained by default, silent when reduced.
+   ====================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 

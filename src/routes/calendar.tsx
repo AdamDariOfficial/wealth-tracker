@@ -1,3 +1,4 @@
+import { MetricCard, metricToneFromClass } from "@/components/MetricCard";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   ArrowDownRight,
@@ -177,7 +178,7 @@ function CalendarPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Calendar"
-        subtitle="Current corrected ledger history, reconstructed from canonical v2 records."
+        subtitle="Your financial activity day by day, including any corrections you have recorded."
         action={
           <Button
             type="button"
@@ -292,9 +293,7 @@ function CalendarPage() {
                   })
                 : "Day activity"}
             </SheetTitle>
-            <SheetDescription>
-              Canonical ledger events occurring on this economic date.
-            </SheetDescription>
+            <SheetDescription>Everything recorded on this day.</SheetDescription>
           </SheetHeader>
           <div className="mt-5">
             <EventList events={workspace.selectedDayEvents} locale={locale} />
@@ -398,18 +397,13 @@ function SummaryCard({
   icon?: typeof ArrowUpRight;
 }) {
   return (
-    <div className="glass min-w-0 rounded-2xl p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          {label}
-        </div>
-        {Icon ? <Icon className={cn("h-4 w-4 shrink-0", tone)} aria-hidden="true" /> : null}
-      </div>
-      <div className={cn("mt-2 truncate font-display text-xl font-semibold sm:text-2xl", tone)}>
-        {value}
-      </div>
-      <div className="mt-1 truncate text-[10px] text-muted-foreground">{hint}</div>
-    </div>
+    <MetricCard
+      label={label}
+      value={value}
+      hint={hint}
+      icon={Icon}
+      tone={metricToneFromClass(tone)}
+    />
   );
 }
 
@@ -560,7 +554,7 @@ function EventList({ events, locale }: { events: readonly TransactionView[]; loc
   if (events.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
-        No canonical ledger activity in this period.
+        No activity recorded in this period.
       </div>
     );
   }

@@ -61,14 +61,14 @@ function OnboardingPage() {
           </div>
           <div>
             <div className="font-display font-semibold">Nebula Wealth Hub</div>
-            <div className="text-xs text-muted-foreground">Canonical v2 profile</div>
+            <div className="text-xs text-muted-foreground">Set up your profile</div>
           </div>
         </div>
         <div>
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Set your wealth baseline</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            These are the only profile fields required by the canonical financial model. Advanced
-            planning and trading preferences remain separate workflows.
+            Just two details to get started. You can change them at any time in Settings, and add
+            planning and trading preferences later.
           </p>
         </div>
         <div className="space-y-2">
@@ -104,7 +104,7 @@ function OnboardingPage() {
           </div>
         </div>
         <div className="rounded-xl border border-cyan/20 bg-cyan/5 p-4 text-xs text-muted-foreground">
-          Net worth, account values and portfolio totals will derive from the immutable v2 ledger.
+          Your net worth, account values and portfolio totals are calculated from the activity you record.
           Missing prices or FX rates remain unknown rather than being silently treated as zero.
         </div>
         <Button

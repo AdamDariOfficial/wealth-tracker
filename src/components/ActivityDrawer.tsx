@@ -192,7 +192,7 @@ export function ActivityDrawer({
               <Field label="Trades" value={m.num_trades} mono />
               <Field label="Win rate" value={`${Math.round((Number(m.winrate) || 0) * 100)}%`} mono />
               <Field label="Avg RR" value={Number(m.avg_rr || 0).toFixed(2)} mono />
-              <Field label="State" value={m.finalized ? "Finalized (immutable)" : "Draft"} />
+              <Field label="State" value={m.finalized ? "Finalized" : "Draft"} />
             </Section>
           )}
 
