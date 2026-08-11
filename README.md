@@ -11,12 +11,13 @@ PHASE_0_REPOSITORY_FOUNDATION_MERGED
 PHASE_1_FINANCIAL_DOMAIN_IMPLEMENTED
 PHASE_2_SUPABASE_V2_FOUNDATION_MERGED_AND_LOCALLY_VALIDATED
 PHASE_3_CORE_EXPERIENCE_MERGED_AND_VALIDATED
+PHASE_4_ADVANCED_WORKFLOWS_IMPLEMENTED_AND_VALIDATED
 LEGACY_APPLICATION_PRESERVED_AS_REFERENCE_OUTSIDE_MIGRATED_FLOWS
 NO_PRODUCTION_DATA_MIGRATION_AUTHORIZED
 NO_REMOTE_V2_MIGRATION_AUTHORIZED
 ```
 
-The additive v2 schema, RLS model and repository boundary are versioned in the repository. Phase 3 moves the primary application flows onto that boundary. Legacy records remain historical input until the Phase 5 migration plan is separately approved and validated.
+The additive v2 schema, RLS model and repository boundary are versioned in the repository. Phase 3 moves the primary application flows onto that boundary. Phase 4 migrates Calendar, Goals, Trading, atomic bulk Import and Data Management together on one consolidated integration branch, with additive v2 persistence and explicit local-database gates. Legacy records remain historical input until the Phase 5 migration plan is separately approved and validated.
 
 ## Product direction
 
@@ -110,7 +111,8 @@ Phase-specific controlled validators add scoped Prettier, ESLint, whitespace and
 - [`docs/PHASE_1A_FINANCIAL_VALUES.md`](docs/PHASE_1A_FINANCIAL_VALUES.md): decimal and money foundation;
 - [`docs/PHASE_1_FINANCIAL_DOMAIN.md`](docs/PHASE_1_FINANCIAL_DOMAIN.md): pure financial-domain model;
 - [`docs/PHASE_2_SUPABASE_V2.md`](docs/PHASE_2_SUPABASE_V2.md): persistence, RLS and repository contract;
-- [`docs/PHASE_3_CORE_EXPERIENCE.md`](docs/PHASE_3_CORE_EXPERIENCE.md): mobile shell and canonical core UI contract.
+- [`docs/PHASE_3_CORE_EXPERIENCE.md`](docs/PHASE_3_CORE_EXPERIENCE.md): mobile shell and canonical core UI contract;
+- [`docs/PHASE_4_ADVANCED_WORKFLOWS.md`](docs/PHASE_4_ADVANCED_WORKFLOWS.md): advanced-workflow migration plan and gates.
 
 ## Safety
 
