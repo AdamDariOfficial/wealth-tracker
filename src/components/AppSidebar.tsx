@@ -58,7 +58,7 @@ function Section({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
+      <SidebarGroupLabel className="label-muted">
         {label}
       </SidebarGroupLabel>
       <SidebarGroupContent>
@@ -99,7 +99,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="leading-tight">
               <div className="font-display text-base font-bold">Nebula</div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              <div className="label-muted">
                 Wealth Hub
               </div>
             </div>

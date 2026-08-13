@@ -166,7 +166,7 @@ function AccountsPage() {
             return (
               <article
                 key={account.id}
-                className={cn("glass rounded-2xl p-4 sm:p-5", account.archived && "opacity-60")}
+                className={cn("surface-section p-4 sm:p-5", account.archived && "opacity-60")}
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
@@ -179,13 +179,13 @@ function AccountsPage() {
                     className="min-w-0 flex-1"
                   >
                     <div className="truncate font-display font-semibold">{account.name}</div>
-                    <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <div className="mt-1 label-muted">
                       {humanize(account.kind)} · {humanize(account.ownership)}
                     </div>
                   </Link>
                 </div>
                 <div className="mt-5">
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <div className="label-muted">
                     Known value
                   </div>
                   <div className="mt-1 font-display text-xl font-semibold">

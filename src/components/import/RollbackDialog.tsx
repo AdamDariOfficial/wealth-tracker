@@ -124,7 +124,7 @@ export function RollbackDialog(props: {
           )}
 
           <div className="rounded-md border border-border/40 bg-card/40 p-3 space-y-2 text-xs">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Impact preview</div>
+            <div className="label-muted">Impact preview</div>
             {loading ? (
               <div className="flex items-center gap-2 text-muted-foreground py-2">
                 <Loader2 className="h-3 w-3 animate-spin" /> Simulating…
@@ -184,7 +184,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "su
     tone === "muted" ? "text-muted-foreground" : "text-foreground";
   return (
     <div className="rounded-md border border-border/40 px-2 py-1.5 bg-card/40">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="label-muted">{label}</div>
       <div className={cn("font-mono text-sm font-semibold tabular-nums", color)}>{value}</div>
     </div>
   );

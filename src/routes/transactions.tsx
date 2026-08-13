@@ -245,7 +245,7 @@ function TransactionsPage() {
           </div>
         ) : (
           transactions.map((transaction) => (
-            <article key={transaction.id} className="glass rounded-2xl p-4 sm:p-5">
+            <article key={transaction.id} className="surface-section p-4 sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">

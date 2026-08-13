@@ -117,9 +117,9 @@ export function TransactionForm({ onSaved }: { onSaved: () => void }) {
           </Button>
         </div>
         {legs.map((leg, index) => (
-          <div key={leg.rowId} className="glass-strong space-y-3 rounded-xl p-3">
+          <div key={leg.rowId} className="surface-quiet space-y-3 p-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              <span className="label-muted">
                 Leg {index + 1}
               </span>
               {legs.length > 2 && (

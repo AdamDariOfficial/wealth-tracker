@@ -92,9 +92,9 @@ export function InsightsTab() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {tiles.map(({ l, v, c, Icon }) => (
           <motion.div key={l} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-xl p-3">
+            className="surface-quiet p-3">
             <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{l}</div>
+              <div className="label-muted">{l}</div>
               <Icon className="h-3 w-3 text-muted-foreground" />
             </div>
             <div className={cn("font-display font-semibold mt-1 text-base", c)}>{v}</div>
@@ -103,7 +103,7 @@ export function InsightsTab() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-5">
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="surface-section p-5">
           <h3 className="font-display font-semibold text-sm">Weekly P&L distribution</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">Per-week realized performance (signed).</p>
           {pnlSeries.length === 0 ? (
@@ -126,7 +126,7 @@ export function InsightsTab() {
           )}
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-5">
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="surface-section p-5">
           <h3 className="font-display font-semibold text-sm">Drawdown trace</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">Performance-only equity, peak-to-trough.</p>
           {drawdown.length === 0 ? (
@@ -152,7 +152,7 @@ export function InsightsTab() {
         </motion.div>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-5">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="surface-section p-5">
         <h3 className="font-display font-semibold text-sm">Capital flow vs performance</h3>
         <p className="text-[11px] text-muted-foreground mt-0.5">
           Deposits and withdrawals against the trading book — kept separate from PnL by design.
@@ -162,7 +162,7 @@ export function InsightsTab() {
         ) : (
           <div className="overflow-x-auto mt-3">
             <table className="w-full text-xs">
-              <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <thead className="label-muted">
                 <tr>
                   <th className="text-left py-2">Date</th>
                   <th className="text-left">Kind</th>

@@ -104,7 +104,7 @@ export function QuickEntryDialog({
 
         {snippet && (
           <div className="rounded-md bg-muted/40 border border-border/40 p-2 mt-2">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Generated syntax</div>
+            <div className="label-muted mb-1">Generated syntax</div>
             <pre className="font-mono text-xs whitespace-pre-wrap break-all">{snippet}</pre>
           </div>
         )}
@@ -121,7 +121,7 @@ export function QuickEntryDialog({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</label>
+      <label className="label-muted">{label}</label>
       {children}
     </div>
   );

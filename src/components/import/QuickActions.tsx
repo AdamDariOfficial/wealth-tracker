@@ -17,7 +17,7 @@ const CARDS: { id: QuickAction["kind"]; label: string; hint: string; icon: React
 
 export function QuickActions({ onPick }: { onPick: (a: QuickAction["kind"]) => void }) {
   return (
-    <Card className="glass p-4">
+    <Card className="surface-section p-4">
       <div className="flex items-center gap-2 text-sm font-semibold mb-3">
         <Plus className="h-4 w-4 text-cyan" /> Quick Add
         <span className="text-[11px] text-muted-foreground font-normal ml-2">Generates valid syntax and inserts it into the editor</span>

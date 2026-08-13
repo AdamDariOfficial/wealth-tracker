@@ -138,7 +138,7 @@ export function AssetResolveModal({
     >
       <div className="space-y-4">
         <div className="rounded-md border border-border/40 bg-card/40 p-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Unknown asset detected</div>
+          <div className="label-muted">Unknown asset detected</div>
           <div className="font-mono text-sm mt-1">"{issue.raw}"</div>
           <div className="text-[11px] text-muted-foreground mt-1">
             Affects {affected} row{affected === 1 ? "" : "s"}.
@@ -326,7 +326,7 @@ export function GoalResolveModal({
     >
       <div className="space-y-4">
         <div className="rounded-md border border-border/40 bg-card/40 p-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Unknown goal detected</div>
+          <div className="label-muted">Unknown goal detected</div>
           <div className="font-mono text-sm mt-1">"{issue.raw}"</div>
           <div className="text-[11px] text-muted-foreground mt-1">
             Affects {affected} row{affected === 1 ? "" : "s"}.

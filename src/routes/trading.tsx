@@ -181,7 +181,7 @@ function OverviewPanel({ trading, locale }: { trading: TradingOverview; locale: 
         />
       </div>
 
-      <div className="glass rounded-2xl p-5">
+      <div className="surface-section p-5">
         <div className="flex items-start gap-3">
           <Activity className="mt-0.5 h-5 w-5 shrink-0 text-cyan" aria-hidden="true" />
           <div>
@@ -223,7 +223,7 @@ function CapitalPanel({ trading, locale }: { trading: TradingOverview; locale: s
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="glass rounded-2xl p-5 sm:p-6">
+        <section className="surface-section p-5 sm:p-6">
           <div className="flex items-start gap-3">
             <Shield className="mt-0.5 h-5 w-5 text-cyan" aria-hidden="true" />
             <div>
@@ -291,9 +291,9 @@ function CapitalPanel({ trading, locale }: { trading: TradingOverview; locale: s
           </Button>
         </section>
 
-        <aside className="glass rounded-2xl p-5">
+        <aside className="surface-section p-5">
           <WalletCards className="h-5 w-5 text-cyan" aria-hidden="true" />
-          <div className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="mt-3 label-muted">
             Current known capital
           </div>
           <div className="mt-1 font-display text-3xl font-semibold">
@@ -470,13 +470,13 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
       </div>
 
       {trading.reviews.length === 0 ? (
-        <div className="glass rounded-2xl border-dashed p-10 text-center text-sm text-muted-foreground">
+        <div className="surface-section border-dashed p-10 text-center text-sm text-muted-foreground">
           No weekly reviews yet.
         </div>
       ) : (
         <div className="space-y-3">
           {trading.reviews.map((review) => (
-            <article key={review.id} className="glass rounded-2xl p-4 sm:p-5">
+            <article key={review.id} className="surface-section p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
@@ -586,7 +586,7 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
                 <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
                   {review.notes ? (
                     <div className="rounded-xl bg-muted/20 p-3">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <div className="label-muted">
                         Notes
                       </div>
                       <p className="mt-1 whitespace-pre-wrap text-foreground/85">{review.notes}</p>
@@ -594,7 +594,7 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
                   ) : null}
                   {review.lessons ? (
                     <div className="rounded-xl bg-muted/20 p-3">
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <div className="label-muted">
                         Lessons
                       </div>
                       <p className="mt-1 whitespace-pre-wrap text-foreground/85">
@@ -767,7 +767,7 @@ function MiniMetric({
 }) {
   return (
     <div className="rounded-xl bg-muted/20 p-3">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="label-muted">{label}</div>
       <div className={cn("mt-1 font-mono text-sm", tone)}>{value}</div>
     </div>
   );
@@ -804,7 +804,7 @@ function InsightsPanel({ trading, locale }: { trading: TradingOverview; locale: 
         />
       </div>
 
-      <div className="glass rounded-2xl p-5">
+      <div className="surface-section p-5">
         <h2 className="font-display font-semibold">Review history</h2>
         <div className="mt-4 space-y-2">
           {trading.reviews.length === 0 ? (

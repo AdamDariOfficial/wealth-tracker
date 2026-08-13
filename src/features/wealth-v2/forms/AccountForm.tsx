@@ -135,7 +135,7 @@ export function AccountForm({ onSaved, existing }: { onSaved: () => void; existi
           </Select>
         </div>
       </div>
-      <div className="glass-strong flex items-center justify-between gap-4 rounded-xl p-4">
+      <div className="surface-quiet flex items-center justify-between gap-4 rounded-xl p-4">
         <div>
           <div className="text-sm font-medium">Include in net worth</div>
           <p className="mt-1 text-xs text-muted-foreground">

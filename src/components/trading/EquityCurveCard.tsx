@@ -11,7 +11,7 @@ export function EquityCurveCard({ data, defaultMode = "performance" }: { data: E
   const [mode, setMode] = useState<Mode>(defaultMode);
 
   return (
-    <div className="glass rounded-2xl p-5">
+    <div className="surface-section p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-display font-semibold flex items-center gap-2">
           <Activity className="h-4 w-4 text-cyan" /> Equity Curve

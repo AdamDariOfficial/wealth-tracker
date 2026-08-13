@@ -161,13 +161,13 @@ function PortfolioPage() {
           {positions.map((position) => (
             <article
               key={`${position.accountId}:${position.assetId}`}
-              className="glass rounded-2xl p-4 sm:p-5"
+              className="surface-section p-4 sm:p-5"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-display text-lg font-semibold">{position.symbol}</span>
-                    <span className="rounded-full bg-muted/50 px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span className="rounded-full bg-muted/50 px-2 py-1 label-muted">
                       {position.kind}
                     </span>
                   </div>
@@ -179,14 +179,14 @@ function PortfolioPage() {
                   <div className="font-mono text-sm tabular-nums">
                     {formatQuantity(position.quantity)}
                   </div>
-                  <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <div className="mt-1 label-muted">
                     quantity
                   </div>
                 </div>
               </div>
               <div className="mt-5 flex items-end justify-between gap-4">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <div className="label-muted">
                     Known value
                   </div>
                   <div className="mt-1 font-display text-xl font-semibold">
@@ -204,7 +204,7 @@ function PortfolioPage() {
         </div>
       )}
 
-      <section className="glass rounded-2xl p-4 sm:p-5">
+      <section className="surface-section p-4 sm:p-5">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="font-display font-semibold">Asset registry</h2>
@@ -230,7 +230,7 @@ function PortfolioPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-semibold">{asset.symbol}</span>
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span className="label-muted">
                       {humanize(asset.kind)}
                     </span>
                   </div>

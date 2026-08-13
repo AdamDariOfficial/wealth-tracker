@@ -127,7 +127,7 @@ function ImportPage() {
         subtitle="Bring in your history from a spreadsheet. Review every row before anything is saved, and undo the whole import at any time."
       />
 
-      <section className="glass rounded-2xl p-4 sm:p-6">
+      <section className="surface-section p-4 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <div className="flex items-center gap-2">
@@ -230,7 +230,7 @@ function ImportPage() {
             </div>
           )}
 
-          <div className="glass overflow-hidden rounded-2xl">
+          <div className="surface-section overflow-hidden">
             <div className="border-b border-border/40 p-4 sm:p-5">
               <h2 className="font-display font-semibold">Row preview</h2>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -239,7 +239,7 @@ function ImportPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-[920px] w-full text-sm">
-                <thead className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                <thead className="text-left label-muted">
                   <tr className="border-b border-border/40">
                     <th className="px-4 py-3">Line</th>
                     <th className="px-4 py-3">Transaction</th>
@@ -283,7 +283,7 @@ function ImportPage() {
         </section>
       ) : null}
 
-      <section className="glass rounded-2xl p-4 sm:p-6">
+      <section className="surface-section p-4 sm:p-6">
         <div className="flex items-center gap-2">
           <History className="h-4 w-4 text-cyan" aria-hidden="true" />
           <h2 className="font-display font-semibold">Import receipts</h2>

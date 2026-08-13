@@ -49,7 +49,7 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="glass rounded-2xl p-5 sm:p-6">
+    <section className="surface-section p-5 sm:p-6">
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
           <Icon className="h-4 w-4" aria-hidden="true" />
@@ -269,7 +269,7 @@ function SettingsPage() {
         >
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              <div className="label-muted">
                 Base currency
               </div>
               <div className="mt-2 font-mono text-lg font-semibold">
@@ -277,7 +277,7 @@ function SettingsPage() {
               </div>
             </div>
             <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              <div className="label-muted">
                 Completeness
               </div>
               <div className="mt-2 font-mono text-lg font-semibold">

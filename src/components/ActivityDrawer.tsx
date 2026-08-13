@@ -47,7 +47,7 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl glass p-3">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-2">{title}</div>
+      <div className="label-muted/80 mb-2">{title}</div>
       <div className="space-y-0.5">{children}</div>
     </div>
   );
@@ -106,7 +106,7 @@ export function ActivityDrawer({
       <SheetContent className="w-full sm:max-w-md overflow-y-auto bg-background/95 backdrop-blur-xl border-l-border/60">
         <SheetHeader className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className={cn("h-10 w-10 rounded-xl glass-strong flex items-center justify-center ring-1", TONE_RING[event.tone ?? "neutral"])}>
+            <div className={cn("h-10 w-10 rounded-xl surface-quiet flex items-center justify-center ring-1", TONE_RING[event.tone ?? "neutral"])}>
               <Icon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">

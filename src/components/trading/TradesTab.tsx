@@ -74,14 +74,14 @@ export function TradesTab() {
           { l: "Avg R:R", v: stats.avgRR.toFixed(2), c: "text-cyan" },
           { l: "Trades", v: `${rows.length}` },
         ].map((s) => (
-          <div key={s.l} className="glass rounded-2xl p-4">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.l}</div>
+          <div key={s.l} className="surface-section p-4">
+            <div className="label-muted">{s.l}</div>
             <div className={cn("font-display text-2xl font-semibold mt-1", s.c)}>{s.v}</div>
           </div>
         ))}
       </div>
 
-      <div className="glass rounded-2xl overflow-hidden">
+      <div className="surface-section overflow-hidden">
         <table className="w-full text-sm">
           <thead className="text-[11px] uppercase tracking-wider text-muted-foreground border-y border-border/40">
             <tr>{["Date", "Asset", "Side", "Entry", "SL", "TP", "P&L", "R:R", "Setup", ""].map((h) => <th key={h} className="text-left font-medium px-4 py-3">{h}</th>)}</tr>
