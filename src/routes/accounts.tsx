@@ -185,9 +185,7 @@ function AccountsPage() {
                   </Link>
                 </div>
                 <div className="mt-5">
-                  <div className="label-muted">
-                    Known value
-                  </div>
+                  <div className="label-muted">Known value</div>
                   <div className="mt-1 font-display text-xl font-semibold">
                     {account.includeInNetWorth
                       ? formatMoney(account.knownValue, profile?.locale ?? undefined)

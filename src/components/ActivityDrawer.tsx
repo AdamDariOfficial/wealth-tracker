@@ -1,16 +1,31 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
-  ArrowLeftRight, ShieldCheck, BarChart3, Target, Wallet,
-  AlertTriangle, Activity as ActivityIcon, ChevronRight,
-  ExternalLink, Eye, EyeOff, Hash, GitBranch, Upload,
+  ArrowLeftRight,
+  ShieldCheck,
+  BarChart3,
+  Target,
+  Wallet,
+  AlertTriangle,
+  Activity as ActivityIcon,
+  ChevronRight,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Hash,
+  GitBranch,
+  Upload,
 } from "lucide-react";
 import type { ActivityEvent, ActivityKind } from "@/hooks/use-activity-feed";
 import { useActivityFeed } from "@/hooks/use-activity-feed";
@@ -70,7 +85,9 @@ function LinkRow({ to, label, hint }: { to: string; label: string; hint?: string
 }
 
 export function ActivityDrawer({
-  event, onClose, onSelect,
+  event,
+  onClose,
+  onSelect,
 }: {
   event: ActivityEvent | null;
   onClose: () => void;
@@ -87,17 +104,21 @@ export function ActivityDrawer({
     const set = new Map<string, ActivityEvent>();
     for (const e of all) {
       if (e.id === event.id) continue;
-      if (event.refs.transferGroupId && e.refs.transferGroupId === event.refs.transferGroupId) set.set(e.id, e);
-      if (event.refs.txId && (e.refs.txId === event.refs.txId)) set.set(e.id, e);
-      if (event.refs.reportId && e.refs.txId === event.refs.txId && event.refs.txId) set.set(e.id, e);
+      if (event.refs.transferGroupId && e.refs.transferGroupId === event.refs.transferGroupId)
+        set.set(e.id, e);
+      if (event.refs.txId && e.refs.txId === event.refs.txId) set.set(e.id, e);
+      if (event.refs.reportId && e.refs.txId === event.refs.txId && event.refs.txId)
+        set.set(e.id, e);
     }
     return Array.from(set.values()).slice(0, 8);
   }, [event, all]);
 
   if (!event) return null;
   const Icon = ICON[event.kind] ?? ActivityIcon;
-  const accName = (id?: string | null) => id ? accounts.find((a) => a.id === id)?.name ?? id.slice(0, 8) : null;
-  const assName = (id?: string | null) => id ? assets.find((a) => a.id === id)?.symbol ?? "" : null;
+  const accName = (id?: string | null) =>
+    id ? (accounts.find((a) => a.id === id)?.name ?? id.slice(0, 8)) : null;
+  const assName = (id?: string | null) =>
+    id ? (assets.find((a) => a.id === id)?.symbol ?? "") : null;
   const m = (event.meta ?? {}) as Record<string, any>;
   const r = event.refs;
 
@@ -106,38 +127,53 @@ export function ActivityDrawer({
       <SheetContent className="w-full sm:max-w-md overflow-y-auto bg-background/95 backdrop-blur-xl border-l-border/60">
         <SheetHeader className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className={cn("h-10 w-10 rounded-xl surface-quiet flex items-center justify-center ring-1", TONE_RING[event.tone ?? "neutral"])}>
+            <div
+              className={cn(
+                "h-10 w-10 rounded-xl surface-quiet flex items-center justify-center ring-1",
+                TONE_RING[event.tone ?? "neutral"],
+              )}
+            >
               <Icon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
               <SheetTitle className="capitalize text-base text-left">{event.title}</SheetTitle>
               <SheetDescription className="text-xs text-left">
-                {new Date(event.at).toLocaleString(undefined, { dateStyle: "full", timeStyle: "medium" })}
+                {new Date(event.at).toLocaleString(undefined, {
+                  dateStyle: "full",
+                  timeStyle: "medium",
+                })}
               </SheetDescription>
             </div>
           </div>
 
           {event.amount != null && (
-            <div className={cn("text-2xl font-display font-bold", TONE_RING[event.tone ?? "neutral"].split(" ").pop())}>
-              {event.amount >= 0 ? "+" : ""}{formatMoney(event.amount, { currency: event.currency ?? undefined })}
+            <div
+              className={cn(
+                "text-2xl font-display font-bold",
+                TONE_RING[event.tone ?? "neutral"].split(" ").pop(),
+              )}
+            >
+              {event.amount >= 0 ? "+" : ""}
+              {formatMoney(event.amount, { currency: event.currency ?? undefined })}
             </div>
           )}
 
-          {event.subtitle && (
-            <div className="text-sm text-muted-foreground">{event.subtitle}</div>
-          )}
+          {event.subtitle && <div className="text-sm text-muted-foreground">{event.subtitle}</div>}
 
           {event.tags?.length ? (
             <div className="flex flex-wrap gap-1">
               {event.tags.map((t) => (
-                <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
+                <Badge key={t} variant="outline" className="text-[10px]">
+                  {t}
+                </Badge>
               ))}
             </div>
           ) : null}
 
           <div className="flex justify-end">
             <Button
-              variant="ghost" size="sm"
+              variant="ghost"
+              size="sm"
               className="text-[10px] uppercase tracking-wider h-7"
               onClick={() => setAdvanced((s) => !s)}
             >
@@ -154,12 +190,30 @@ export function ActivityDrawer({
           {(event.kind === "transaction" || event.kind === "transfer") && (
             <Section title="Movement">
               {r.sourceAccountId && <Field label="From" value={accName(r.sourceAccountId)} />}
-              {r.destinationAccountId && <Field label="To" value={accName(r.destinationAccountId)} />}
+              {r.destinationAccountId && (
+                <Field label="To" value={accName(r.destinationAccountId)} />
+              )}
               {r.assetId && <Field label="Asset" value={assName(r.assetId)} />}
-              {m.quantity != null && <Field label="Quantity" value={Number(m.quantity).toLocaleString(undefined, { maximumFractionDigits: 8 })} mono />}
-              {m.asset_price != null && <Field label="Price" value={`${Number(m.asset_price).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${m.asset_currency ?? ""}`} mono />}
-              {m.fiat_value != null && <Field label="Fiat value" value={formatMoney(Number(m.fiat_value))} mono />}
-              {m.fee_amount != null && Number(m.fee_amount) !== 0 && <Field label="Fee" value={formatMoney(Number(m.fee_amount))} mono />}
+              {m.quantity != null && (
+                <Field
+                  label="Quantity"
+                  value={Number(m.quantity).toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                  mono
+                />
+              )}
+              {m.asset_price != null && (
+                <Field
+                  label="Price"
+                  value={`${Number(m.asset_price).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${m.asset_currency ?? ""}`}
+                  mono
+                />
+              )}
+              {m.fiat_value != null && (
+                <Field label="Fiat value" value={formatMoney(Number(m.fiat_value))} mono />
+              )}
+              {m.fee_amount != null && Number(m.fee_amount) !== 0 && (
+                <Field label="Fee" value={formatMoney(Number(m.fee_amount))} mono />
+              )}
             </Section>
           )}
 
@@ -167,8 +221,22 @@ export function ActivityDrawer({
           {(event.kind === "transaction" || event.kind === "transfer") &&
             (m.base_value != null || m.exchange_rate != null) && (
               <Section title="FX normalization">
-                {m.base_value != null && <Field label="Base value" value={`${formatMoney(Number(m.base_value))} ${m.base_currency ?? ""}`} mono />}
-                {m.exchange_rate != null && <Field label="Rate" value={Number(m.exchange_rate).toLocaleString(undefined, { maximumFractionDigits: 6 })} mono />}
+                {m.base_value != null && (
+                  <Field
+                    label="Base value"
+                    value={`${formatMoney(Number(m.base_value))} ${m.base_currency ?? ""}`}
+                    mono
+                  />
+                )}
+                {m.exchange_rate != null && (
+                  <Field
+                    label="Rate"
+                    value={Number(m.exchange_rate).toLocaleString(undefined, {
+                      maximumFractionDigits: 6,
+                    })}
+                    mono
+                  />
+                )}
                 {m.asset_currency && m.base_currency && (
                   <Field label="Chain" value={`${m.asset_currency} → ${m.base_currency}`} mono />
                 )}
@@ -179,9 +247,15 @@ export function ActivityDrawer({
           {(event.kind === "reconciliation" || event.kind === "audit") &&
             (m.before_balance != null || m.after_balance != null || m.delta != null) && (
               <Section title="Balance impact">
-                {m.before_balance != null && <Field label="Before" value={formatMoney(Number(m.before_balance))} mono />}
-                {m.after_balance != null && <Field label="After" value={formatMoney(Number(m.after_balance))} mono />}
-                {m.delta != null && <Field label="Delta" value={formatMoney(Number(m.delta))} mono />}
+                {m.before_balance != null && (
+                  <Field label="Before" value={formatMoney(Number(m.before_balance))} mono />
+                )}
+                {m.after_balance != null && (
+                  <Field label="After" value={formatMoney(Number(m.after_balance))} mono />
+                )}
+                {m.delta != null && (
+                  <Field label="Delta" value={formatMoney(Number(m.delta))} mono />
+                )}
               </Section>
             )}
 
@@ -190,7 +264,11 @@ export function ActivityDrawer({
             <Section title="Trading week">
               <Field label="Week" value={m.week_start} />
               <Field label="Trades" value={m.num_trades} mono />
-              <Field label="Win rate" value={`${Math.round((Number(m.winrate) || 0) * 100)}%`} mono />
+              <Field
+                label="Win rate"
+                value={`${Math.round((Number(m.winrate) || 0) * 100)}%`}
+                mono
+              />
               <Field label="Avg RR" value={Number(m.avg_rr || 0).toFixed(2)} mono />
               <Field label="State" value={m.finalized ? "Finalized" : "Draft"} />
             </Section>
@@ -226,7 +304,9 @@ export function ActivityDrawer({
                     <span className="flex items-center gap-2 min-w-0">
                       <GitBranch className="h-3 w-3 text-cyan shrink-0" />
                       <span className="truncate capitalize">{l.title}</span>
-                      <span className="text-[10px] text-muted-foreground/70">{l.kind.replace("_", " ")}</span>
+                      <span className="text-[10px] text-muted-foreground/70">
+                        {l.kind.replace("_", " ")}
+                      </span>
                     </span>
                     <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-cyan" />
                   </button>
@@ -238,26 +318,33 @@ export function ActivityDrawer({
           {/* Linked navigation */}
           <Section title="Open">
             {r.sourceAccountId && (
-              <LinkRow to={`/accounts/${r.sourceAccountId}`} label={`Account · ${accName(r.sourceAccountId)}`} hint="source" />
+              <LinkRow
+                to={`/accounts/${r.sourceAccountId}`}
+                label={`Account · ${accName(r.sourceAccountId)}`}
+                hint="source"
+              />
             )}
             {r.destinationAccountId && r.destinationAccountId !== r.sourceAccountId && (
-              <LinkRow to={`/accounts/${r.destinationAccountId}`} label={`Account · ${accName(r.destinationAccountId)}`} hint="dest" />
+              <LinkRow
+                to={`/accounts/${r.destinationAccountId}`}
+                label={`Account · ${accName(r.destinationAccountId)}`}
+                hint="dest"
+              />
             )}
-            {r.accountId && r.accountId !== r.sourceAccountId && r.accountId !== r.destinationAccountId && (
-              <LinkRow to={`/accounts/${r.accountId}`} label={`Account · ${accName(r.accountId)}`} />
-            )}
-            {r.assetId && (
-              <LinkRow to="/crypto" label={`Asset · ${assName(r.assetId)}`} />
-            )}
+            {r.accountId &&
+              r.accountId !== r.sourceAccountId &&
+              r.accountId !== r.destinationAccountId && (
+                <LinkRow
+                  to={`/accounts/${r.accountId}`}
+                  label={`Account · ${accName(r.accountId)}`}
+                />
+              )}
+            {r.assetId && <LinkRow to="/crypto" label={`Asset · ${assName(r.assetId)}`} />}
             {(event.kind === "transaction" || event.kind === "transfer") && (
               <LinkRow to="/transactions" label="All transactions" />
             )}
-            {event.kind === "weekly_report" && (
-              <LinkRow to="/trading" label="Trading workspace" />
-            )}
-            {event.kind === "goal" && (
-              <LinkRow to="/goals" label="All goals" />
-            )}
+            {event.kind === "weekly_report" && <LinkRow to="/trading" label="Trading workspace" />}
+            {event.kind === "goal" && <LinkRow to="/goals" label="All goals" />}
             {(event.kind === "audit" || event.kind === "reconciliation") && (
               <LinkRow to="/audit" label="Audit log" />
             )}
@@ -268,13 +355,34 @@ export function ActivityDrawer({
             <Section title="Raw payload">
               <div className="space-y-2">
                 <Field label="Event ID" value={<span className="font-mono">{event.id}</span>} />
-                {r.txId && <Field label="Transaction ID" value={<span className="font-mono">{r.txId}</span>} mono />}
-                {r.transferGroupId && (
-                  <Field label="Transfer group" value={<span className="font-mono flex items-center gap-1"><Hash className="h-3 w-3" />{r.transferGroupId.slice(0, 8)}</span>} mono />
+                {r.txId && (
+                  <Field
+                    label="Transaction ID"
+                    value={<span className="font-mono">{r.txId}</span>}
+                    mono
+                  />
                 )}
-                {r.auditId && <Field label="Audit ID" value={<span className="font-mono">{r.auditId}</span>} mono />}
+                {r.transferGroupId && (
+                  <Field
+                    label="Transfer group"
+                    value={
+                      <span className="font-mono flex items-center gap-1">
+                        <Hash className="h-3 w-3" />
+                        {r.transferGroupId.slice(0, 8)}
+                      </span>
+                    }
+                    mono
+                  />
+                )}
+                {r.auditId && (
+                  <Field
+                    label="Audit ID"
+                    value={<span className="font-mono">{r.auditId}</span>}
+                    mono
+                  />
+                )}
                 <pre className="mt-2 text-[10px] font-mono text-muted-foreground/80 whitespace-pre-wrap break-all bg-black/30 rounded-lg p-2 max-h-72 overflow-y-auto">
-{JSON.stringify({ refs: event.refs, meta: event.meta }, null, 2)}
+                  {JSON.stringify({ refs: event.refs, meta: event.meta }, null, 2)}
                 </pre>
               </div>
             </Section>

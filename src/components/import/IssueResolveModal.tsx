@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccounts, type Account } from "@/hooks/use-ledger";
@@ -36,7 +40,11 @@ export interface ResolveResult {
 }
 
 export function IssueResolveModal({
-  open, onClose, issue, defaultCurrency, onResolved,
+  open,
+  onClose,
+  issue,
+  defaultCurrency,
+  onResolved,
 }: {
   open: boolean;
   onClose: () => void;
@@ -49,8 +57,11 @@ export function IssueResolveModal({
   const [busy, setBusy] = useState(false);
   // create
   const [form, setForm] = useState({
-    name: "", type: "bank" as AccountType, currency: defaultCurrency,
-    description: "", initialBalance: "" as string,
+    name: "",
+    type: "bank" as AccountType,
+    currency: defaultCurrency,
+    description: "",
+    initialBalance: "" as string,
   });
   // map
   const [mapTo, setMapTo] = useState<string>("");
@@ -116,7 +127,12 @@ export function IssueResolveModal({
       }
       await refresh();
       toast.success(`Account "${data.name}" created`);
-      onResolved({ kind: "created", alias: issue.normalized, accountId: data.id, accountName: data.name });
+      onResolved({
+        kind: "created",
+        alias: issue.normalized,
+        accountId: data.id,
+        accountName: data.name,
+      });
       onClose();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to create account");
@@ -132,7 +148,12 @@ export function IssueResolveModal({
       await persistAlias(mapTo);
       const acct = accounts.find((a) => a.id === mapTo);
       toast.success(`Mapped "${issue.raw}" → ${acct?.name ?? "account"}`);
-      onResolved({ kind: "mapped", alias: issue.normalized, accountId: mapTo, accountName: acct?.name });
+      onResolved({
+        kind: "mapped",
+        alias: issue.normalized,
+        accountId: mapTo,
+        accountName: acct?.name,
+      });
       onClose();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to map");
@@ -158,21 +179,33 @@ export function IssueResolveModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={mode === "create" ? "Create account" : mode === "map" ? "Map to existing" : "Resolve issue"}
+      title={
+        mode === "create" ? "Create account" : mode === "map" ? "Map to existing" : "Resolve issue"
+      }
       size="md"
       footer={
         mode === "choose" ? (
-          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
         ) : mode === "create" ? (
           <>
-            <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>Back</Button>
-            <Button className="bg-cyan text-background hover:bg-cyan/90" onClick={handleCreate} disabled={busy}>
+            <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>
+              Back
+            </Button>
+            <Button
+              className="bg-cyan text-background hover:bg-cyan/90"
+              onClick={handleCreate}
+              disabled={busy}
+            >
               {busy ? "Creating…" : "Create & resolve"}
             </Button>
           </>
         ) : (
           <>
-            <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>Back</Button>
+            <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>
+              Back
+            </Button>
             <Button
               className="bg-cyan text-background hover:bg-cyan/90"
               onClick={handleMap}
@@ -205,30 +238,46 @@ export function IssueResolveModal({
                     <button
                       key={s.id}
                       className="px-2 py-1 text-xs rounded-md border border-border/60 hover:bg-cyan/10 hover:border-cyan/40 transition-colors"
-                      onClick={() => { setMapTo(s.id); setMode("map"); }}
+                      onClick={() => {
+                        setMapTo(s.id);
+                        setMode("map");
+                      }}
                     >
-                      {s.name} <span className="text-muted-foreground">· {Math.round(s.score * 100)}%</span>
+                      {s.name}{" "}
+                      <span className="text-muted-foreground">· {Math.round(s.score * 100)}%</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Button variant="outline" className="justify-start h-auto py-3" onClick={() => setMode("create")}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => setMode("create")}
+              >
                 <Plus className="h-4 w-4 mr-2 text-success" />
                 <div className="text-left">
                   <div className="text-sm font-medium">Create Account</div>
                   <div className="text-[10px] text-muted-foreground">New account, saved alias</div>
                 </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto py-3" onClick={() => setMode("map")}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => setMode("map")}
+              >
                 <Link2 className="h-4 w-4 mr-2 text-cyan" />
                 <div className="text-left">
                   <div className="text-sm font-medium">Map to Existing</div>
                   <div className="text-[10px] text-muted-foreground">Alias an existing one</div>
                 </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto py-3" onClick={handleIgnore}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={handleIgnore}
+              >
                 <div className="h-4 w-4 mr-2 rounded-full border border-muted-foreground/60" />
                 <div className="text-left">
                   <div className="text-sm font-medium">Ignore</div>
@@ -243,15 +292,28 @@ export function IssueResolveModal({
           <div className="space-y-3">
             <div>
               <Label className="text-xs">Name</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" />
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="mt-1"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Type</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as AccountType })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.type}
+                  onValueChange={(v) => setForm({ ...form, type: v as AccountType })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    {TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -267,7 +329,9 @@ export function IssueResolveModal({
             <div>
               <Label className="text-xs">Initial Balance (optional)</Label>
               <Input
-                type="number" inputMode="decimal" placeholder="0.00"
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
                 value={form.initialBalance}
                 onChange={(e) => setForm({ ...form, initialBalance: e.target.value })}
                 className="mt-1"
@@ -289,7 +353,9 @@ export function IssueResolveModal({
             <div>
               <Label className="text-xs">Existing account</Label>
               <Select value={mapTo} onValueChange={setMapTo}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Pick an account" /></SelectTrigger>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Pick an account" />
+                </SelectTrigger>
                 <SelectContent>
                   {sorted.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
@@ -300,7 +366,8 @@ export function IssueResolveModal({
               </Select>
             </div>
             <div className="text-[11px] text-muted-foreground">
-              "<span className="font-mono">{issue.raw}</span>" will be remembered as an alias and resolved automatically in future imports.
+              "<span className="font-mono">{issue.raw}</span>" will be remembered as an alias and
+              resolved automatically in future imports.
             </div>
           </div>
         )}

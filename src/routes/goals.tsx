@@ -260,17 +260,13 @@ function GoalsPage() {
 
                 <div className="mt-5 flex min-w-0 items-end justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="label-muted">
-                      Current
-                    </div>
+                    <div className="label-muted">Current</div>
                     <div className="mt-1 truncate font-display text-xl font-semibold">
                       {current}
                     </div>
                   </div>
                   <div className="min-w-0 text-right">
-                    <div className="label-muted">
-                      Target
-                    </div>
+                    <div className="label-muted">Target</div>
                     <div className="mt-1 truncate font-mono text-sm">{target}</div>
                   </div>
                 </div>

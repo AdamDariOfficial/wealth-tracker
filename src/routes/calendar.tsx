@@ -618,9 +618,7 @@ function MiniValue({
 }) {
   return (
     <div className="min-w-0">
-      <div className="truncate label-muted">
-        {label}
-      </div>
+      <div className="truncate label-muted">{label}</div>
       <div className={cn("mt-1 truncate font-mono text-sm", tone)}>{value}</div>
     </div>
   );

@@ -293,9 +293,7 @@ function CapitalPanel({ trading, locale }: { trading: TradingOverview; locale: s
 
         <aside className="surface-section p-5">
           <WalletCards className="h-5 w-5 text-cyan" aria-hidden="true" />
-          <div className="mt-3 label-muted">
-            Current known capital
-          </div>
+          <div className="mt-3 label-muted">Current known capital</div>
           <div className="mt-1 font-display text-3xl font-semibold">
             {formatMoney(trading.knownCapital, locale)}
           </div>
@@ -461,7 +459,6 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
             Edit a review as long as you need. Finalizing it is permanent — it can&apos;t be
             reopened, edited or deleted afterwards.
           </p>
-
         </div>
         <Button className="min-h-11 bg-cyan text-background hover:bg-cyan/90" onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -586,17 +583,13 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
                 <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
                   {review.notes ? (
                     <div className="rounded-xl bg-muted/20 p-3">
-                      <div className="label-muted">
-                        Notes
-                      </div>
+                      <div className="label-muted">Notes</div>
                       <p className="mt-1 whitespace-pre-wrap text-foreground/85">{review.notes}</p>
                     </div>
                   ) : null}
                   {review.lessons ? (
                     <div className="rounded-xl bg-muted/20 p-3">
-                      <div className="label-muted">
-                        Lessons
-                      </div>
+                      <div className="label-muted">Lessons</div>
                       <p className="mt-1 whitespace-pre-wrap text-foreground/85">
                         {review.lessons}
                       </p>

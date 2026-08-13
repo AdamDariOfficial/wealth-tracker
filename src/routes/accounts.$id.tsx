@@ -184,9 +184,7 @@ function AccountDetail() {
                       {formatDateTime(transaction.occurredAt, profile?.locale ?? undefined)}
                     </div>
                   </div>
-                  <span className="label-muted">
-                    {transaction.state}
-                  </span>
+                  <span className="label-muted">{transaction.state}</span>
                 </div>
               </Link>
             ))

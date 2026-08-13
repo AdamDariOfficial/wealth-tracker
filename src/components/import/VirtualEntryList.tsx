@@ -35,11 +35,7 @@ export function VirtualEntryList({ entries, height = 480, estimateSize = 56, ren
   });
 
   return (
-    <div
-      ref={parentRef}
-      className="overflow-auto"
-      style={{ height, contain: "strict" }}
-    >
+    <div ref={parentRef} className="overflow-auto" style={{ height, contain: "strict" }}>
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,

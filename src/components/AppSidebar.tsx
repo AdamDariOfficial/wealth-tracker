@@ -58,9 +58,7 @@ function Section({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="label-muted">
-        {label}
-      </SidebarGroupLabel>
+      <SidebarGroupLabel className="label-muted">{label}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
@@ -99,9 +97,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="leading-tight">
               <div className="font-display text-base font-bold">Nebula</div>
-              <div className="label-muted">
-                Wealth Hub
-              </div>
+              <div className="label-muted">Wealth Hub</div>
             </div>
           )}
         </Link>

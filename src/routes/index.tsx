@@ -173,7 +173,10 @@ function Dashboard() {
               role="status"
             >
               <div className="flex items-start gap-3">
-                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                <TriangleAlert
+                  className="mt-0.5 h-4 w-4 shrink-0 text-warning"
+                  aria-hidden="true"
+                />
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-warning">Some values are missing</div>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">

@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserTable } from "@/hooks/use-user-table";
@@ -12,7 +16,16 @@ import type { ImportIssue } from "@/lib/import-parser";
 import { toast } from "sonner";
 import { Sparkles, Plus, Link2 } from "lucide-react";
 
-type AssetClass = "crypto" | "stock" | "etf" | "fiat" | "commodity" | "forex" | "cash" | "stablecoin" | "custom";
+type AssetClass =
+  | "crypto"
+  | "stock"
+  | "etf"
+  | "fiat"
+  | "commodity"
+  | "forex"
+  | "cash"
+  | "stablecoin"
+  | "custom";
 const CLASSES: { value: AssetClass; label: string }[] = [
   { value: "crypto", label: "Crypto" },
   { value: "stock", label: "Stock" },
@@ -35,11 +48,22 @@ export interface ResolveResult {
   entityName?: string;
 }
 
-interface AssetRow { id: string; symbol: string; name: string }
-interface GoalRow { id: string; name: string; target_amount: number }
+interface AssetRow {
+  id: string;
+  symbol: string;
+  name: string;
+}
+interface GoalRow {
+  id: string;
+  name: string;
+  target_amount: number;
+}
 
 export function AssetResolveModal({
-  open, onClose, issue, onResolved,
+  open,
+  onClose,
+  issue,
+  onResolved,
 }: {
   open: boolean;
   onClose: () => void;
@@ -49,13 +73,23 @@ export function AssetResolveModal({
   const { rows: assets, refresh } = useUserTable<AssetRow>("assets", { col: "symbol", asc: true });
   const [mode, setMode] = useState<Mode>("choose");
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ symbol: "", name: "", assetClass: "crypto" as AssetClass, price: "" });
+  const [form, setForm] = useState({
+    symbol: "",
+    name: "",
+    assetClass: "crypto" as AssetClass,
+    price: "",
+  });
   const [mapTo, setMapTo] = useState<string>("");
 
   useEffect(() => {
     if (open && issue) {
       setMode("choose");
-      setForm({ symbol: issue.raw.toUpperCase(), name: issue.raw, assetClass: guessClass(issue.raw), price: "" });
+      setForm({
+        symbol: issue.raw.toUpperCase(),
+        name: issue.raw,
+        assetClass: guessClass(issue.raw),
+        price: "",
+      });
       setMapTo(issue.suggestions[0]?.id ?? "");
     }
   }, [open, issue]);
@@ -63,10 +97,12 @@ export function AssetResolveModal({
   async function persistAlias(entityId: string) {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user || !issue) return;
-    await (supabase as any).from("import_aliases").upsert(
-      { user_id: u.user.id, alias: issue.normalized, entity_type: "asset", entity_id: entityId },
-      { onConflict: "user_id,entity_type,alias" },
-    );
+    await (supabase as any)
+      .from("import_aliases")
+      .upsert(
+        { user_id: u.user.id, alias: issue.normalized, entity_type: "asset", entity_id: entityId },
+        { onConflict: "user_id,entity_type,alias" },
+      );
   }
 
   async function handleCreate() {
@@ -76,21 +112,35 @@ export function AssetResolveModal({
     try {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Not authenticated");
-      const { data, error } = await (supabase as any).from("assets").insert({
-        user_id: u.user.id,
-        symbol: form.symbol.trim().toUpperCase(),
-        name: form.name.trim() || form.symbol.trim().toUpperCase(),
-        asset_class: form.assetClass,
-        current_price: Number(form.price) || 0,
-        custom_asset: true,
-      }).select("id,symbol").single();
+      const { data, error } = await (supabase as any)
+        .from("assets")
+        .insert({
+          user_id: u.user.id,
+          symbol: form.symbol.trim().toUpperCase(),
+          name: form.name.trim() || form.symbol.trim().toUpperCase(),
+          asset_class: form.assetClass,
+          current_price: Number(form.price) || 0,
+          custom_asset: true,
+        })
+        .select("id,symbol")
+        .single();
       if (error) throw error;
       await persistAlias(data.id);
       await refresh();
       toast.success(`Asset "${data.symbol}" created`);
-      onResolved({ kind: "created", alias: issue.normalized, entityType: "asset", entityId: data.id, entityName: data.symbol });
+      onResolved({
+        kind: "created",
+        alias: issue.normalized,
+        entityType: "asset",
+        entityId: data.id,
+        entityName: data.symbol,
+      });
       onClose();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); } finally { setBusy(false); }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleMap() {
@@ -100,9 +150,19 @@ export function AssetResolveModal({
       await persistAlias(mapTo);
       const a = assets.find((x) => x.id === mapTo);
       toast.success(`Mapped "${issue.raw}" → ${a?.symbol ?? "asset"}`);
-      onResolved({ kind: "mapped", alias: issue.normalized, entityType: "asset", entityId: mapTo, entityName: a?.symbol });
+      onResolved({
+        kind: "mapped",
+        alias: issue.normalized,
+        entityType: "asset",
+        entityId: mapTo,
+        entityName: a?.symbol,
+      });
       onClose();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); } finally { setBusy(false); }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function handleIgnore() {
@@ -111,29 +171,58 @@ export function AssetResolveModal({
     onClose();
   }
 
-  const sorted = useMemo(() => [...assets].sort((a, b) => a.symbol.localeCompare(b.symbol)), [assets]);
+  const sorted = useMemo(
+    () => [...assets].sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    [assets],
+  );
 
   if (!issue) return null;
   const affected = issue.lineNos.length;
 
   return (
     <Modal
-      open={open} onClose={onClose}
-      title={mode === "create" ? "Create asset" : mode === "map" ? "Map to existing asset" : "Resolve asset"}
+      open={open}
+      onClose={onClose}
+      title={
+        mode === "create"
+          ? "Create asset"
+          : mode === "map"
+            ? "Map to existing asset"
+            : "Resolve asset"
+      }
       size="md"
       footer={
-        mode === "choose" ? <Button variant="ghost" onClick={onClose}>Close</Button> :
-        mode === "create" ? <>
-          <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>Back</Button>
-          <Button className="bg-cyan text-background hover:bg-cyan/90" onClick={handleCreate} disabled={busy}>
-            {busy ? "Creating…" : "Create & resolve"}
+        mode === "choose" ? (
+          <Button variant="ghost" onClick={onClose}>
+            Close
           </Button>
-        </> : <>
-          <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>Back</Button>
-          <Button className="bg-cyan text-background hover:bg-cyan/90" onClick={handleMap} disabled={busy || !mapTo}>
-            {busy ? "Mapping…" : "Map & resolve"}
-          </Button>
-        </>
+        ) : mode === "create" ? (
+          <>
+            <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>
+              Back
+            </Button>
+            <Button
+              className="bg-cyan text-background hover:bg-cyan/90"
+              onClick={handleCreate}
+              disabled={busy}
+            >
+              {busy ? "Creating…" : "Create & resolve"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>
+              Back
+            </Button>
+            <Button
+              className="bg-cyan text-background hover:bg-cyan/90"
+              onClick={handleMap}
+              disabled={busy || !mapTo}
+            >
+              {busy ? "Mapping…" : "Map & resolve"}
+            </Button>
+          </>
+        )
       }
     >
       <div className="space-y-4">
@@ -154,30 +243,54 @@ export function AssetResolveModal({
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {issue.suggestions.map((s) => (
-                    <button key={s.id}
+                    <button
+                      key={s.id}
                       className="px-2 py-1 text-xs rounded-md border border-border/60 hover:bg-cyan/10 hover:border-cyan/40"
-                      onClick={() => { setMapTo(s.id); setMode("map"); }}>
-                      {s.name} <span className="text-muted-foreground">· {Math.round(s.score * 100)}%</span>
+                      onClick={() => {
+                        setMapTo(s.id);
+                        setMode("map");
+                      }}
+                    >
+                      {s.name}{" "}
+                      <span className="text-muted-foreground">· {Math.round(s.score * 100)}%</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Button variant="outline" className="justify-start h-auto py-3" onClick={() => setMode("create")}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => setMode("create")}
+              >
                 <Plus className="h-4 w-4 mr-2 text-success" />
-                <div className="text-left"><div className="text-sm font-medium">Create Asset</div>
-                <div className="text-[10px] text-muted-foreground">New asset, saved alias</div></div>
+                <div className="text-left">
+                  <div className="text-sm font-medium">Create Asset</div>
+                  <div className="text-[10px] text-muted-foreground">New asset, saved alias</div>
+                </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto py-3" onClick={() => setMode("map")}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => setMode("map")}
+              >
                 <Link2 className="h-4 w-4 mr-2 text-cyan" />
-                <div className="text-left"><div className="text-sm font-medium">Map to Existing</div>
-                <div className="text-[10px] text-muted-foreground">Alias to one you own</div></div>
+                <div className="text-left">
+                  <div className="text-sm font-medium">Map to Existing</div>
+                  <div className="text-[10px] text-muted-foreground">Alias to one you own</div>
+                </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto py-3" onClick={handleIgnore}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={handleIgnore}
+              >
                 <div className="h-4 w-4 mr-2 rounded-full border border-muted-foreground/60" />
-                <div className="text-left"><div className="text-sm font-medium">Ignore</div>
-                <div className="text-[10px] text-muted-foreground">Skip rows this session</div></div>
+                <div className="text-left">
+                  <div className="text-sm font-medium">Ignore</div>
+                  <div className="text-[10px] text-muted-foreground">Skip rows this session</div>
+                </div>
               </Button>
             </div>
           </div>
@@ -188,24 +301,49 @@ export function AssetResolveModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Symbol</Label>
-                <Input value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value.toUpperCase() })} className="mt-1 font-mono" />
+                <Input
+                  value={form.symbol}
+                  onChange={(e) => setForm({ ...form, symbol: e.target.value.toUpperCase() })}
+                  className="mt-1 font-mono"
+                />
               </div>
               <div>
                 <Label className="text-xs">Class</Label>
-                <Select value={form.assetClass} onValueChange={(v) => setForm({ ...form, assetClass: v as AssetClass })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{CLASSES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                <Select
+                  value={form.assetClass}
+                  onValueChange={(v) => setForm({ ...form, assetClass: v as AssetClass })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLASSES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
               <Label className="text-xs">Name</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" />
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="mt-1"
+              />
             </div>
             <div>
               <Label className="text-xs">Current price (optional)</Label>
-              <Input type="number" inputMode="decimal" placeholder="0.00"
-                value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="mt-1" />
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                className="mt-1"
+              />
             </div>
           </div>
         )}
@@ -214,7 +352,9 @@ export function AssetResolveModal({
           <div>
             <Label className="text-xs">Existing asset</Label>
             <Select value={mapTo} onValueChange={setMapTo}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Pick an asset" /></SelectTrigger>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Pick an asset" />
+              </SelectTrigger>
               <SelectContent>
                 {sorted.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
@@ -231,7 +371,10 @@ export function AssetResolveModal({
 }
 
 export function GoalResolveModal({
-  open, onClose, issue, onResolved,
+  open,
+  onClose,
+  issue,
+  onResolved,
 }: {
   open: boolean;
   onClose: () => void;
@@ -255,10 +398,12 @@ export function GoalResolveModal({
   async function persistAlias(entityId: string) {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user || !issue) return;
-    await (supabase as any).from("import_aliases").upsert(
-      { user_id: u.user.id, alias: issue.normalized, entity_type: "goal", entity_id: entityId },
-      { onConflict: "user_id,entity_type,alias" },
-    );
+    await (supabase as any)
+      .from("import_aliases")
+      .upsert(
+        { user_id: u.user.id, alias: issue.normalized, entity_type: "goal", entity_id: entityId },
+        { onConflict: "user_id,entity_type,alias" },
+      );
   }
 
   async function handleCreate() {
@@ -270,17 +415,34 @@ export function GoalResolveModal({
     try {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Not authenticated");
-      const { data, error } = await (supabase as any).from("goals").insert({
-        user_id: u.user.id, name: form.name.trim(),
-        target_amount: target, current_amount: 0, kind: "custom",
-      }).select("id,name").single();
+      const { data, error } = await (supabase as any)
+        .from("goals")
+        .insert({
+          user_id: u.user.id,
+          name: form.name.trim(),
+          target_amount: target,
+          current_amount: 0,
+          kind: "custom",
+        })
+        .select("id,name")
+        .single();
       if (error) throw error;
       await persistAlias(data.id);
       await refresh();
       toast.success(`Goal "${data.name}" created`);
-      onResolved({ kind: "created", alias: issue.normalized, entityType: "goal", entityId: data.id, entityName: data.name });
+      onResolved({
+        kind: "created",
+        alias: issue.normalized,
+        entityType: "goal",
+        entityId: data.id,
+        entityName: data.name,
+      });
       onClose();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); } finally { setBusy(false); }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleMap() {
@@ -290,9 +452,19 @@ export function GoalResolveModal({
       await persistAlias(mapTo);
       const g = goals.find((x) => x.id === mapTo);
       toast.success(`Mapped "${issue.raw}" → ${g?.name ?? "goal"}`);
-      onResolved({ kind: "mapped", alias: issue.normalized, entityType: "goal", entityId: mapTo, entityName: g?.name });
+      onResolved({
+        kind: "mapped",
+        alias: issue.normalized,
+        entityType: "goal",
+        entityId: mapTo,
+        entityName: g?.name,
+      });
       onClose();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); } finally { setBusy(false); }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function handleIgnore() {
@@ -306,22 +478,44 @@ export function GoalResolveModal({
 
   return (
     <Modal
-      open={open} onClose={onClose}
-      title={mode === "create" ? "Create goal" : mode === "map" ? "Map to existing goal" : "Resolve goal"}
+      open={open}
+      onClose={onClose}
+      title={
+        mode === "create" ? "Create goal" : mode === "map" ? "Map to existing goal" : "Resolve goal"
+      }
       size="md"
       footer={
-        mode === "choose" ? <Button variant="ghost" onClick={onClose}>Close</Button> :
-        mode === "create" ? <>
-          <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>Back</Button>
-          <Button className="bg-cyan text-background hover:bg-cyan/90" onClick={handleCreate} disabled={busy}>
-            {busy ? "Creating…" : "Create & resolve"}
+        mode === "choose" ? (
+          <Button variant="ghost" onClick={onClose}>
+            Close
           </Button>
-        </> : <>
-          <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>Back</Button>
-          <Button className="bg-cyan text-background hover:bg-cyan/90" onClick={handleMap} disabled={busy || !mapTo}>
-            {busy ? "Mapping…" : "Map & resolve"}
-          </Button>
-        </>
+        ) : mode === "create" ? (
+          <>
+            <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>
+              Back
+            </Button>
+            <Button
+              className="bg-cyan text-background hover:bg-cyan/90"
+              onClick={handleCreate}
+              disabled={busy}
+            >
+              {busy ? "Creating…" : "Create & resolve"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" onClick={() => setMode("choose")} disabled={busy}>
+              Back
+            </Button>
+            <Button
+              className="bg-cyan text-background hover:bg-cyan/90"
+              onClick={handleMap}
+              disabled={busy || !mapTo}
+            >
+              {busy ? "Mapping…" : "Map & resolve"}
+            </Button>
+          </>
+        )
       }
     >
       <div className="space-y-4">
@@ -342,30 +536,54 @@ export function GoalResolveModal({
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {issue.suggestions.map((s) => (
-                    <button key={s.id}
+                    <button
+                      key={s.id}
                       className="px-2 py-1 text-xs rounded-md border border-border/60 hover:bg-cyan/10 hover:border-cyan/40"
-                      onClick={() => { setMapTo(s.id); setMode("map"); }}>
-                      {s.name} <span className="text-muted-foreground">· {Math.round(s.score * 100)}%</span>
+                      onClick={() => {
+                        setMapTo(s.id);
+                        setMode("map");
+                      }}
+                    >
+                      {s.name}{" "}
+                      <span className="text-muted-foreground">· {Math.round(s.score * 100)}%</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Button variant="outline" className="justify-start h-auto py-3" onClick={() => setMode("create")}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => setMode("create")}
+              >
                 <Plus className="h-4 w-4 mr-2 text-success" />
-                <div className="text-left"><div className="text-sm font-medium">Create Goal</div>
-                <div className="text-[10px] text-muted-foreground">New goal, saved alias</div></div>
+                <div className="text-left">
+                  <div className="text-sm font-medium">Create Goal</div>
+                  <div className="text-[10px] text-muted-foreground">New goal, saved alias</div>
+                </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto py-3" onClick={() => setMode("map")}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={() => setMode("map")}
+              >
                 <Link2 className="h-4 w-4 mr-2 text-cyan" />
-                <div className="text-left"><div className="text-sm font-medium">Map to Existing</div>
-                <div className="text-[10px] text-muted-foreground">Alias to an existing goal</div></div>
+                <div className="text-left">
+                  <div className="text-sm font-medium">Map to Existing</div>
+                  <div className="text-[10px] text-muted-foreground">Alias to an existing goal</div>
+                </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto py-3" onClick={handleIgnore}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3"
+                onClick={handleIgnore}
+              >
                 <div className="h-4 w-4 mr-2 rounded-full border border-muted-foreground/60" />
-                <div className="text-left"><div className="text-sm font-medium">Ignore</div>
-                <div className="text-[10px] text-muted-foreground">Skip rows this session</div></div>
+                <div className="text-left">
+                  <div className="text-sm font-medium">Ignore</div>
+                  <div className="text-[10px] text-muted-foreground">Skip rows this session</div>
+                </div>
               </Button>
             </div>
           </div>
@@ -375,12 +593,22 @@ export function GoalResolveModal({
           <div className="space-y-3">
             <div>
               <Label className="text-xs">Name</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" />
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="mt-1"
+              />
             </div>
             <div>
               <Label className="text-xs">Target amount</Label>
-              <Input type="number" inputMode="decimal" placeholder="10000"
-                value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} className="mt-1" />
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="10000"
+                value={form.target}
+                onChange={(e) => setForm({ ...form, target: e.target.value })}
+                className="mt-1"
+              />
             </div>
           </div>
         )}
@@ -389,11 +617,16 @@ export function GoalResolveModal({
           <div>
             <Label className="text-xs">Existing goal</Label>
             <Select value={mapTo} onValueChange={setMapTo}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="Pick a goal" /></SelectTrigger>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Pick a goal" />
+              </SelectTrigger>
               <SelectContent>
                 {goals.map((g) => (
                   <SelectItem key={g.id} value={g.id}>
-                    {g.name} <span className="text-muted-foreground">· target {Number(g.target_amount).toLocaleString()}</span>
+                    {g.name}{" "}
+                    <span className="text-muted-foreground">
+                      · target {Number(g.target_amount).toLocaleString()}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>

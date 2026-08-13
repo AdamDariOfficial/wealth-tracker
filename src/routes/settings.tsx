@@ -269,17 +269,13 @@ function SettingsPage() {
         >
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-              <div className="label-muted">
-                Base currency
-              </div>
+              <div className="label-muted">Base currency</div>
               <div className="mt-2 font-mono text-lg font-semibold">
                 {financial.data?.baseCurrency ?? profile?.baseCurrency?.toString() ?? "—"}
               </div>
             </div>
             <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-              <div className="label-muted">
-                Completeness
-              </div>
+              <div className="label-muted">Completeness</div>
               <div className="mt-2 font-mono text-lg font-semibold">
                 {financial.data
                   ? `${financial.data.knownPositionCount}/${financial.data.totalPositionCount}`

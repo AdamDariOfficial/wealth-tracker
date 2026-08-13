@@ -179,16 +179,12 @@ function PortfolioPage() {
                   <div className="font-mono text-sm tabular-nums">
                     {formatQuantity(position.quantity)}
                   </div>
-                  <div className="mt-1 label-muted">
-                    quantity
-                  </div>
+                  <div className="mt-1 label-muted">quantity</div>
                 </div>
               </div>
               <div className="mt-5 flex items-end justify-between gap-4">
                 <div>
-                  <div className="label-muted">
-                    Known value
-                  </div>
+                  <div className="label-muted">Known value</div>
                   <div className="mt-1 font-display text-xl font-semibold">
                     {formatMoney(position.value, profile?.locale ?? undefined)}
                   </div>
@@ -230,9 +226,7 @@ function PortfolioPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-semibold">{asset.symbol}</span>
-                    <span className="label-muted">
-                      {humanize(asset.kind)}
-                    </span>
+                    <span className="label-muted">{humanize(asset.kind)}</span>
                   </div>
                   <div className="mt-1 truncate text-xs text-muted-foreground">
                     {asset.name} · precision {asset.precision}

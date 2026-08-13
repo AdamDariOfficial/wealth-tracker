@@ -1,6 +1,10 @@
 import { useState } from "react";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -15,7 +19,10 @@ export type WizardTab = "account" | "asset" | "goal";
  * NEVER bypasses the import engine; single ingestion path preserved.
  */
 export function OpeningPositionWizard({
-  open, onClose, defaultTab = "account", onInsert,
+  open,
+  onClose,
+  defaultTab = "account",
+  onInsert,
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,9 +45,13 @@ export function OpeningPositionWizard({
   const [goalTarget, setGoalTarget] = useState("");
 
   function reset() {
-    setAcctName(""); setAcctBalance("");
-    setAssetSymbol(""); setAssetQty(""); setAssetAvg("");
-    setGoalName(""); setGoalTarget("");
+    setAcctName("");
+    setAcctBalance("");
+    setAssetSymbol("");
+    setAssetQty("");
+    setAssetAvg("");
+    setGoalName("");
+    setGoalTarget("");
   }
 
   function buildSnippet(): string | null {
@@ -71,7 +82,12 @@ export function OpeningPositionWizard({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base">Opening position wizard</DialogTitle>
@@ -79,31 +95,66 @@ export function OpeningPositionWizard({
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as WizardTab)}>
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="account"><Wallet className="h-3.5 w-3.5 mr-1.5" />Account</TabsTrigger>
-            <TabsTrigger value="asset"><Coins className="h-3.5 w-3.5 mr-1.5" />Asset</TabsTrigger>
-            <TabsTrigger value="goal"><Target className="h-3.5 w-3.5 mr-1.5" />Goal</TabsTrigger>
+            <TabsTrigger value="account">
+              <Wallet className="h-3.5 w-3.5 mr-1.5" />
+              Account
+            </TabsTrigger>
+            <TabsTrigger value="asset">
+              <Coins className="h-3.5 w-3.5 mr-1.5" />
+              Asset
+            </TabsTrigger>
+            <TabsTrigger value="goal">
+              <Target className="h-3.5 w-3.5 mr-1.5" />
+              Goal
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="account" className="space-y-3 mt-4">
             <Field label="Account name">
-              <Input value={acctName} onChange={(e) => setAcctName(e.target.value)} placeholder="Isy Bank" />
+              <Input
+                value={acctName}
+                onChange={(e) => setAcctName(e.target.value)}
+                placeholder="Isy Bank"
+              />
             </Field>
             <Field label="Opening balance">
-              <Input type="number" inputMode="decimal" value={acctBalance} onChange={(e) => setAcctBalance(e.target.value)} placeholder="1500" />
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={acctBalance}
+                onChange={(e) => setAcctBalance(e.target.value)}
+                placeholder="1500"
+              />
             </Field>
             <Hint>Creates a manual_adjustment to set the account to this balance.</Hint>
           </TabsContent>
 
           <TabsContent value="asset" className="space-y-3 mt-4">
             <Field label="Symbol / ticker">
-              <Input value={assetSymbol} onChange={(e) => setAssetSymbol(e.target.value)} placeholder="BTC" />
+              <Input
+                value={assetSymbol}
+                onChange={(e) => setAssetSymbol(e.target.value)}
+                placeholder="BTC"
+              />
             </Field>
             <div className="grid grid-cols-2 gap-2">
               <Field label="Quantity">
-                <Input type="number" inputMode="decimal" value={assetQty} onChange={(e) => setAssetQty(e.target.value)} placeholder="0.25" />
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={assetQty}
+                  onChange={(e) => setAssetQty(e.target.value)}
+                  placeholder="0.25"
+                />
               </Field>
               <Field label="Avg cost (optional)">
-                <Input type="number" inputMode="decimal" value={assetAvg} onChange={(e) => setAssetAvg(e.target.value)} placeholder="50000" />
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={assetAvg}
+                  onChange={(e) => setAssetAvg(e.target.value)}
+                  placeholder="50000"
+                />
               </Field>
             </div>
             <Hint>Recorded as an opening BUY at the given avg cost basis.</Hint>
@@ -111,10 +162,20 @@ export function OpeningPositionWizard({
 
           <TabsContent value="goal" className="space-y-3 mt-4">
             <Field label="Goal name">
-              <Input value={goalName} onChange={(e) => setGoalName(e.target.value)} placeholder="Emergency Fund" />
+              <Input
+                value={goalName}
+                onChange={(e) => setGoalName(e.target.value)}
+                placeholder="Emergency Fund"
+              />
             </Field>
             <Field label="Target amount">
-              <Input type="number" inputMode="decimal" value={goalTarget} onChange={(e) => setGoalTarget(e.target.value)} placeholder="10000" />
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={goalTarget}
+                onChange={(e) => setGoalTarget(e.target.value)}
+                placeholder="10000"
+              />
             </Field>
             <Hint>Creates a custom goal. Add a contribution row separately to fund it.</Hint>
           </TabsContent>
@@ -128,8 +189,12 @@ export function OpeningPositionWizard({
         )}
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleInsert} disabled={!snippet}>Insert into import</Button>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleInsert} disabled={!snippet}>
+            Insert into import
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

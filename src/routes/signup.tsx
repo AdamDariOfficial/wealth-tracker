@@ -91,11 +91,7 @@ function SignupPage() {
             </p>
           </div>
         </div>
-        <Button
-          asChild
-          size="lg"
-          className="mt-5 w-full bg-cyan text-background hover:bg-cyan/90"
-        >
+        <Button asChild size="lg" className="mt-5 w-full bg-cyan text-background hover:bg-cyan/90">
           <Link to="/login">
             Go to sign in <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
           </Link>
