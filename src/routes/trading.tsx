@@ -51,6 +51,7 @@ import { useAdvancedState } from "@/features/wealth-v2/use-advanced-state";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { advancedV2Repository } from "@/lib/v2-runtime";
 import { cn } from "@/lib/utils";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 type Tab = "overview" | "capital" | "weekly" | "insights";
 const TABS: Tab[] = ["overview", "capital", "weekly", "insights"];
@@ -213,7 +214,7 @@ function CapitalPanel({ trading, locale }: { trading: TradingOverview; locale: s
       await queryClient.invalidateQueries({ queryKey: advancedV2Keys.all });
       toast.success("Trading risk settings saved");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save trading settings");
+      toast.error(describeActionError(error, "Could not save trading settings"));
     } finally {
       setSaving(false);
     }
@@ -425,7 +426,7 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
       setOpen(false);
       toast.success("Weekly review saved as draft");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save weekly review");
+      toast.error(describeActionError(error, "Could not save weekly review"));
     } finally {
       setSaving(false);
     }
@@ -437,7 +438,7 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
       await queryClient.invalidateQueries({ queryKey: advancedV2Keys.all });
       toast.success("Weekly review finalized");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not finalize review");
+      toast.error(describeActionError(error, "Could not finalize review"));
     }
   };
 
@@ -447,7 +448,7 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
       await queryClient.invalidateQueries({ queryKey: advancedV2Keys.all });
       toast.success("Draft review deleted");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not delete review");
+      toast.error(describeActionError(error, "Could not delete review"));
     }
   };
 

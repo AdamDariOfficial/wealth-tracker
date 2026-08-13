@@ -43,6 +43,7 @@ import { useAdvancedState } from "@/features/wealth-v2/use-advanced-state";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { advancedV2Repository } from "@/lib/v2-runtime";
 import { cn } from "@/lib/utils";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export const Route = createFileRoute("/goals")({ component: GoalsPage });
 
@@ -143,7 +144,7 @@ function GoalsPage() {
       setForm(EMPTY_FORM);
       toast.success(editing ? "Goal updated" : "Goal created");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save goal");
+      toast.error(describeActionError(error, "Could not save goal"));
     } finally {
       setSaving(false);
     }
@@ -155,7 +156,7 @@ function GoalsPage() {
       await queryClient.invalidateQueries({ queryKey: advancedV2Keys.all });
       toast.success("Goal archived");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not archive goal");
+      toast.error(describeActionError(error, "Could not archive goal"));
     }
   };
 

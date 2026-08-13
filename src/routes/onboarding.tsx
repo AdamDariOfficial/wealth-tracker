@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { financialV2Keys } from "@/data/query-keys";
 import { useAuth } from "@/lib/auth-store";
 import { financialV2Repository } from "@/lib/v2-runtime";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export const Route = createFileRoute("/onboarding")({ component: OnboardingPage });
 
@@ -42,7 +43,7 @@ function OnboardingPage() {
       toast.success("Wealth profile ready");
       await navigate({ to: "/", replace: true });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not complete onboarding");
+      toast.error(describeActionError(error, "Could not complete onboarding"));
     } finally {
       setSaving(false);
     }

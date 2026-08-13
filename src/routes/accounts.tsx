@@ -28,6 +28,7 @@ import { useAuth } from "@/lib/auth-store";
 import { useCoreUI } from "@/lib/core-ui-store";
 import { cn } from "@/lib/utils";
 import { financialV2Repository } from "@/lib/v2-runtime";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 type SearchState = { q: string; archived: boolean };
 
@@ -102,7 +103,7 @@ function AccountsPage() {
       await queryClient.invalidateQueries({ queryKey: financialV2Keys.all });
       toast.success(existing.archivedAt ? "Account restored" : "Account archived");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update account");
+      toast.error(describeActionError(error, "Could not update account"));
     }
   };
 

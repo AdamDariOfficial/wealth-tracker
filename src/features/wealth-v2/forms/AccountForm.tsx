@@ -18,6 +18,7 @@ import { Account, ACCOUNT_KINDS, ACCOUNT_OWNERSHIPS, accountId } from "@/domain/
 import { financialV2Repository } from "@/lib/v2-runtime";
 import { safeEntityId } from "../form-utils";
 import { humanize } from "../format";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export function AccountForm({ onSaved, existing }: { onSaved: () => void; existing?: Account }) {
   const queryClient = useQueryClient();
@@ -78,7 +79,7 @@ export function AccountForm({ onSaved, existing }: { onSaved: () => void; existi
       toast.success(existing ? "Account saved" : "Account created");
       onSaved();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create account");
+      toast.error(describeActionError(error, "Could not create account"));
     } finally {
       setSaving(false);
     }

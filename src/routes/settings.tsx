@@ -33,6 +33,7 @@ import { advancedV2Keys, financialV2Keys } from "@/data/query-keys";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { useAuth } from "@/lib/auth-store";
 import { advancedV2Repository, financialV2Repository } from "@/lib/v2-runtime";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -102,7 +103,7 @@ function SettingsPage() {
       queryClient.removeQueries({ queryKey: financialV2Keys.all });
       queryClient.removeQueries({ queryKey: advancedV2Keys.all });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not sign out");
+      toast.error(describeActionError(error, "Could not sign out"));
     }
   };
 
@@ -119,7 +120,7 @@ function SettingsPage() {
       await invalidateCanonicalCaches();
       toast.success("Profile saved");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save profile");
+      toast.error(describeActionError(error, "Could not save profile"));
     } finally {
       setSaving(false);
     }
@@ -142,7 +143,7 @@ function SettingsPage() {
       URL.revokeObjectURL(url);
       toast.success("Versioned backup exported");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Backup export failed");
+      toast.error(describeActionError(error, "Backup export failed"));
     } finally {
       setExporting(false);
     }
@@ -160,7 +161,7 @@ function SettingsPage() {
     } catch (error) {
       setRestoreCandidate(null);
       setRestoreFilename(null);
-      toast.error(error instanceof Error ? error.message : "Invalid backup file");
+      toast.error(describeActionError(error, "Invalid backup file"));
     }
   };
 
@@ -175,7 +176,7 @@ function SettingsPage() {
       setRestoreCandidate(null);
       setRestoreFilename(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Restore failed");
+      toast.error(describeActionError(error, "Restore failed"));
     } finally {
       setRestoring(false);
     }
@@ -190,7 +191,7 @@ function SettingsPage() {
       setResetConfirmation("");
       setResetDialogOpen(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Reset failed");
+      toast.error(describeActionError(error, "Reset failed"));
     } finally {
       setResetting(false);
     }

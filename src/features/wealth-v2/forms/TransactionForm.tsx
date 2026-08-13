@@ -25,6 +25,7 @@ import {
   type DraftLeg,
 } from "../form-utils";
 import { useFinancialState } from "../use-financial-state";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 function emptyLeg(): DraftLeg {
   return {
@@ -69,7 +70,7 @@ export function TransactionForm({ onSaved }: { onSaved: () => void }) {
       toast.success("Transaction posted");
       onSaved();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not post transaction");
+      toast.error(describeActionError(error, "Could not post transaction"));
     } finally {
       setSaving(false);
     }

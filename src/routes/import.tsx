@@ -40,6 +40,7 @@ import { formatDateTime, formatQuantity } from "@/features/wealth-v2/format";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { advancedV2Repository } from "@/lib/v2-runtime";
 import { PageHeader } from "@/components/PageHeader";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export const Route = createFileRoute("/import")({ component: ImportPage });
 
@@ -87,7 +88,7 @@ function ImportPage() {
       setSourceText("");
       setLabel("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Import failed");
+      toast.error(describeActionError(error, "Import failed"));
     } finally {
       setCommitting(false);
     }
@@ -102,7 +103,7 @@ function ImportPage() {
       toast.success("Import undone. Reversals were recorded for every affected transaction.");
       setRollbackId(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Rollback failed");
+      toast.error(describeActionError(error, "Rollback failed"));
     } finally {
       setRollingBack(false);
     }
