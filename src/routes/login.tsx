@@ -6,6 +6,7 @@ import { AuthShell } from "@/components/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { classifyAuthFailure } from "@/lib/auth-messages";
 import { useAuth } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/login")({
@@ -28,29 +29,6 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-/** Turns auth failures into something a person can act on. */
-function formatAuthError(error: unknown): string {
-  const status =
-    typeof error === "object" && error !== null && "status" in error
-      ? (error as { status?: number }).status
-      : undefined;
-  const raw = error instanceof Error ? error.message : "";
-
-  if (status === 404 || /failed to fetch|networkerror|fetch/i.test(raw)) {
-    return "We couldn't reach the sign-in service. Check your connection and try again.";
-  }
-  if (status === 400 || /invalid login credentials/i.test(raw)) {
-    return "That email and password don't match. Please try again.";
-  }
-  if (/email not confirmed/i.test(raw)) {
-    return "Please confirm your email address first, then sign in.";
-  }
-  if (status === 429 || /rate limit/i.test(raw)) {
-    return "Too many attempts. Please wait a moment and try again.";
-  }
-  return raw || "We couldn't sign you in. Please try again.";
-}
-
 function LoginPage() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
@@ -68,9 +46,9 @@ function LoginPage() {
       toast.success("Welcome back");
       void navigate({ to: "/" });
     } catch (error: unknown) {
-      const message = formatAuthError(error);
-      setErrorMsg(message);
-      toast.error(message);
+      const failure = classifyAuthFailure(error, "We couldn't sign you in. Please try again.");
+      setErrorMsg(failure.message);
+      toast.error(failure.message);
     } finally {
       setLoading(false);
     }
