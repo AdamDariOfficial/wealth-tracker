@@ -305,7 +305,7 @@ function Dashboard() {
                       key={account.id}
                       to="/accounts/$id"
                       params={{ id: account.id }}
-                      search={{ edit: false }}
+                      search={{ q: "", archived: false, edit: false }}
                       className="surface-interactive flex items-baseline justify-between gap-3 rounded-lg px-2.5 py-2.5"
                     >
                       <span className="min-w-0">
