@@ -377,9 +377,7 @@ function SettingsPage() {
               Restoring a backup or resetting your workspace happens in a single step, behind an
               explicit confirmation. It either completes fully or not at all.
             </p>
-            <p>
-              Your data belongs to you. You can export a complete backup at any time.
-            </p>
+            <p>Your data belongs to you. You can export a complete backup at any time.</p>
           </div>
         </SettingsCard>
       </div>
@@ -397,9 +395,9 @@ function SettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Restore this backup?</AlertDialogTitle>
             <AlertDialogDescription>
-              {restoreFilename ?? "Selected backup"} will replace everything currently in your workspace in
-              one database transaction. If any restored record violates schema or ledger invariants,
-              the existing workspace remains unchanged.
+              {restoreFilename ?? "Selected backup"} will replace everything currently in your
+              workspace in one database transaction. If any restored record violates schema or
+              ledger invariants, the existing workspace remains unchanged.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

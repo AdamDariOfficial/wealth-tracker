@@ -104,8 +104,9 @@ function OnboardingPage() {
           </div>
         </div>
         <div className="rounded-xl border border-cyan/20 bg-cyan/5 p-4 text-xs text-muted-foreground">
-          Your net worth, account values and portfolio totals are calculated from the activity you record.
-          Missing prices or FX rates remain unknown rather than being silently treated as zero.
+          Your net worth, account values and portfolio totals are calculated from the activity you
+          record. Missing prices or FX rates remain unknown rather than being silently treated as
+          zero.
         </div>
         <Button
           type="submit"

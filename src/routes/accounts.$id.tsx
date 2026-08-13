@@ -73,6 +73,7 @@ function AccountDetail() {
     <div className="space-y-5 sm:space-y-6">
       <Link
         to="/accounts"
+        search={{ q: "", archived: false }}
         className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" /> Accounts
