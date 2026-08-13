@@ -1,7 +1,8 @@
 import type { Money } from "../../domain/core";
-import { replayLedger } from "../../domain/ledger";
-import { valueLedger, type LedgerValuation } from "../../domain/valuation";
+import type { LedgerValuation } from "../../domain/valuation";
+import { valuationAt } from "./historical-valuation";
 import type { TransactionView, WealthOverview } from "./wealth-overview";
+
 
 export const CALENDAR_SCOPES = ["day", "week", "month", "quarter", "year"] as const;
 export type CalendarScope = (typeof CALENDAR_SCOPES)[number];
@@ -141,39 +142,8 @@ function eventsInRange(
   );
 }
 
-function valuationAt(overview: WealthOverview, cutoff: Date): LedgerValuation | null {
-  const baseCurrency = overview.baseCurrency;
-  if (!baseCurrency) return null;
 
-  const cutoffMilliseconds = validDate(cutoff).getTime();
-  const state = overview.state;
-  const candidates = state.transactions.filter(
-    (transaction) => transaction.occurredAt.toEpochMilliseconds() < cutoffMilliseconds,
-  );
-  const candidateIds = new Set(candidates.map((transaction) => transaction.id.toString()));
-  const transactions = candidates.filter(
-    (transaction) =>
-      transaction.purpose === "standard" ||
-      (transaction.relatedTransactionId !== null &&
-        candidateIds.has(transaction.relatedTransactionId.toString())),
-  );
-  const snapshot = replayLedger({
-    accounts: state.accounts,
-    assets: state.assets,
-    transactions,
-  });
 
-  return valueLedger({
-    snapshot,
-    accounts: state.accounts,
-    assets: state.assets,
-    baseCurrency,
-    priceQuotes: state.priceQuotes.filter(
-      (quote) => quote.asOf.toEpochMilliseconds() < cutoffMilliseconds,
-    ),
-    fxRates: state.fxRates.filter((rate) => rate.asOf.toEpochMilliseconds() < cutoffMilliseconds),
-  });
-}
 
 function valuationView(valuation: LedgerValuation | null): CalendarValuationView | null {
   if (!valuation) return null;

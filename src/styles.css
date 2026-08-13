@@ -277,6 +277,41 @@
     border-radius: var(--radius-lg);
   }
 
+  /* Any surface the user can activate. One hover/focus grammar everywhere:
+     the border warms toward cyan, the fill lifts slightly, nothing moves. */
+  .surface-interactive {
+    transition:
+      border-color 160ms ease-out,
+      background-color 160ms ease-out;
+  }
+  .surface-interactive:hover {
+    border-color: oklch(0.82 0.15 210 / 0.28);
+    background-color: oklch(0.24 0.01 240 / 0.5);
+  }
+  .surface-interactive:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-color: oklch(0.82 0.15 210 / 0.35);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .surface-interactive { transition: none; }
+  }
+
+  /* Chart framing — charts sit in a recessed well so the plot reads as data,
+     not as another card. Gives every chart in the product one silhouette. */
+  .chart-well {
+    background:
+      linear-gradient(180deg, oklch(0.16 0.008 240 / 0.55), oklch(0.19 0.008 240 / 0.25));
+    border: 1px solid oklch(1 0 0 / 0.04);
+    border-radius: var(--radius-xl);
+  }
+
+  /* Hairline used to separate rows inside one group without drawing a box. */
+  .divider-soft {
+    border-top: 1px solid oklch(1 0 0 / 0.05);
+  }
+
+
   /* ====================================================================
      Financial typography — money must never be blindly truncated.
      ==================================================================== */
