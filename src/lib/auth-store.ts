@@ -31,7 +31,16 @@ type AuthState = {
   loading: boolean;
   init: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  /**
+   * Resolves with whether the project requires the address to be confirmed
+   * before a session can exist, so the UI can give accurate next steps
+   * instead of assuming immediate access.
+   */
+  signUp: (
+    email: string,
+    password: string,
+    displayName: string,
+  ) => Promise<{ requiresEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -149,7 +158,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   signUp: async (email, password, displayName) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -158,6 +167,7 @@ export const useAuth = create<AuthState>((set, get) => ({
       },
     });
     if (error) throw error;
+    return { requiresEmailConfirmation: data.session === null };
   },
 
   signOut: async () => {
