@@ -458,8 +458,10 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
         <div>
           <h2 className="font-display font-semibold">Weekly reviews</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Finalizing locks the review. You can reopen it later if you need to.
+            Edit a review as long as you need. Finalizing it is permanent — it can&apos;t be
+            reopened, edited or deleted afterwards.
           </p>
+
         </div>
         <Button className="min-h-11 bg-cyan text-background hover:bg-cyan/90" onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
