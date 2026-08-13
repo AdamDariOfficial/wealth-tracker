@@ -20,6 +20,7 @@ import { FxRate, PriceQuote } from "@/domain/valuation";
 import { financialV2Repository } from "@/lib/v2-runtime";
 import { normalizeCurrency } from "../form-utils";
 import { useFinancialState } from "../use-financial-state";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export function MarketDataForm({ onSaved }: { onSaved: () => void }) {
   const queryClient = useQueryClient();
@@ -60,7 +61,7 @@ export function MarketDataForm({ onSaved }: { onSaved: () => void }) {
       await saved();
       toast.success("Price observation added");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not add price observation");
+      toast.error(describeActionError(error, "Could not add price observation"));
     } finally {
       setSaving(false);
     }
@@ -80,7 +81,7 @@ export function MarketDataForm({ onSaved }: { onSaved: () => void }) {
       await saved();
       toast.success("FX observation added");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not add FX observation");
+      toast.error(describeActionError(error, "Could not add FX observation"));
     } finally {
       setSaving(false);
     }

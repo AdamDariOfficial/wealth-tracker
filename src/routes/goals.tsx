@@ -43,6 +43,7 @@ import { useAdvancedState } from "@/features/wealth-v2/use-advanced-state";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { advancedV2Repository } from "@/lib/v2-runtime";
 import { cn } from "@/lib/utils";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export const Route = createFileRoute("/goals")({ component: GoalsPage });
 
@@ -143,7 +144,7 @@ function GoalsPage() {
       setForm(EMPTY_FORM);
       toast.success(editing ? "Goal updated" : "Goal created");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save goal");
+      toast.error(describeActionError(error, "Could not save goal"));
     } finally {
       setSaving(false);
     }
@@ -155,7 +156,7 @@ function GoalsPage() {
       await queryClient.invalidateQueries({ queryKey: advancedV2Keys.all });
       toast.success("Goal archived");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not archive goal");
+      toast.error(describeActionError(error, "Could not archive goal"));
     }
   };
 
@@ -176,7 +177,7 @@ function GoalsPage() {
       />
 
       {goals.length === 0 ? (
-        <div className="glass rounded-2xl border-dashed p-8 text-center sm:p-12">
+        <div className="surface-section border-dashed p-8 text-center sm:p-12">
           <Target className="mx-auto h-8 w-8 text-cyan" aria-hidden="true" />
           <h2 className="mt-3 font-display font-semibold">No active goals</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -200,7 +201,7 @@ function GoalsPage() {
                   : "—";
 
             return (
-              <article key={item.goal.id} className="glass rounded-2xl p-5">
+              <article key={item.goal.id} className="surface-section p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -259,17 +260,13 @@ function GoalsPage() {
 
                 <div className="mt-5 flex min-w-0 items-end justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Current
-                    </div>
+                    <div className="label-muted">Current</div>
                     <div className="mt-1 truncate font-display text-xl font-semibold">
                       {current}
                     </div>
                   </div>
                   <div className="min-w-0 text-right">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Target
-                    </div>
+                    <div className="label-muted">Target</div>
                     <div className="mt-1 truncate font-mono text-sm">{target}</div>
                   </div>
                 </div>

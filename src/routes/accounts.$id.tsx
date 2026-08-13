@@ -117,7 +117,7 @@ function AccountDetail() {
         <Metric label="Unknown" value={String(view.unknownPositionCount)} />
         <Metric label="Transactions" value={String(transactions.length)} />
       </div>
-      <section className="glass rounded-2xl p-4 sm:p-5">
+      <section className="surface-section p-4 sm:p-5">
         <h2 className="font-display font-semibold">Balances</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Calculated from every transaction recorded on this account.
@@ -156,7 +156,7 @@ function AccountDetail() {
           )}
         </div>
       </section>
-      <section className="glass rounded-2xl p-4 sm:p-5">
+      <section className="surface-section p-4 sm:p-5">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-display font-semibold">Account ledger</h2>
@@ -184,9 +184,7 @@ function AccountDetail() {
                       {formatDateTime(transaction.occurredAt, profile?.locale ?? undefined)}
                     </div>
                   </div>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {transaction.state}
-                  </span>
+                  <span className="label-muted">{transaction.state}</span>
                 </div>
               </Link>
             ))

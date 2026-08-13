@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { financialV2Keys } from "@/data/query-keys";
 import { useAuth } from "@/lib/auth-store";
 import { financialV2Repository } from "@/lib/v2-runtime";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export const Route = createFileRoute("/onboarding")({ component: OnboardingPage });
 
@@ -42,7 +43,7 @@ function OnboardingPage() {
       toast.success("Wealth profile ready");
       await navigate({ to: "/", replace: true });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not complete onboarding");
+      toast.error(describeActionError(error, "Could not complete onboarding"));
     } finally {
       setSaving(false);
     }
@@ -53,7 +54,7 @@ function OnboardingPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,oklch(0.82_0.15_210_/_0.1),transparent_60%)]" />
       <form
         onSubmit={submit}
-        className="glass relative w-full max-w-xl space-y-6 rounded-3xl p-6 sm:p-8"
+        className="surface-elevated relative w-full max-w-xl space-y-6 p-6 sm:p-8"
       >
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan to-cyan-glow">

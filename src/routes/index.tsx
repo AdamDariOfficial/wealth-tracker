@@ -1,22 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  Activity,
   ArrowLeftRight,
   ArrowRight,
   CircleDollarSign,
   Landmark,
+  LineChart,
   PieChart,
   Plus,
   TriangleAlert,
   Wallet,
 } from "lucide-react";
+import { useMemo } from "react";
+import { buildDashboardInsights } from "@/application/view-models";
+import { ActivityRhythmChart } from "@/components/charts/ActivityRhythmChart";
+import { ChartFrame } from "@/components/charts/ChartFrame";
+import { CompositionChart, compositionColor } from "@/components/charts/CompositionChart";
+import { NetWorthTrendChart } from "@/components/charts/NetWorthTrendChart";
 import { EmptyState } from "@/components/EmptyState";
 import { MetricCard } from "@/components/MetricCard";
 import { PageHeader } from "@/components/PageHeader";
 import { SectionCard } from "@/components/SectionCard";
+import { TransactionSummaryRow } from "@/components/TransactionSummaryRow";
 import { Button } from "@/components/ui/button";
-import { Decimal, Money } from "@/domain/core";
+import { Money } from "@/domain/core";
 import { FinancialError, FinancialLoading } from "@/features/wealth-v2/FinancialStatePanel";
-import { formatDateTime, formatMoney, formatQuantity, humanize } from "@/features/wealth-v2/format";
+import { formatMoney, humanize } from "@/features/wealth-v2/format";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { useAuth } from "@/lib/auth-store";
 import { useCoreUI } from "@/lib/core-ui-store";
@@ -47,28 +56,27 @@ function Dashboard() {
   const { profile } = useAuth();
   const query = useFinancialState();
   const openComposer = useCoreUI((state) => state.openComposer);
+  const overview = query.data ?? null;
+
+  // Derived once per data change. The dashboard never recomputes financial
+  // history itself — it asks the application layer for it.
+  const insights = useMemo(
+    () => (overview ? buildDashboardInsights(overview, { now: new Date(), months: 12 }) : null),
+    [overview],
+  );
 
   if (query.isLoading) return <FinancialLoading />;
-  if (query.isError || !query.data) {
+  if (query.isError || !overview || !insights) {
     return <FinancialError error={query.error} retry={() => void query.refetch()} />;
   }
 
-  const overview = query.data;
   const locale = profile?.locale ?? undefined;
   const recent = overview.transactions.slice(0, 5);
   const activeAccounts = overview.accounts.filter((account) => !account.archived).length;
   const firstName = (profile?.displayName ?? "there").split(" ")[0];
   const hasAnything = overview.accounts.length > 0 || overview.transactions.length > 0;
-
-  // Visual share only. The bar width is a presentation ratio and is never
-  // used as, or displayed as, a monetary amount.
-  const allocationTotal = overview.allocation.reduce(
-    (total, item) => total.plus(Decimal.parse(item.amount)),
-    Decimal.zero(),
-  );
-  const allocationTotalNumber = Number(allocationTotal.toString());
-  const shareOf = (amount: string) =>
-    allocationTotalNumber > 0 ? (Number(amount) / allocationTotalNumber) * 100 : 0;
+  const trend = insights.netWorthTrend;
+  const topAccounts = insights.accountValues.slice(0, 5);
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -190,62 +198,167 @@ function Dashboard() {
             </div>
           )}
 
+          {/* Net worth over time — each point is a canonical valuation of the
+              ledger as it stood at that month's close. */}
+          <SectionCard
+            title="Known net worth over time"
+            description={
+              overview.baseCurrency
+                ? `Valued at each month close, in ${overview.baseCurrency}`
+                : "Set a base currency in Settings to see your history"
+            }
+            icon={LineChart}
+          >
+            {trend.length < 2 || !overview.baseCurrency ? (
+              <EmptyState
+                compact
+                title="Not enough history yet"
+                description="Once you have activity across more than one month, your net worth curve appears here."
+              />
+            ) : (
+              <ChartFrame
+                height="tall"
+                caption={
+                  insights.trendComplete
+                    ? "Every point values all positions held at that date."
+                    : "Months where a position had no price are plotted from the known part only."
+                }
+              >
+                <NetWorthTrendChart
+                  points={trend}
+                  currency={overview.baseCurrency}
+                  locale={locale}
+                />
+              </ChartFrame>
+            )}
+          </SectionCard>
+
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <SectionCard
-              title="Allocation by asset class"
+              title="Composition by asset class"
               description={
                 overview.baseCurrency
                   ? `Valued positions only, shown in ${overview.baseCurrency}`
-                  : "Set a base currency to see your allocation"
+                  : "Set a base currency to see your composition"
               }
               icon={PieChart}
-              bodyClassName="space-y-2.5"
             >
-              {overview.allocation.length === 0 ? (
+              {insights.composition.length === 0 ? (
                 <EmptyState
                   compact
                   title="Nothing valued yet"
-                  description="Once you hold a position with a known price, your allocation appears here."
+                  description="Once you hold a position with a known price, your composition appears here."
+                />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)] sm:items-center">
+                  <ChartFrame height="compact" className="sm:space-y-0">
+                    <CompositionChart slices={insights.composition} locale={locale} />
+                  </ChartFrame>
+                  <div>
+                    <ul className="space-y-1">
+                      {insights.composition.map((slice, index) => (
+                        <li
+                          key={slice.kind}
+                          className="flex items-baseline justify-between gap-3 py-1.5"
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 shrink-0 rounded-full"
+                              style={{ background: compositionColor(index) }}
+                              aria-hidden="true"
+                            />
+                            <span className="min-w-0 truncate text-sm font-medium">
+                              {humanize(slice.kind)}
+                            </span>
+                          </span>
+                          <span className="shrink-0 font-mono text-sm text-money">
+                            {formatMoney(Money.of(slice.amount, slice.currency), locale)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      to="/investments"
+                      search={{ view: "all", q: "", asset: "" }}
+                      className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-cyan hover:underline md:min-h-0"
+                    >
+                      Open Portfolio <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </SectionCard>
+
+            <SectionCard
+              title="Where your value sits"
+              description="Accounts counted in net worth, largest first"
+              icon={Landmark}
+              bodyClassName="space-y-1"
+            >
+              {topAccounts.length === 0 ? (
+                <EmptyState
+                  compact
+                  title="No valued accounts yet"
+                  description="Accounts appear here once they hold a position with a known value."
                 />
               ) : (
                 <>
-                  {overview.allocation.map((item) => {
-                    const share = shareOf(item.amount);
-                    return (
-                      <div key={item.kind} className="surface-quiet px-3 py-2.5">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <span className="min-w-0 truncate text-sm font-medium">
-                            {humanize(item.kind)}
-                          </span>
-                          <span className="shrink-0 font-mono text-sm text-money">
-                            {formatMoney(Money.of(item.amount, item.currency), locale)}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex items-center gap-2">
-                          <div
-                            className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/40"
-                            role="presentation"
-                          >
-                            <div
-                              className="h-full rounded-full bg-cyan/80"
-                              style={{ width: `${Math.max(share, 1.5)}%` }}
-                            />
-                          </div>
-                          <span className="w-10 shrink-0 text-right font-mono text-[11px] text-muted-foreground">
-                            {share.toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {topAccounts.map((account) => (
+                    <Link
+                      key={account.id}
+                      to="/accounts/$id"
+                      params={{ id: account.id }}
+                      search={{ q: "", archived: false, edit: false }}
+                      className="surface-interactive flex items-baseline justify-between gap-3 rounded-lg px-2.5 py-2.5"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{account.name}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {humanize(account.kind)}
+                          {account.unknownPositionCount > 0
+                            ? ` · ${account.unknownPositionCount} unvalued`
+                            : ""}
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-mono text-sm text-money">
+                        {formatMoney(account.knownValue, locale)}
+                      </span>
+                    </Link>
+                  ))}
                   <Link
-                    to="/investments"
-                    search={{ view: "all", q: "", asset: "" }}
-                    className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-cyan hover:underline md:min-h-0"
+                    to="/accounts"
+                    search={{ q: "", archived: false }}
+                    className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-cyan hover:underline md:min-h-0"
                   >
-                    Open Portfolio <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    All accounts <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </Link>
                 </>
+              )}
+            </SectionCard>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+            <SectionCard
+              title="Recording rhythm"
+              description="Entries you recorded each month"
+              icon={Activity}
+            >
+              {insights.activityTotal === 0 ? (
+                <EmptyState
+                  compact
+                  title="No entries in this period"
+                  description="Your monthly recording rhythm appears here as you add transactions."
+                />
+              ) : (
+                <ChartFrame
+                  caption={`${insights.activityTotal} ${
+                    insights.activityTotal === 1 ? "entry" : "entries"
+                  } in the last ${insights.activity.length} ${
+                    insights.activity.length === 1 ? "month" : "months"
+                  }. Corrections are shown in violet.`}
+                >
+                  <ActivityRhythmChart buckets={insights.activity} locale={locale} />
+                </ChartFrame>
               )}
             </SectionCard>
 
@@ -268,46 +381,16 @@ function Dashboard() {
                 />
               ) : (
                 <>
-                  {recent.map((transaction) => {
-                    const primaryLeg = transaction.legs[0];
-                    return (
-                      <Link
-                        key={transaction.id}
-                        to="/transactions"
-                        search={{ q: transaction.id, state: "all" }}
-                        className="block rounded-xl border border-border/50 bg-card/30 p-3 transition-colors hover:border-cyan/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium">
-                              {transaction.description}
-                            </div>
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {formatDateTime(transaction.occurredAt, locale)}
-                            </div>
-                          </div>
-                          {primaryLeg && (
-                            <div className="shrink-0 text-right">
-                              <div className="font-mono text-sm text-money">
-                                {formatQuantity(primaryLeg.quantity)}{" "}
-                                <span className="text-muted-foreground">
-                                  {primaryLeg.assetSymbol}
-                                </span>
-                              </div>
-                              <div className="mt-0.5 max-w-[9rem] truncate text-xs text-muted-foreground">
-                                {primaryLeg.accountName}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        {transaction.state !== "active" && (
-                          <span className="mt-2 inline-flex rounded-full bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                            {humanize(transaction.state)}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
+                  {recent.map((transaction) => (
+                    <Link
+                      key={transaction.id}
+                      to="/transactions"
+                      search={{ q: transaction.id, state: "all" }}
+                      className="surface-quiet surface-interactive block px-3 py-2.5"
+                    >
+                      <TransactionSummaryRow transaction={transaction} locale={locale} />
+                    </Link>
+                  ))}
                   <Link
                     to="/transactions"
                     search={{ q: "", state: "all" }}

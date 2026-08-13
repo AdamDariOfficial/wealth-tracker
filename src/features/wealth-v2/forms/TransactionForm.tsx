@@ -25,6 +25,7 @@ import {
   type DraftLeg,
 } from "../form-utils";
 import { useFinancialState } from "../use-financial-state";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 function emptyLeg(): DraftLeg {
   return {
@@ -69,7 +70,7 @@ export function TransactionForm({ onSaved }: { onSaved: () => void }) {
       toast.success("Transaction posted");
       onSaved();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not post transaction");
+      toast.error(describeActionError(error, "Could not post transaction"));
     } finally {
       setSaving(false);
     }
@@ -116,11 +117,9 @@ export function TransactionForm({ onSaved }: { onSaved: () => void }) {
           </Button>
         </div>
         {legs.map((leg, index) => (
-          <div key={leg.rowId} className="glass-strong space-y-3 rounded-xl p-3">
+          <div key={leg.rowId} className="surface-quiet space-y-3 p-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                Leg {index + 1}
-              </span>
+              <span className="label-muted">Leg {index + 1}</span>
               {legs.length > 2 && (
                 <button
                   type="button"

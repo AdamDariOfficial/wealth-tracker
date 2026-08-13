@@ -427,7 +427,7 @@ function BucketGrid({
           type="button"
           key={bucket.key}
           onClick={() => onOpen(bucket)}
-          className="glass min-w-0 rounded-2xl p-4 text-left transition-colors hover:border-cyan/35 hover:bg-cyan/[0.03]"
+          className="surface-section surface-interactive min-w-0 p-4 text-left transition-colors hover:border-cyan/35 hover:bg-cyan/[0.03]"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -481,7 +481,7 @@ function MonthGrid({
   ];
 
   return (
-    <div className="glass rounded-2xl p-2 sm:p-4">
+    <div className="surface-section p-2 sm:p-4">
       <div className="overflow-x-auto">
         <div className="min-w-[340px]">
           <div className="grid grid-cols-7 gap-1 pb-1 text-center text-[9px] uppercase tracking-wider text-muted-foreground sm:text-[10px]">
@@ -541,7 +541,7 @@ function MonthGrid({
 
 function DayPanel({ events, locale }: { events: readonly TransactionView[]; locale: string }) {
   return (
-    <div className="glass rounded-2xl p-4 sm:p-5">
+    <div className="surface-section p-4 sm:p-5">
       <h3 className="font-display font-semibold">Day activity</h3>
       <div className="mt-4">
         <EventList events={events} locale={locale} />
@@ -618,9 +618,7 @@ function MiniValue({
 }) {
   return (
     <div className="min-w-0">
-      <div className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
+      <div className="truncate label-muted">{label}</div>
       <div className={cn("mt-1 truncate font-mono text-sm", tone)}>{value}</div>
     </div>
   );

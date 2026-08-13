@@ -36,6 +36,7 @@ import { useCoreUI } from "@/lib/core-ui-store";
 import { financialV2Repository } from "@/lib/v2-runtime";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 type SearchState = { q: string; state: string };
 
@@ -114,7 +115,7 @@ function TransactionsPage() {
       toast.success("Transaction voided. A matching reversal was recorded.");
       setVoidTarget(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not void transaction";
+      const message = describeActionError(error, "Could not void transaction");
       setVoidError(message);
       toast.error(message);
     } finally {
@@ -244,7 +245,7 @@ function TransactionsPage() {
           </div>
         ) : (
           transactions.map((transaction) => (
-            <article key={transaction.id} className="glass rounded-2xl p-4 sm:p-5">
+            <article key={transaction.id} className="surface-section p-4 sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">

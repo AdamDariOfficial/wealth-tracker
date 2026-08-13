@@ -17,6 +17,7 @@ import { Asset, ASSET_KINDS, assetId } from "@/domain/assets";
 import { financialV2Repository } from "@/lib/v2-runtime";
 import { normalizeCurrency, safeEntityId } from "../form-utils";
 import { humanize } from "../format";
+import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export function AssetForm({
   onSaved,
@@ -52,7 +53,7 @@ export function AssetForm({
       toast.success(existing ? "Asset saved" : "Asset created");
       onSaved();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create asset");
+      toast.error(describeActionError(error, "Could not create asset"));
     } finally {
       setSaving(false);
     }
