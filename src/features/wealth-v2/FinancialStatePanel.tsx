@@ -52,12 +52,15 @@ export function FinancialLoading({ className }: { className?: string }) {
 }
 
 /**
- * Human-language error state with a local retry. Deliberately free of
- * implementation detail — people need to know what to do, not how the
- * data layer is wired.
+ * Human-language error state with a local retry.
+ *
+ * Deliberately free of implementation detail: raw runtime messages leak
+ * repository and transport internals and mean nothing to the person reading
+ * them. It also makes no promise about what did or did not reach the ledger —
+ * a failed read cannot verify that, and the Transactions page can.
  */
 export function FinancialError({ error, retry }: { error: unknown; retry: () => void }) {
-  const detail = error instanceof Error ? error.message : null;
+  void error;
 
   return (
     <div
@@ -69,12 +72,10 @@ export function FinancialError({ error, retry }: { error: unknown; retry: () => 
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-base font-semibold">We couldn&apos;t load your data</h2>
           <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-            Something went wrong while loading your accounts and balances. Your records are safe —
-            nothing has been changed.
+            Your accounts and balances didn&apos;t load. This is usually a connection problem, so
+            trying again often resolves it. If it keeps happening, check your connection and reload
+            the page.
           </p>
-          {detail && (
-            <p className="mt-2 break-words text-xs leading-5 text-muted-foreground/80">{detail}</p>
-          )}
           <Button type="button" variant="outline" size="sm" className="mt-4" onClick={retry}>
             <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" /> Try again
           </Button>
