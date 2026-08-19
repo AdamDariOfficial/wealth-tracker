@@ -15,6 +15,11 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { financialV2Keys } from "@/data/query-keys";
 import { Account, ACCOUNT_KINDS, ACCOUNT_OWNERSHIPS, accountId } from "@/domain/accounts";
+
+const USER_ACCOUNT_KINDS = ACCOUNT_KINDS.filter(
+  (value) => !["income", "expense", "equity"].includes(value),
+);
+const USER_ACCOUNT_OWNERSHIPS = ACCOUNT_OWNERSHIPS.filter((value) => value !== "system");
 import { financialV2Repository } from "@/lib/v2-runtime";
 import { safeEntityId } from "../form-utils";
 import { humanize } from "../format";
@@ -108,7 +113,7 @@ export function AccountForm({ onSaved, existing }: { onSaved: () => void; existi
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {ACCOUNT_KINDS.map((value) => (
+              {USER_ACCOUNT_KINDS.map((value) => (
                 <SelectItem key={value} value={value}>
                   {humanize(value)}
                 </SelectItem>
@@ -126,7 +131,7 @@ export function AccountForm({ onSaved, existing }: { onSaved: () => void; existi
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {ACCOUNT_OWNERSHIPS.map((value) => (
+              {USER_ACCOUNT_OWNERSHIPS.map((value) => (
                 <SelectItem key={value} value={value}>
                   {humanize(value)}
                 </SelectItem>

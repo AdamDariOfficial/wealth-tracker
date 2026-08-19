@@ -62,7 +62,9 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl glass p-3">
-      <div className="label-muted/80 mb-2">{title}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-2">
+        {title}
+      </div>
       <div className="space-y-0.5">{children}</div>
     </div>
   );
@@ -119,7 +121,7 @@ export function ActivityDrawer({
     id ? (accounts.find((a) => a.id === id)?.name ?? id.slice(0, 8)) : null;
   const assName = (id?: string | null) =>
     id ? (assets.find((a) => a.id === id)?.symbol ?? "") : null;
-  const m = (event.meta ?? {}) as Record<string, any>;
+  const m = (event.meta ?? {}) as Record<string, string | number | boolean | null | undefined>;
   const r = event.refs;
 
   return (
@@ -129,7 +131,7 @@ export function ActivityDrawer({
           <div className="flex items-center gap-3">
             <div
               className={cn(
-                "h-10 w-10 rounded-xl surface-quiet flex items-center justify-center ring-1",
+                "h-10 w-10 rounded-xl glass-strong flex items-center justify-center ring-1",
                 TONE_RING[event.tone ?? "neutral"],
               )}
             >

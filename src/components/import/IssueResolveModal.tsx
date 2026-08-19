@@ -39,6 +39,26 @@ export interface ResolveResult {
   accountName?: string;
 }
 
+type LegacyPayload = Record<string, unknown>;
+type LegacyMutationResult<T> = { data: T; error: unknown };
+type LegacySingleBuilder<T> = { single(): Promise<LegacyMutationResult<T>> };
+type LegacyInsertBuilder<T> = { select(columns: string): LegacySingleBuilder<T> };
+type LegacyTable<T> = {
+  upsert(values: LegacyPayload, options?: { onConflict?: string }): PromiseLike<unknown>;
+  insert(values: LegacyPayload): LegacyInsertBuilder<T>;
+};
+type LegacySupabaseClient = { from<T = unknown>(table: string): LegacyTable<T> };
+
+const legacySupabase = supabase as unknown as LegacySupabaseClient;
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  return fallback;
+}
 export function IssueResolveModal({
   open,
   onClose,
@@ -85,7 +105,7 @@ export function IssueResolveModal({
   async function persistAlias(accountId: string) {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user || !issue) return;
-    await (supabase as any).from("import_aliases").upsert(
+    await legacySupabase.from("import_aliases").upsert(
       {
         user_id: u.user.id,
         alias: issue.normalized,
@@ -103,8 +123,8 @@ export function IssueResolveModal({
     try {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Not authenticated");
-      const { data, error } = await (supabase as any)
-        .from("accounts")
+      const { data, error } = await legacySupabase
+        .from<{ id: string; name: string }>("accounts")
         .insert({
           user_id: u.user.id,
           name: form.name.trim(),
@@ -134,8 +154,8 @@ export function IssueResolveModal({
         accountName: data.name,
       });
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create account");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Failed to create account"));
     } finally {
       setBusy(false);
     }
@@ -155,8 +175,8 @@ export function IssueResolveModal({
         accountName: acct?.name,
       });
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to map");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Failed to map"));
     } finally {
       setBusy(false);
     }
@@ -219,7 +239,9 @@ export function IssueResolveModal({
     >
       <div className="space-y-4">
         <div className="rounded-md border border-border/40 bg-card/40 p-3">
-          <div className="label-muted">Unknown account detected</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Unknown account detected
+          </div>
           <div className="font-mono text-sm mt-1">"{issue.raw}"</div>
           <div className="text-[11px] text-muted-foreground mt-1">
             Affects {affected} row{affected === 1 ? "" : "s"}. Resolving once fixes every match.

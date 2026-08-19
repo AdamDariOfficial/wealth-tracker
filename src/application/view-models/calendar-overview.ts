@@ -3,7 +3,6 @@ import type { LedgerValuation } from "../../domain/valuation";
 import { valuationAt } from "./historical-valuation";
 import type { TransactionView, WealthOverview } from "./wealth-overview";
 
-
 export const CALENDAR_SCOPES = ["day", "week", "month", "quarter", "year"] as const;
 export type CalendarScope = (typeof CALENDAR_SCOPES)[number];
 
@@ -31,6 +30,7 @@ export type CalendarBucketView = Readonly<{
   valuationComplete: boolean;
   deltaComplete: boolean;
   unknownPositionCount: number;
+  future: boolean;
 }>;
 
 export type CalendarOverview = Readonly<{
@@ -50,6 +50,7 @@ export type BuildCalendarOverviewInput = Readonly<{
   scope: CalendarScope;
   anchor: Date;
   selectedDay?: Date | null;
+  now?: Date;
 }>;
 
 function validDate(date: Date): Date {
@@ -142,9 +143,6 @@ function eventsInRange(
   );
 }
 
-
-
-
 function valuationView(valuation: LedgerValuation | null): CalendarValuationView | null {
   if (!valuation) return null;
   return Object.freeze({
@@ -162,6 +160,11 @@ function knownDelta(
 ): Money | null {
   if (!start || !end) return null;
   return end.knownNetWorth.minus(start.knownNetWorth);
+}
+
+function rangeCutoff(range: CalendarRange, now: Date): Date | null {
+  if (range.start.getTime() > now.getTime()) return null;
+  return range.end.getTime() > now.getTime() ? new Date(now.getTime()) : range.end;
 }
 
 function bucketRanges(scope: CalendarScope, anchor: Date): readonly CalendarRange[] {
@@ -211,12 +214,19 @@ export function buildCalendarOverview(
   input: BuildCalendarOverviewInput,
 ): CalendarOverview {
   validDate(input.anchor);
+  const now = validDate(input.now ?? new Date());
   const range = calendarRange(input.scope, input.anchor);
-  const startValuation = valuationView(valuationAt(overview, range.start));
-  const endValuation = valuationView(valuationAt(overview, range.end));
+  const endCutoff = rangeCutoff(range, now);
+  const startValuation =
+    range.start.getTime() <= now.getTime()
+      ? valuationView(valuationAt(overview, range.start))
+      : null;
+  const endValuation = endCutoff ? valuationView(valuationAt(overview, endCutoff)) : null;
   const buckets = bucketRanges(input.scope, input.anchor).map((bucket) => {
-    const bucketStart = valuationView(valuationAt(overview, bucket.start));
-    const bucketEnd = valuationView(valuationAt(overview, bucket.end));
+    const future = bucket.start.getTime() > now.getTime();
+    const bucketCutoff = rangeCutoff(bucket, now);
+    const bucketStart = future ? null : valuationView(valuationAt(overview, bucket.start));
+    const bucketEnd = bucketCutoff ? valuationView(valuationAt(overview, bucketCutoff)) : null;
     const bucketEvents = eventsInRange(overview.transactions, bucket);
 
     return Object.freeze({
@@ -230,6 +240,7 @@ export function buildCalendarOverview(
       valuationComplete: bucketEnd?.complete ?? false,
       deltaComplete: Boolean(bucketStart?.complete && bucketEnd?.complete),
       unknownPositionCount: bucketEnd?.unknownPositionCount ?? 0,
+      future,
     });
   });
 

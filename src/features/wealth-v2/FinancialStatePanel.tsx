@@ -72,9 +72,8 @@ export function FinancialError({ error, retry }: { error: unknown; retry: () => 
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-base font-semibold">We couldn&apos;t load your data</h2>
           <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-            Your accounts and balances didn&apos;t load. This is usually a connection problem, so
-            trying again often resolves it. If it keeps happening, check your connection and reload
-            the page.
+            Your accounts and balances didn&apos;t load. Try again. If it keeps happening, check
+            your connection and reload the page.
           </p>
           <Button type="button" variant="outline" size="sm" className="mt-4" onClick={retry}>
             <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" /> Try again

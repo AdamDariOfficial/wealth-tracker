@@ -18,7 +18,7 @@ import { assetId } from "@/domain/assets";
 import { Money, UtcTimestamp } from "@/domain/core";
 import { FxRate, PriceQuote } from "@/domain/valuation";
 import { financialV2Repository } from "@/lib/v2-runtime";
-import { normalizeCurrency } from "../form-utils";
+import { normalizeCurrency, normalizeLocalizedDecimalInput } from "../form-utils";
 import { useFinancialState } from "../use-financial-state";
 import { describeActionError } from "@/features/wealth-v2/user-message";
 
@@ -54,7 +54,10 @@ export function MarketDataForm({ onSaved }: { onSaved: () => void }) {
     try {
       const quote = PriceQuote.create({
         assetId: assetId(asset),
-        unitPrice: Money.of(price.trim(), normalizeCurrency(priceCurrency)),
+        unitPrice: Money.of(
+          normalizeLocalizedDecimalInput(price),
+          normalizeCurrency(priceCurrency),
+        ),
         asOf: UtcTimestamp.fromDate(new Date()),
       });
       await appendValidatedPriceQuote(financialV2Repository, quote);
@@ -74,7 +77,7 @@ export function MarketDataForm({ onSaved }: { onSaved: () => void }) {
       const fx = FxRate.create({
         sourceCurrency: normalizeCurrency(sourceCurrency),
         targetCurrency: normalizeCurrency(targetCurrency),
-        rate: rate.trim(),
+        rate: normalizeLocalizedDecimalInput(rate),
         asOf: UtcTimestamp.fromDate(new Date()),
       });
       await appendValidatedFxRate(financialV2Repository, fx);
@@ -118,7 +121,7 @@ export function MarketDataForm({ onSaved }: { onSaved: () => void }) {
                 inputMode="decimal"
                 value={price}
                 onChange={(event) => setPrice(event.target.value)}
-                placeholder="102.45"
+                placeholder="102,45"
                 required
               />
             </div>
@@ -175,7 +178,7 @@ export function MarketDataForm({ onSaved }: { onSaved: () => void }) {
               inputMode="decimal"
               value={rate}
               onChange={(event) => setRate(event.target.value)}
-              placeholder="0.9142"
+              placeholder="0,9142"
               required
             />
           </div>

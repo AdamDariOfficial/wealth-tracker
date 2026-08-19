@@ -160,7 +160,7 @@ function buildTransactionViews(state: ValidatedFinancialState): readonly Transac
           return Object.freeze({
             id: leg.id.toString(),
             accountId: account.id.toString(),
-            accountName: account.name,
+            accountName: account.ownership === "system" ? "" : account.name,
             assetId: asset.id.toString(),
             assetSymbol: asset.symbol,
             quantity: leg.quantity.toString(),
@@ -174,12 +174,16 @@ function buildTransactionViews(state: ValidatedFinancialState): readonly Transac
 
 function buildAllocation(
   positions: readonly PositionView[],
+  accounts: readonly Account[],
   currency: string | null,
 ): readonly AllocationView[] {
   if (!currency) return [];
+  const includedAccountIds = new Set(
+    accounts.filter((account) => account.includeInNetWorth).map((account) => account.id.toString()),
+  );
   const totals = new Map<AssetKind, Decimal>();
   for (const position of positions) {
-    if (!position.value) continue;
+    if (!position.value || !includedAccountIds.has(position.accountId)) continue;
     totals.set(
       position.kind,
       (totals.get(position.kind) ?? Decimal.zero()).plus(position.value.amount),
@@ -226,6 +230,6 @@ export function buildWealthOverview(state: ValidatedFinancialState): WealthOverv
     positions,
     accounts: Object.freeze(buildAccountViews(state, valuation)),
     transactions: Object.freeze(buildTransactionViews(state)),
-    allocation: Object.freeze(buildAllocation(positions, baseCurrency)),
+    allocation: Object.freeze(buildAllocation(positions, state.accounts, baseCurrency)),
   });
 }

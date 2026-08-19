@@ -5,6 +5,7 @@ import type { AllocationView } from "@/application/view-models";
 import { Money } from "@/domain/core";
 import { formatMoney, humanize } from "@/features/wealth-v2/format";
 import { chartTooltipProps } from "@/lib/chart-style";
+import { prepareCompositionPresentation } from "@/features/wealth-v2/composition-presentation";
 
 /**
  * Current composition by asset class.
@@ -34,17 +35,34 @@ export function CompositionChart({
   locale?: string;
 }) {
   const reduceMotion = useReducedMotion();
+  const presentation = useMemo(() => prepareCompositionPresentation(slices), [slices]);
   const data = useMemo(
     () =>
-      slices.map((slice, index) => ({
+      presentation.positiveSlices.map((slice, index) => ({
         kind: slice.kind,
         label: humanize(slice.kind),
         display: formatMoney(Money.of(slice.amount, slice.currency), locale),
         color: compositionColor(index),
-        value: Math.abs(Number(slice.amount)),
+        value: Number(slice.amount),
       })),
-    [slices, locale],
+    [presentation.positiveSlices, locale],
   );
+
+  if (presentation.hasNegative) {
+    return (
+      <div className="flex h-full items-center justify-center px-4 text-center text-xs leading-5 text-muted-foreground">
+        Composition chart unavailable for signed values. The list shows the exact amounts.
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center px-4 text-center text-xs leading-5 text-muted-foreground">
+        No positive valued positions to chart.
+      </div>
+    );
+  }
 
   return (
     <ResponsiveContainer width="100%" height="100%">

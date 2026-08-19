@@ -23,13 +23,17 @@ import { cn } from "@/lib/utils";
 const views = ["all", "fiat", "etf", "crypto", "equity", "fund", "commodity", "other"] as const;
 type PortfolioView = (typeof views)[number];
 
-type SearchState = { view: PortfolioView; q: string; asset: string };
+type SearchState = { view: PortfolioView; q: string; asset: string; registry?: boolean };
 
 export const Route = createFileRoute("/investments")({
   validateSearch: (search: Partial<Record<keyof SearchState, unknown>>): SearchState => ({
     view: views.includes(search.view as PortfolioView) ? (search.view as PortfolioView) : "all",
     q: typeof search.q === "string" ? search.q : "",
     asset: typeof search.asset === "string" ? search.asset : "",
+    registry:
+      search.registry === true || search.registry === "true" || search.registry === "1"
+        ? true
+        : undefined,
   }),
   component: PortfolioPage,
 });
@@ -76,27 +80,24 @@ function PortfolioPage() {
         transaction.legs.some((leg) => leg.assetId.equals(selectedAsset.id)),
       )
     : false;
-  const setSearch = (patch: Partial<SearchState>) =>
+  const setSearch = (patch: Partial<SearchState>, replace = patch.q !== undefined) =>
     void navigate({
       search: (previous: SearchState) => ({ ...previous, ...patch }),
-      replace: patch.q !== undefined,
+      replace,
     });
 
   return (
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Portfolio"
-        subtitle="Everything you own in one view — cash, ETFs, crypto, equities, funds and commodities."
+        subtitle="Your assets and positions across every account. Use Accounts when you want to see where each position is held."
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setSearch({ registry: true })}>
+              Assets ({overview.state.assets.length})
+            </Button>
             <Button variant="outline" onClick={() => openComposer("market-data")}>
               Market data
-            </Button>
-            <Button
-              onClick={() => openComposer("asset")}
-              className="bg-cyan text-background hover:bg-cyan/90"
-            >
-              <Plus className="mr-1.5 h-4 w-4" /> Asset
             </Button>
           </div>
         }
@@ -161,92 +162,105 @@ function PortfolioPage() {
           {positions.map((position) => (
             <article
               key={`${position.accountId}:${position.assetId}`}
-              className="surface-section p-4 sm:p-5"
+              className="surface-section p-3.5 sm:p-4"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-display text-lg font-semibold">{position.symbol}</span>
-                    <span className="rounded-full bg-muted/50 px-2 py-1 label-muted">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="shrink-0 font-display text-base font-semibold">
+                      {position.symbol}
+                    </span>
+                    <span className="text-xs text-muted-foreground">in</span>
+                    <span className="min-w-0 truncate text-sm font-semibold text-foreground">
+                      {position.accountName}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-muted/50 px-2 py-0.5 label-muted">
                       {position.kind}
                     </span>
                   </div>
                   <div className="mt-1 truncate text-xs text-muted-foreground">
-                    {position.assetName} · {position.accountName}
+                    {position.assetName}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-mono text-sm tabular-nums">
-                    {formatQuantity(position.quantity)}
-                  </div>
-                  <div className="mt-1 label-muted">quantity</div>
-                </div>
-              </div>
-              <div className="mt-5 flex items-end justify-between gap-4">
-                <div>
-                  <div className="label-muted">Known value</div>
-                  <div className="mt-1 font-display text-xl font-semibold">
+                <div className="shrink-0 text-right">
+                  <div className="font-display text-lg font-semibold">
                     {formatMoney(position.value, profile?.locale ?? undefined)}
                   </div>
-                </div>
-                {position.missingReason && (
-                  <div className="max-w-[45%] rounded-lg border border-warning/25 bg-warning/5 px-2 py-1 text-right text-[10px] text-warning">
-                    {humanize(position.missingReason)}
+                  <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                    {formatQuantity(position.quantity)} {position.symbol}
                   </div>
-                )}
+                </div>
               </div>
+              {position.missingReason && (
+                <div className="mt-2 text-[10px] text-warning">
+                  {humanize(position.missingReason)}
+                </div>
+              )}
             </article>
           ))}
         </div>
       )}
 
-      <section className="surface-section p-4 sm:p-5">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="font-display font-semibold">Asset registry</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Details for this asset. Renaming it never changes your recorded transaction history.
-            </p>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {assets.length} matching asset{assets.length === 1 ? "" : "s"}
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {assets.length === 0 ? (
-            <div className="col-span-full py-8 text-center text-xs text-muted-foreground">
-              No assets match the current filters.
+      <Dialog
+        open={search.registry === true}
+        onOpenChange={(open) => setSearch({ registry: open ? true : undefined }, !open)}
+      >
+        <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto motion-reduce:animate-none motion-reduce:transition-none">
+          <DialogHeader>
+            <DialogTitle>Asset registry</DialogTitle>
+            <DialogDescription>
+              Manage the assets available in your workspace. Portfolio stays focused on positions
+              you actually hold.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              {assets.length} matching asset{assets.length === 1 ? "" : "s"}
             </div>
-          ) : (
-            assets.map((asset) => (
-              <div
-                key={asset.id.toString()}
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/30 p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-semibold">{asset.symbol}</span>
-                    <span className="label-muted">{humanize(asset.kind)}</span>
-                  </div>
-                  <div className="mt-1 truncate text-xs text-muted-foreground">
-                    {asset.name} · precision {asset.precision}
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 shrink-0"
-                  onClick={() => setSearch({ asset: asset.id.toString() })}
-                  aria-label={`Edit ${asset.symbol}`}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
+            <Button
+              size="sm"
+              onClick={() => openComposer("asset")}
+              className="bg-cyan text-background hover:bg-cyan/90"
+            >
+              <Plus className="mr-1.5 h-4 w-4" /> Asset
+            </Button>
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+            {assets.length === 0 ? (
+              <div className="col-span-full py-8 text-center text-xs text-muted-foreground">
+                No assets match the current Portfolio filters.
               </div>
-            ))
-          )}
-        </div>
-      </section>
+            ) : (
+              assets.map((asset) => (
+                <div
+                  key={asset.id.toString()}
+                  className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/30 p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-semibold">{asset.symbol}</span>
+                      <span className="label-muted">{humanize(asset.kind)}</span>
+                    </div>
+                    <div className="mt-1 truncate text-xs text-muted-foreground">
+                      {asset.name} · precision {asset.precision}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-11 shrink-0"
+                    onClick={() => setSearch({ registry: undefined, asset: asset.id.toString() })}
+                    aria-label={`Edit ${asset.symbol}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={selectedAsset !== null}

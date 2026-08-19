@@ -27,6 +27,15 @@ import { chartTooltipProps } from "@/lib/chart-style";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  return fallback;
+}
+
 export function WeeklyTab() {
   const { user } = useAuth();
   const { accounts, weekly, weeklyApi, metrics } = useTrading();
@@ -67,8 +76,8 @@ export function WeeklyTab() {
       }
       setScreenshots((s) => [...s, ...urls]);
       toast.success(`${urls.length} screenshot(s) uploaded`);
-    } catch (err: any) {
-      toast.error(err.message ?? "Upload failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Upload failed"));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -99,7 +108,7 @@ export function WeeklyTab() {
         screenshots,
         broker_account_id: brokerAccountId || null,
         posted_transaction_id,
-      } as any);
+      });
       await weeklyApi.refresh();
       toast.success(
         posted_transaction_id
@@ -109,8 +118,8 @@ export function WeeklyTab() {
       setConfirmOpen(false);
       setOpen(false);
       setScreenshots([]);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Failed to save weekly review"));
     }
   };
 
@@ -122,7 +131,10 @@ export function WeeklyTab() {
     if (r.posted_transaction_id) {
       try {
         await reverseTransaction(r.posted_transaction_id);
-      } catch {}
+      } catch (error: unknown) {
+        toast.error(errorMessage(error, "Failed to reverse linked P&L transaction"));
+        return;
+      }
     }
     await weeklyApi.remove(r.id);
   };
@@ -131,10 +143,10 @@ export function WeeklyTab() {
     try {
       await weeklyApi.update(r.id, {
         finalized_at: r.finalized_at ? null : new Date().toISOString(),
-      } as any);
+      });
       toast.success(r.finalized_at ? "Report reopened" : "Report finalized and locked");
-    } catch (e: any) {
-      toast.error(e.message ?? "Update failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Update failed"));
     }
   };
 
@@ -177,15 +189,15 @@ export function WeeklyTab() {
             key={s.l}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="surface-section p-5"
+            className="glass rounded-2xl p-5"
           >
-            <div className="label-muted">{s.l}</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.l}</div>
             <div className={cn("font-display text-3xl font-semibold mt-2", s.c)}>{s.v}</div>
           </motion.div>
         ))}
       </div>
 
-      <div className="surface-section p-5">
+      <div className="glass rounded-2xl p-5">
         <h3 className="font-display font-semibold mb-4 flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-cyan" /> Cumulative Weekly P&L
         </h3>
@@ -221,7 +233,7 @@ export function WeeklyTab() {
         )}
       </div>
 
-      <div className="surface-section overflow-hidden">
+      <div className="glass rounded-2xl overflow-hidden">
         <div className="p-5 font-display font-semibold">Review History</div>
         <table className="w-full text-sm">
           <thead className="text-[11px] uppercase tracking-wider text-muted-foreground border-y border-border/40">
@@ -445,7 +457,7 @@ export function WeeklyTab() {
             {screenshots.map((path, i) => (
               <div
                 key={i}
-                className="relative h-16 w-16 surface-quiet flex items-center justify-center text-[10px] font-mono text-muted-foreground"
+                className="relative h-16 w-16 rounded-lg glass-strong flex items-center justify-center text-[10px] font-mono text-muted-foreground"
               >
                 #{i + 1}
                 <button
@@ -490,7 +502,7 @@ export function WeeklyTab() {
           A <span className="text-cyan font-mono">profit_realization</span> transaction will be
           inserted into the ledger and the broker account balance will be reconciled automatically.
         </p>
-        <div className="surface-quiet p-4 text-xs font-mono space-y-2 mt-2">
+        <div className="glass-strong rounded-xl p-4 text-xs font-mono space-y-2 mt-2">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Type</span>
             <span className="text-cyan">profit_realization</span>

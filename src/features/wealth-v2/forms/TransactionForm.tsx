@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { postValidatedTransaction } from "@/application/services";
 import { Button } from "@/components/ui/button";
@@ -17,60 +16,94 @@ import { financialV2Keys } from "@/data/query-keys";
 import { UtcTimestamp } from "@/domain/core";
 import { LedgerTransaction, transactionId } from "@/domain/ledger";
 import { financialV2Repository } from "@/lib/v2-runtime";
-import {
-  buildTransactionLegInputs,
-  isBalancedDraft,
-  safeEntityId,
-  toLocalDateTimeInputValue,
-  type DraftLeg,
-} from "../form-utils";
+import { buildTransactionLegInputs, safeEntityId, toLocalDateTimeInputValue } from "../form-utils";
+import { buildSimpleActivityDraft, type SimpleActivityKind } from "../simple-activity";
 import { useFinancialState } from "../use-financial-state";
 import { describeActionError } from "@/features/wealth-v2/user-message";
+import { cn } from "@/lib/utils";
 
-function emptyLeg(): DraftLeg {
-  return {
-    rowId: safeEntityId("row"),
-    accountId: "",
-    assetId: "",
-    quantity: "",
-    memo: "",
-  };
-}
+const ACTIVITY_LABELS: Record<SimpleActivityKind, string> = {
+  income: "Income",
+  expense: "Expense",
+  transfer: "Transfer",
+};
 
 export function TransactionForm({ onSaved }: { onSaved: () => void }) {
   const queryClient = useQueryClient();
   const { data } = useFinancialState();
-  const accounts = data?.state.accounts.filter((account) => !account.isArchived()) ?? [];
-  const assets = data?.state.assets ?? [];
+  const [kind, setKind] = useState<SimpleActivityKind>("expense");
   const [description, setDescription] = useState("");
   const [occurredAt, setOccurredAt] = useState(() => toLocalDateTimeInputValue(new Date()));
-  const [legs, setLegs] = useState<DraftLeg[]>(() => [emptyLeg(), emptyLeg()]);
+  const [accountId, setAccountId] = useState("");
+  const [destinationAccountId, setDestinationAccountId] = useState("");
+  const [assetId, setAssetId] = useState("");
+  const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
-  const balanced = useMemo(() => isBalancedDraft(legs), [legs]);
 
-  const updateLeg = (rowId: string, patch: Partial<DraftLeg>) => {
-    setLegs((current) => current.map((leg) => (leg.rowId === rowId ? { ...leg, ...patch } : leg)));
-  };
+  const ownedAccounts = useMemo(
+    () =>
+      data?.state.accounts.filter(
+        (account) => account.ownership === "owned" && !account.isArchived(),
+      ) ?? [],
+    [data],
+  );
+  const assets = data?.state.assets ?? [];
+  const incomeAccount = data?.state.accounts.find(
+    (account) =>
+      account.ownership === "system" && account.kind === "income" && !account.isArchived(),
+  );
+  const expenseAccount = data?.state.accounts.find(
+    (account) =>
+      account.ownership === "system" && account.kind === "expense" && !account.isArchived(),
+  );
+  const internalReady =
+    kind === "transfer" || (kind === "income" ? Boolean(incomeAccount) : Boolean(expenseAccount));
+
+  const draft = useMemo(() => {
+    if (!accountId || !assetId || !amount.trim() || !internalReady) return null;
+    if (kind === "transfer" && !destinationAccountId) return null;
+    try {
+      return buildSimpleActivityDraft({
+        kind,
+        accountId,
+        destinationAccountId: kind === "transfer" ? destinationAccountId : undefined,
+        assetId,
+        amount,
+        incomeAccountId: incomeAccount?.id.toString(),
+        expenseAccountId: expenseAccount?.id.toString(),
+      });
+    } catch {
+      return null;
+    }
+  }, [
+    accountId,
+    amount,
+    assetId,
+    destinationAccountId,
+    expenseAccount,
+    incomeAccount,
+    internalReady,
+    kind,
+  ]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!draft) return;
     setSaving(true);
     try {
-      const occurred = UtcTimestamp.fromDate(new Date(occurredAt));
-      const recorded = UtcTimestamp.fromDate(new Date());
       const transaction = LedgerTransaction.create({
         id: transactionId(safeEntityId("tx")),
-        occurredAt: occurred,
-        recordedAt: recorded,
-        description: description.trim(),
-        legs: buildTransactionLegInputs(legs),
+        occurredAt: UtcTimestamp.fromDate(new Date(occurredAt)),
+        recordedAt: UtcTimestamp.fromDate(new Date()),
+        description: description.trim() || ACTIVITY_LABELS[kind],
+        legs: buildTransactionLegInputs(draft),
       });
       await postValidatedTransaction(financialV2Repository, transaction);
       await queryClient.invalidateQueries({ queryKey: financialV2Keys.all });
-      toast.success("Transaction posted");
+      toast.success(`${ACTIVITY_LABELS[kind]} recorded`);
       onSaved();
     } catch (error) {
-      toast.error(describeActionError(error, "Could not post transaction"));
+      toast.error(describeActionError(error, "Could not record activity"));
     } finally {
       setSaving(false);
     }
@@ -79,129 +112,158 @@ export function TransactionForm({ onSaved }: { onSaved: () => void }) {
   return (
     <form onSubmit={submit} className="space-y-5">
       <div className="space-y-2">
-        <Label htmlFor="transaction-description">Description</Label>
-        <Input
-          id="transaction-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="Monthly contribution"
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="transaction-date">Occurred at</Label>
-        <Input
-          id="transaction-date"
-          type="datetime-local"
-          value={occurredAt}
-          onChange={(event) => setOccurredAt(event.target.value)}
-          required
-        />
+        <Label>Activity type</Label>
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/15 p-1">
+          {(Object.keys(ACTIVITY_LABELS) as SimpleActivityKind[]).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={kind === value}
+              onClick={() => {
+                setKind(value);
+                if (value !== "transfer") setDestinationAccountId("");
+              }}
+              className={cn(
+                "min-h-11 rounded-lg px-2 text-xs font-semibold transition-colors",
+                kind === value
+                  ? "bg-cyan/10 text-cyan ring-1 ring-inset ring-cyan/20"
+                  : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+              )}
+            >
+              {ACTIVITY_LABELS[value]}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <Label>Ledger legs</Label>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Signed quantities must balance to zero independently for every asset.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setLegs((current) => [...current, emptyLeg()])}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Leg
-          </Button>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label>
+            {kind === "transfer" ? "From account" : kind === "income" ? "To account" : "Account"}
+          </Label>
+          <Select value={accountId} onValueChange={setAccountId}>
+            <SelectTrigger className="min-h-11">
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent>
+              {ownedAccounts.map((account) => (
+                <SelectItem key={account.id.toString()} value={account.id.toString()}>
+                  {account.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        {legs.map((leg, index) => (
-          <div key={leg.rowId} className="surface-quiet space-y-3 p-3">
-            <div className="flex items-center justify-between">
-              <span className="label-muted">Leg {index + 1}</span>
-              {legs.length > 2 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLegs((current) => current.filter((item) => item.rowId !== leg.rowId))
-                  }
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label={`Remove leg ${index + 1}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Select
-                value={leg.accountId}
-                onValueChange={(value) => updateLeg(leg.rowId, { accountId: value })}
-              >
-                <SelectTrigger aria-label={`Leg ${index + 1} account`}>
-                  <SelectValue placeholder="Account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.map((account) => (
+
+        {kind === "transfer" ? (
+          <div className="space-y-2">
+            <Label>To account</Label>
+            <Select value={destinationAccountId} onValueChange={setDestinationAccountId}>
+              <SelectTrigger className="min-h-11">
+                <SelectValue placeholder="Select destination" />
+              </SelectTrigger>
+              <SelectContent>
+                {ownedAccounts
+                  .filter((account) => account.id.toString() !== accountId)
+                  .map((account) => (
                     <SelectItem key={account.id.toString()} value={account.id.toString()}>
                       {account.name}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={leg.assetId}
-                onValueChange={(value) => updateLeg(leg.rowId, { assetId: value })}
-              >
-                <SelectTrigger aria-label={`Leg ${index + 1} asset`}>
-                  <SelectValue placeholder="Asset" />
-                </SelectTrigger>
-                <SelectContent>
-                  {assets.map((asset) => (
-                    <SelectItem key={asset.id.toString()} value={asset.id.toString()}>
-                      {asset.symbol} · {asset.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-              <Input
-                inputMode="decimal"
-                value={leg.quantity}
-                onChange={(event) => updateLeg(leg.rowId, { quantity: event.target.value })}
-                placeholder="+100 or -100"
-                aria-label={`Leg ${index + 1} quantity`}
-                required
-              />
-              <Input
-                value={leg.memo}
-                onChange={(event) => updateLeg(leg.rowId, { memo: event.target.value })}
-                placeholder="Optional memo"
-                aria-label={`Leg ${index + 1} memo`}
-              />
-            </div>
+              </SelectContent>
+            </Select>
           </div>
-        ))}
+        ) : (
+          <div className="space-y-2">
+            <Label>Asset</Label>
+            <Select value={assetId} onValueChange={setAssetId}>
+              <SelectTrigger className="min-h-11">
+                <SelectValue placeholder="Select asset" />
+              </SelectTrigger>
+              <SelectContent>
+                {assets.map((asset) => (
+                  <SelectItem key={asset.id.toString()} value={asset.id.toString()}>
+                    {asset.symbol} · {asset.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
-      <div
-        className={`rounded-xl border p-3 text-xs ${
-          balanced
-            ? "border-success/30 bg-success/5 text-success"
-            : "border-warning/30 bg-warning/5 text-warning"
-        }`}
-      >
-        {balanced
-          ? "Balanced — ready to validate and post."
-          : "Not balanced yet. Every asset total must equal exactly zero."}
+      {kind === "transfer" && (
+        <div className="space-y-2">
+          <Label>Asset</Label>
+          <Select value={assetId} onValueChange={setAssetId}>
+            <SelectTrigger className="min-h-11">
+              <SelectValue placeholder="Select asset" />
+            </SelectTrigger>
+            <SelectContent>
+              {assets.map((asset) => (
+                <SelectItem key={asset.id.toString()} value={asset.id.toString()}>
+                  {asset.symbol} · {asset.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="activity-amount">Amount</Label>
+          <Input
+            id="activity-amount"
+            inputMode="decimal"
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            placeholder="0,00"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="activity-date">Date and time</Label>
+          <Input
+            id="activity-date"
+            type="datetime-local"
+            value={occurredAt}
+            onChange={(event) => setOccurredAt(event.target.value)}
+            required
+          />
+        </div>
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="activity-description">
+          Description <span className="text-muted-foreground">(optional)</span>
+        </Label>
+        <Input
+          id="activity-description"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder={
+            kind === "expense" ? "Online purchase" : kind === "income" ? "Salary" : "Move money"
+          }
+          maxLength={240}
+        />
+      </div>
+
+      {!internalReady && (
+        <p
+          role="alert"
+          className="rounded-xl border border-warning/25 bg-warning/5 p-3 text-xs text-warning"
+        >
+          This workspace needs an internal setup repair before this activity can be recorded.
+        </p>
+      )}
+
       <Button
         type="submit"
-        disabled={saving || !description.trim() || !balanced}
+        disabled={saving || !draft}
         className="w-full bg-cyan text-background hover:bg-cyan/90"
       >
-        {saving ? "Recording…" : "Record transaction"}
+        {saving ? "Recording…" : "Record activity"}
       </Button>
     </form>
   );

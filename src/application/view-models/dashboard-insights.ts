@@ -203,10 +203,10 @@ export function buildDashboardInsights(
     composition: overview.allocation,
     accountValues: buildAccountValues(overview),
     accountsWithUnknownValue: overview.accounts.filter(
-      (account) => !account.archived && account.includeInNetWorth && account.unknownPositionCount > 0,
+      (account) =>
+        !account.archived && account.includeInNetWorth && account.unknownPositionCount > 0,
     ).length,
     activity,
     activityTotal: activity.reduce((total, bucket) => total + bucket.eventCount, 0),
   });
 }
-
