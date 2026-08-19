@@ -43,6 +43,8 @@ const MODES: { key: RollbackScope["mode"]; label: string; hint: string }[] = [
   { key: "rows", label: "Selected rows", hint: "Void only the specific rows you already picked." },
 ];
 
+type RollbackKind = Extract<RollbackScope, { mode: "kinds" }>["kinds"][number];
+
 const KINDS = [
   "deposit",
   "expense",
@@ -53,7 +55,16 @@ const KINDS = [
   "goal_create",
   "account_open",
   "asset_open",
-] as const;
+] as const satisfies readonly RollbackKind[];
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  return fallback;
+}
 
 export function RollbackDialog(props: {
   open: boolean;
@@ -65,7 +76,7 @@ export function RollbackDialog(props: {
 }) {
   const { open, onClose, batchId, ccy, preselectedRows, onDone } = props;
   const [mode, setMode] = useState<RollbackScope["mode"]>(preselectedRows?.length ? "rows" : "all");
-  const [kinds, setKinds] = useState<Set<string>>(new Set());
+  const [kinds, setKinds] = useState<Set<RollbackKind>>(new Set<RollbackKind>());
   const [rows, setRows] = useState<number[]>(preselectedRows ?? []);
   const [impact, setImpact] = useState<RollbackImpact | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,12 +86,12 @@ export function RollbackDialog(props: {
     if (!open) return;
     setMode(preselectedRows?.length ? "rows" : "all");
     setRows(preselectedRows ?? []);
-    setKinds(new Set());
+    setKinds(new Set<RollbackKind>());
   }, [open, preselectedRows]);
 
   const scope: RollbackScope = useMemo(() => {
     if (mode === "rows") return { mode: "rows", lineNos: rows };
-    if (mode === "kinds") return { mode: "kinds", kinds: Array.from(kinds) as any };
+    if (mode === "kinds") return { mode: "kinds", kinds: Array.from(kinds) };
     return { mode } as RollbackScope;
   }, [mode, rows, kinds]);
 
@@ -97,7 +108,7 @@ export function RollbackDialog(props: {
     return () => {
       alive = false;
     };
-  }, [open, batchId, scope.mode, JSON.stringify(scope)]);
+  }, [open, batchId, scope]);
 
   async function confirm() {
     setBusy(true);
@@ -108,8 +119,8 @@ export function RollbackDialog(props: {
       );
       onDone?.();
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Rollback failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Rollback failed"));
     } finally {
       setBusy(false);
     }
@@ -166,7 +177,8 @@ export function RollbackDialog(props: {
                     onClick={() =>
                       setKinds((p) => {
                         const n = new Set(p);
-                        active ? n.delete(k) : n.add(k);
+                        if (active) n.delete(k);
+                        else n.add(k);
                         return n;
                       })
                     }
@@ -185,7 +197,9 @@ export function RollbackDialog(props: {
           )}
 
           <div className="rounded-md border border-border/40 bg-card/40 p-3 space-y-2 text-xs">
-            <div className="label-muted">Impact preview</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Impact preview
+            </div>
             {loading ? (
               <div className="flex items-center gap-2 text-muted-foreground py-2">
                 <Loader2 className="h-3 w-3 animate-spin" /> Simulating…
@@ -290,7 +304,7 @@ function Stat({
           : "text-foreground";
   return (
     <div className="rounded-md border border-border/40 px-2 py-1.5 bg-card/40">
-      <div className="label-muted">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={cn("font-mono text-sm font-semibold tabular-nums", color)}>{value}</div>
     </div>
   );

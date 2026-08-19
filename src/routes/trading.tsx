@@ -46,6 +46,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { advancedV2Keys } from "@/data/query-keys";
 import { Money } from "@/domain/core";
 import { FinancialError, FinancialLoading } from "@/features/wealth-v2/FinancialStatePanel";
+import { normalizeLocalizedDecimalInput } from "@/features/wealth-v2/form-utils";
 import { formatMoney } from "@/features/wealth-v2/format";
 import { useAdvancedState } from "@/features/wealth-v2/use-advanced-state";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
@@ -89,7 +90,7 @@ function TradingWorkspace() {
     );
   }
 
-  const locale = financial.data.state.profile?.locale ?? "en-US";
+  const locale = financial.data.state.profile?.locale ?? "it-IT";
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -210,7 +211,13 @@ function CapitalPanel({ trading, locale }: { trading: TradingOverview; locale: s
   const save = async () => {
     setSaving(true);
     try {
-      await putValidatedTradingSettings(advancedV2Repository, form);
+      await putValidatedTradingSettings(advancedV2Repository, {
+        ...form,
+        reserve: normalizeLocalizedDecimalInput(form.reserve),
+        defaultRiskPct: normalizeLocalizedDecimalInput(form.defaultRiskPct),
+        maxDailyLossPct: normalizeLocalizedDecimalInput(form.maxDailyLossPct),
+        weeklyLossLimitPct: normalizeLocalizedDecimalInput(form.weeklyLossLimitPct),
+      });
       await queryClient.invalidateQueries({ queryKey: advancedV2Keys.all });
       toast.success("Trading risk settings saved");
     } catch (error) {
@@ -409,11 +416,11 @@ function WeeklyPanel({ trading, locale }: { trading: TradingOverview; locale: st
       const input: WeeklyReviewInput = {
         id: form.id,
         weekStart: form.weekStart,
-        reportedPnl: form.reportedPnl,
-        winRate: form.winRate,
-        avgRr: form.avgRr,
+        reportedPnl: normalizeLocalizedDecimalInput(form.reportedPnl),
+        winRate: normalizeLocalizedDecimalInput(form.winRate),
+        avgRr: normalizeLocalizedDecimalInput(form.avgRr),
         tradeCount: Number.parseInt(form.tradeCount, 10),
-        maxDrawdownPct: form.maxDrawdownPct,
+        maxDrawdownPct: normalizeLocalizedDecimalInput(form.maxDrawdownPct),
         disciplineScore: Number.parseInt(form.disciplineScore, 10),
         psychologyScore: Number.parseInt(form.psychologyScore, 10),
         notes: form.notes || null,

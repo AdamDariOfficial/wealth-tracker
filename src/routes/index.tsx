@@ -3,12 +3,10 @@ import {
   Activity,
   ArrowLeftRight,
   ArrowRight,
-  CircleDollarSign,
   Landmark,
   LineChart,
   PieChart,
   Plus,
-  TriangleAlert,
   Wallet,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -16,6 +14,7 @@ import { buildDashboardInsights } from "@/application/view-models";
 import { ActivityRhythmChart } from "@/components/charts/ActivityRhythmChart";
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { CompositionChart, compositionColor } from "@/components/charts/CompositionChart";
+import { NetWorthDeltaChart } from "@/components/charts/NetWorthDeltaChart";
 import { NetWorthTrendChart } from "@/components/charts/NetWorthTrendChart";
 import { EmptyState } from "@/components/EmptyState";
 import { MetricCard } from "@/components/MetricCard";
@@ -23,7 +22,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { SectionCard } from "@/components/SectionCard";
 import { TransactionSummaryRow } from "@/components/TransactionSummaryRow";
 import { Button } from "@/components/ui/button";
-import { Money } from "@/domain/core";
+import { Decimal, Money } from "@/domain/core";
 import { FinancialError, FinancialLoading } from "@/features/wealth-v2/FinancialStatePanel";
 import { formatMoney, humanize } from "@/features/wealth-v2/format";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
@@ -72,11 +71,48 @@ function Dashboard() {
 
   const locale = profile?.locale ?? undefined;
   const recent = overview.transactions.slice(0, 5);
-  const activeAccounts = overview.accounts.filter((account) => !account.archived).length;
   const firstName = (profile?.displayName ?? "there").split(" ")[0];
-  const hasAnything = overview.accounts.length > 0 || overview.transactions.length > 0;
+  const hasAnything =
+    overview.accounts.some((account) => account.ownership !== "system") ||
+    overview.transactions.length > 0;
   const trend = insights.netWorthTrend;
   const topAccounts = insights.accountValues.slice(0, 5);
+  const topAccountTotal = insights.accountValues.reduce(
+    (total, account) => total.plus(account.knownValue.amount.abs()),
+    Decimal.zero(),
+  );
+  const topAccountShare = (amount: Decimal) =>
+    topAccountTotal.isZero()
+      ? "0.0"
+      : amount
+          .abs()
+          .dividedBy(topAccountTotal, 4, "half-even")
+          .times(Decimal.fromInteger(100))
+          .toFixed(1, "half-even");
+  const allocationTotal = insights.composition.reduce(
+    (total, slice) => total.plus(Decimal.parse(slice.amount).abs()),
+    Decimal.zero(),
+  );
+  const liquidityAmount = insights.composition
+    .filter((slice) => slice.kind === "fiat")
+    .reduce((total, slice) => total.plus(Decimal.parse(slice.amount)), Decimal.zero());
+  const investedAmount = insights.composition
+    .filter((slice) => slice.kind !== "fiat")
+    .reduce((total, slice) => total.plus(Decimal.parse(slice.amount)), Decimal.zero());
+  const shareOfAllocation = (amount: Decimal) =>
+    allocationTotal.isZero()
+      ? "0.0"
+      : amount
+          .abs()
+          .dividedBy(allocationTotal, 4, "half-even")
+          .times(Decimal.fromInteger(100))
+          .toFixed(1, "half-even");
+  const liquidity = overview.baseCurrency
+    ? Money.of(liquidityAmount.toString(), overview.baseCurrency)
+    : null;
+  const invested = overview.baseCurrency
+    ? Money.of(investedAmount.toString(), overview.baseCurrency)
+    : null;
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -85,10 +121,10 @@ function Dashboard() {
         subtitle="Your complete financial position, updated as you record activity."
         action={
           <Button
-            onClick={() => openComposer("transaction")}
+            onClick={() => openComposer("transaction", "general")}
             className="bg-cyan text-background hover:bg-cyan/90"
           >
-            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Add
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Add record
           </Button>
         }
       />
@@ -135,68 +171,21 @@ function Dashboard() {
                   : "Set a base currency in Settings to see totals"
               }
             />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <MetricCard
-                label="Valuation"
-                value={
-                  overview.valuationComplete
-                    ? "Complete"
-                    : `${overview.unknownPositionCount} unknown`
-                }
-                tone={overview.valuationComplete ? "positive" : "warning"}
-                icon={CircleDollarSign}
-                hint={`${overview.knownPositionCount} of ${overview.totalPositionCount} valued`}
-              />
-              <MetricCard
-                label="Active accounts"
-                value={String(activeAccounts)}
+                label="Liquidity"
+                value={formatMoney(liquidity, locale)}
                 icon={Landmark}
-                hint={
-                  overview.accounts.length > activeAccounts
-                    ? `${overview.accounts.length - activeAccounts} archived`
-                    : "None archived"
-                }
+                hint={`${shareOfAllocation(liquidityAmount)}% of known allocation`}
               />
               <MetricCard
-                label="Transactions"
-                value={String(overview.transactions.length)}
-                icon={ArrowLeftRight}
-                className="col-span-2 sm:col-span-1"
-                hint="Recorded to date"
+                label="Invested"
+                value={formatMoney(invested, locale)}
+                icon={PieChart}
+                hint={`${shareOfAllocation(investedAmount)}% of known allocation`}
               />
             </div>
           </section>
-
-          {!overview.valuationComplete && overview.totalPositionCount > 0 && (
-            <div
-              className="rounded-2xl border border-warning/25 bg-warning/5 p-4 sm:p-5"
-              role="status"
-            >
-              <div className="flex items-start gap-3">
-                <TriangleAlert
-                  className="mt-0.5 h-4 w-4 shrink-0 text-warning"
-                  aria-hidden="true"
-                />
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-warning">Some values are missing</div>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {overview.knownPositionCount} of {overview.totalPositionCount} positions have a
-                    known value. The rest are shown as unknown rather than counted as zero, so your
-                    net worth stays honest.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={() => openComposer("market-data")}
-                  >
-                    Add missing prices
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Net worth over time — each point is a canonical valuation of the
               ledger as it stood at that month's close. */}
@@ -235,10 +224,10 @@ function Dashboard() {
 
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <SectionCard
-              title="Composition by asset class"
+              title="Composition"
               description={
                 overview.baseCurrency
-                  ? `Valued positions only, shown in ${overview.baseCurrency}`
+                  ? `Known invested mix in ${overview.baseCurrency}`
                   : "Set a base currency to see your composition"
               }
               icon={PieChart}
@@ -250,32 +239,45 @@ function Dashboard() {
                   description="Once you hold a position with a known price, your composition appears here."
                 />
               ) : (
-                <div className="grid gap-4 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)] sm:items-center">
-                  <ChartFrame height="compact" className="sm:space-y-0">
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)] sm:items-center">
+                  <div className="h-48 w-full sm:h-52">
                     <CompositionChart slices={insights.composition} locale={locale} />
-                  </ChartFrame>
+                  </div>
                   <div>
                     <ul className="space-y-1">
-                      {insights.composition.map((slice, index) => (
-                        <li
-                          key={slice.kind}
-                          className="flex items-baseline justify-between gap-3 py-1.5"
-                        >
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span
-                              className="h-2.5 w-2.5 shrink-0 rounded-full"
-                              style={{ background: compositionColor(index) }}
-                              aria-hidden="true"
-                            />
-                            <span className="min-w-0 truncate text-sm font-medium">
-                              {humanize(slice.kind)}
-                            </span>
-                          </span>
-                          <span className="shrink-0 font-mono text-sm text-money">
-                            {formatMoney(Money.of(slice.amount, slice.currency), locale)}
-                          </span>
-                        </li>
-                      ))}
+                      {insights.composition.map((slice, index) => {
+                        const share = shareOfAllocation(Decimal.parse(slice.amount));
+                        return (
+                          <li key={slice.kind} className="py-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span
+                                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                  style={{ background: compositionColor(index) }}
+                                  aria-hidden="true"
+                                />
+                                <span className="min-w-0 truncate text-sm font-medium">
+                                  {humanize(slice.kind)}
+                                </span>
+                              </span>
+                              <span className="shrink-0 text-right">
+                                <span className="block font-mono text-sm text-money">
+                                  {formatMoney(Money.of(slice.amount, slice.currency), locale)}
+                                </span>
+                                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                                  {share}%
+                                </span>
+                              </span>
+                            </div>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/40">
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${share}%`, background: compositionColor(index) }}
+                              />
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                     <Link
                       to="/investments"
@@ -303,28 +305,46 @@ function Dashboard() {
                 />
               ) : (
                 <>
-                  {topAccounts.map((account) => (
-                    <Link
-                      key={account.id}
-                      to="/accounts/$id"
-                      params={{ id: account.id }}
-                      search={{ q: "", archived: false, edit: false }}
-                      className="surface-interactive flex items-baseline justify-between gap-3 rounded-lg px-2.5 py-2.5"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">{account.name}</span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          {humanize(account.kind)}
-                          {account.unknownPositionCount > 0
-                            ? ` · ${account.unknownPositionCount} unvalued`
-                            : ""}
-                        </span>
-                      </span>
-                      <span className="shrink-0 font-mono text-sm text-money">
-                        {formatMoney(account.knownValue, locale)}
-                      </span>
-                    </Link>
-                  ))}
+                  {topAccounts.map((account) => {
+                    const share = topAccountShare(account.knownValue.amount);
+                    return (
+                      <Link
+                        key={account.id}
+                        to="/accounts/$id"
+                        params={{ id: account.id }}
+                        search={{ q: "", archived: false, edit: false }}
+                        className="surface-interactive block rounded-lg px-2.5 py-2.5"
+                      >
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium">
+                              {account.name}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {humanize(account.kind)}
+                              {account.unknownPositionCount > 0
+                                ? ` · ${account.unknownPositionCount} unvalued`
+                                : ""}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-right">
+                            <span className="block font-mono text-sm text-money">
+                              {formatMoney(account.knownValue, locale)}
+                            </span>
+                            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                              {share}%
+                            </span>
+                          </span>
+                        </div>
+                        <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted/40">
+                          <div
+                            className="h-full rounded-full bg-cyan/70"
+                            style={{ width: `${share}%` }}
+                          />
+                        </div>
+                      </Link>
+                    );
+                  })}
                   <Link
                     to="/accounts"
                     search={{ q: "", archived: false }}
@@ -337,7 +357,25 @@ function Dashboard() {
             </SectionCard>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+          <div className="grid gap-4 xl:grid-cols-2">
+            <SectionCard
+              title="Monthly net worth change"
+              description="How known net worth changed from one month close to the next"
+              icon={LineChart}
+            >
+              {trend.length < 2 ? (
+                <EmptyState
+                  compact
+                  title="Not enough history yet"
+                  description="A monthly change chart appears after two valued month closes."
+                />
+              ) : (
+                <ChartFrame caption="Includes recorded flows and valuation changes. This is a net-worth change view, not an investment-performance metric.">
+                  <NetWorthDeltaChart points={trend} locale={locale} />
+                </ChartFrame>
+              )}
+            </SectionCard>
+
             <SectionCard
               title="Recording rhythm"
               description="Entries you recorded each month"
@@ -364,6 +402,7 @@ function Dashboard() {
 
             <SectionCard
               title="Recent activity"
+              className="xl:col-span-2"
               description="Your five most recent entries"
               icon={ArrowLeftRight}
               bodyClassName="space-y-2"

@@ -128,10 +128,10 @@ export function InsightsTab() {
             key={l}
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="surface-quiet p-3"
+            className="glass rounded-xl p-3"
           >
             <div className="flex items-center justify-between">
-              <div className="label-muted">{l}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{l}</div>
               <Icon className="h-3 w-3 text-muted-foreground" />
             </div>
             <div className={cn("font-display font-semibold mt-1 text-base", c)}>{v}</div>
@@ -143,7 +143,7 @@ export function InsightsTab() {
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="surface-section p-5"
+          className="glass rounded-2xl p-5"
         >
           <h3 className="font-display font-semibold text-sm">Weekly P&L distribution</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -185,7 +185,7 @@ export function InsightsTab() {
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="surface-section p-5"
+          className="glass rounded-2xl p-5"
         >
           <h3 className="font-display font-semibold text-sm">Drawdown trace</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -236,7 +236,7 @@ export function InsightsTab() {
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className="surface-section p-5"
+        className="glass rounded-2xl p-5"
       >
         <h3 className="font-display font-semibold text-sm">Capital flow vs performance</h3>
         <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -249,7 +249,7 @@ export function InsightsTab() {
         ) : (
           <div className="overflow-x-auto mt-3">
             <table className="w-full text-xs">
-              <thead className="label-muted">
+              <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="text-left py-2">Date</th>
                   <th className="text-left">Kind</th>

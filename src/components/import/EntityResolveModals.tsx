@@ -59,6 +59,26 @@ interface GoalRow {
   target_amount: number;
 }
 
+type LegacyPayload = Record<string, unknown>;
+type LegacyMutationResult<T> = { data: T; error: unknown };
+type LegacySingleBuilder<T> = { single(): Promise<LegacyMutationResult<T>> };
+type LegacyInsertBuilder<T> = { select(columns: string): LegacySingleBuilder<T> };
+type LegacyTable<T> = {
+  upsert(values: LegacyPayload, options?: { onConflict?: string }): PromiseLike<unknown>;
+  insert(values: LegacyPayload): LegacyInsertBuilder<T>;
+};
+type LegacySupabaseClient = { from<T = unknown>(table: string): LegacyTable<T> };
+
+const legacySupabase = supabase as unknown as LegacySupabaseClient;
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  return fallback;
+}
 export function AssetResolveModal({
   open,
   onClose,
@@ -97,7 +117,7 @@ export function AssetResolveModal({
   async function persistAlias(entityId: string) {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user || !issue) return;
-    await (supabase as any)
+    await legacySupabase
       .from("import_aliases")
       .upsert(
         { user_id: u.user.id, alias: issue.normalized, entity_type: "asset", entity_id: entityId },
@@ -112,8 +132,8 @@ export function AssetResolveModal({
     try {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Not authenticated");
-      const { data, error } = await (supabase as any)
-        .from("assets")
+      const { data, error } = await legacySupabase
+        .from<{ id: string; symbol: string }>("assets")
         .insert({
           user_id: u.user.id,
           symbol: form.symbol.trim().toUpperCase(),
@@ -136,8 +156,8 @@ export function AssetResolveModal({
         entityName: data.symbol,
       });
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Failed"));
     } finally {
       setBusy(false);
     }
@@ -158,8 +178,8 @@ export function AssetResolveModal({
         entityName: a?.symbol,
       });
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Failed"));
     } finally {
       setBusy(false);
     }
@@ -227,7 +247,9 @@ export function AssetResolveModal({
     >
       <div className="space-y-4">
         <div className="rounded-md border border-border/40 bg-card/40 p-3">
-          <div className="label-muted">Unknown asset detected</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Unknown asset detected
+          </div>
           <div className="font-mono text-sm mt-1">"{issue.raw}"</div>
           <div className="text-[11px] text-muted-foreground mt-1">
             Affects {affected} row{affected === 1 ? "" : "s"}.
@@ -398,7 +420,7 @@ export function GoalResolveModal({
   async function persistAlias(entityId: string) {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user || !issue) return;
-    await (supabase as any)
+    await legacySupabase
       .from("import_aliases")
       .upsert(
         { user_id: u.user.id, alias: issue.normalized, entity_type: "goal", entity_id: entityId },
@@ -415,8 +437,8 @@ export function GoalResolveModal({
     try {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Not authenticated");
-      const { data, error } = await (supabase as any)
-        .from("goals")
+      const { data, error } = await legacySupabase
+        .from<{ id: string; name: string }>("goals")
         .insert({
           user_id: u.user.id,
           name: form.name.trim(),
@@ -438,8 +460,8 @@ export function GoalResolveModal({
         entityName: data.name,
       });
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Failed"));
     } finally {
       setBusy(false);
     }
@@ -460,8 +482,8 @@ export function GoalResolveModal({
         entityName: g?.name,
       });
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Failed"));
     } finally {
       setBusy(false);
     }
@@ -520,7 +542,9 @@ export function GoalResolveModal({
     >
       <div className="space-y-4">
         <div className="rounded-md border border-border/40 bg-card/40 p-3">
-          <div className="label-muted">Unknown goal detected</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Unknown goal detected
+          </div>
           <div className="font-mono text-sm mt-1">"{issue.raw}"</div>
           <div className="text-[11px] text-muted-foreground mt-1">
             Affects {affected} row{affected === 1 ? "" : "s"}.

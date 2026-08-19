@@ -4,14 +4,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
-
-
 /* Wealth Tracker — Charcoal & Cyan futuristic dark fintech */
 
 @theme inline {
-  --font-sans: 'Manrope', system-ui, sans-serif;
-  --font-display: 'Sora', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --font-display: "Sora", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -100,9 +98,9 @@
 
   --chart-1: oklch(0.82 0.15 210); /* cyan */
   --chart-2: oklch(0.75 0.16 155); /* green */
-  --chart-3: oklch(0.7 0.18 290);  /* violet */
-  --chart-4: oklch(0.8 0.15 80);   /* amber */
-  --chart-5: oklch(0.65 0.18 25);  /* red */
+  --chart-3: oklch(0.7 0.18 290); /* violet */
+  --chart-4: oklch(0.8 0.15 80); /* amber */
+  --chart-5: oklch(0.65 0.18 25); /* red */
 
   --sidebar: oklch(0.12 0.005 240);
   --sidebar-foreground: oklch(0.85 0.01 240);
@@ -115,7 +113,11 @@
 
   /* Tokens */
   --gradient-cyan: linear-gradient(135deg, oklch(0.82 0.15 210), oklch(0.7 0.18 200));
-  --gradient-surface: linear-gradient(135deg, oklch(0.2 0.01 240 / 0.8), oklch(0.16 0.008 240 / 0.6));
+  --gradient-surface: linear-gradient(
+    135deg,
+    oklch(0.2 0.01 240 / 0.8),
+    oklch(0.16 0.008 240 / 0.6)
+  );
   --gradient-glow: radial-gradient(circle at 50% 0%, oklch(0.82 0.15 210 / 0.15), transparent 70%);
   --shadow-glow: 0 0 40px -10px oklch(0.82 0.15 210 / 0.4);
   --shadow-card: 0 8px 32px -12px oklch(0 0 0 / 0.6);
@@ -123,9 +125,24 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+  }
 
-  html, body {
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -146,18 +163,40 @@
     overscroll-behavior-y: none;
   }
 
-  h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
 
   /* Touch-native form controls — never below 16px on mobile to suppress iOS zoom */
   @media (max-width: 640px) {
-    input, select, textarea { font-size: 16px; }
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
   }
 
   /* Scrollbar */
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: oklch(0.3 0.01 240); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: oklch(0.4 0.01 240); }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.3 0.01 240);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.4 0.01 240);
+  }
 }
 
 @layer utilities {
@@ -179,43 +218,84 @@
     background-clip: text;
     color: transparent;
   }
-  .glow-cyan { box-shadow: var(--shadow-glow); }
+  .glow-cyan {
+    box-shadow: var(--shadow-glow);
+  }
   .grid-bg {
     background-image:
       linear-gradient(var(--grid-line) 1px, transparent 1px),
       linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
     background-size: 40px 40px;
   }
-  .font-display { font-family: var(--font-display); }
-  .font-mono { font-family: var(--font-mono); }
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+  }
 
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 0 0 oklch(0.82 0.15 210 / 0.4); }
-    50% { box-shadow: 0 0 0 8px oklch(0.82 0.15 210 / 0); }
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 oklch(0.82 0.15 210 / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px oklch(0.82 0.15 210 / 0);
+    }
   }
-  .pulse-dot { animation: pulse-glow 2s infinite; }
+  .pulse-dot {
+    animation: pulse-glow 2s infinite;
+  }
 
   /* ====================================================================
      Responsive system — fluid typography, safe areas, touch utilities
      ==================================================================== */
 
   /* Fluid display sizes — clamp(min, fluid, max) */
-  .text-display-xl { font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.75rem); line-height: 1.05; }
-  .text-display-lg { font-size: clamp(1.5rem, 1.1rem + 1.8vw, 2.25rem); line-height: 1.1; }
-  .text-display-md { font-size: clamp(1.25rem, 1rem + 1.2vw, 1.75rem); line-height: 1.15; }
-  .text-stat-value { font-size: clamp(1.25rem, 1.05rem + 0.9vw, 1.625rem); line-height: 1.1; }
+  .text-display-xl {
+    font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.75rem);
+    line-height: 1.05;
+  }
+  .text-display-lg {
+    font-size: clamp(1.5rem, 1.1rem + 1.8vw, 2.25rem);
+    line-height: 1.1;
+  }
+  .text-display-md {
+    font-size: clamp(1.25rem, 1rem + 1.2vw, 1.75rem);
+    line-height: 1.15;
+  }
+  .text-stat-value {
+    font-size: clamp(1.25rem, 1.05rem + 0.9vw, 1.625rem);
+    line-height: 1.1;
+  }
 
   /* Safe-area insets (iOS notch / Dynamic Island / Android nav) */
-  .safe-top    { padding-top: env(safe-area-inset-top); }
-  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-  .safe-left   { padding-left: env(safe-area-inset-left); }
-  .safe-right  { padding-right: env(safe-area-inset-right); }
-  .safe-x      { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
-  .mb-safe     { margin-bottom: env(safe-area-inset-bottom); }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  .safe-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
 
   /* Touch-native targets — minimum 44px hit area on touch devices */
   @media (hover: none) and (pointer: coarse) {
-    .touch-target { min-height: 44px; min-width: 44px; }
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 
   /* Horizontal pill/tab scrollers — momentum + hidden bars */
@@ -225,14 +305,24 @@
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
   }
-  .scroll-x-snap > * { scroll-snap-align: start; }
-  .scroll-x-snap::-webkit-scrollbar { display: none; }
-  .no-scrollbar { scrollbar-width: none; }
-  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .scroll-x-snap > * {
+    scroll-snap-align: start;
+  }
+  .scroll-x-snap::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 
   /* Bottom-sheet drag affordance */
   .sheet-handle {
-    width: 36px; height: 4px; border-radius: 9999px;
+    width: 36px;
+    height: 4px;
+    border-radius: 9999px;
     background: oklch(1 0 0 / 0.18);
     margin: 6px auto 10px;
   }
@@ -294,14 +384,15 @@
     border-color: oklch(0.82 0.15 210 / 0.35);
   }
   @media (prefers-reduced-motion: reduce) {
-    .surface-interactive { transition: none; }
+    .surface-interactive {
+      transition: none;
+    }
   }
 
   /* Chart framing — charts sit in a recessed well so the plot reads as data,
      not as another card. Gives every chart in the product one silhouette. */
   .chart-well {
-    background:
-      linear-gradient(180deg, oklch(0.16 0.008 240 / 0.55), oklch(0.19 0.008 240 / 0.25));
+    background: linear-gradient(180deg, oklch(0.16 0.008 240 / 0.55), oklch(0.19 0.008 240 / 0.25));
     border: 1px solid oklch(1 0 0 / 0.04);
     border-radius: var(--radius-xl);
   }
@@ -310,7 +401,6 @@
   .divider-soft {
     border-top: 1px solid oklch(1 0 0 / 0.05);
   }
-
 
   /* ====================================================================
      Financial typography — money must never be blindly truncated.
@@ -358,4 +448,3 @@
     scroll-behavior: auto !important;
   }
 }
-

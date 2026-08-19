@@ -9,6 +9,7 @@ import { postValidatedTransaction } from "@/application/services";
 import { transactionId, transactionLegId } from "@/domain/ledger";
 import { financialV2Keys } from "@/data/query-keys";
 import { PageHeader } from "@/components/PageHeader";
+import { TransactionSummaryRow } from "@/components/TransactionSummaryRow";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FinancialError, FinancialLoading } from "@/features/wealth-v2/FinancialStatePanel";
-import { formatDateTime, formatQuantity, humanize } from "@/features/wealth-v2/format";
+import { humanize } from "@/features/wealth-v2/format";
 import { safeEntityId } from "@/features/wealth-v2/form-utils";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { useCoreUI } from "@/lib/core-ui-store";
@@ -170,12 +171,13 @@ function TransactionsPage() {
   const selectedVoid = voidTarget
     ? query.data.transactions.find((transaction) => transaction.id === voidTarget)
     : null;
+  const locale = profile?.locale ?? undefined;
 
   return (
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Transactions"
-        subtitle="A permanent record of your money. Corrections are added as reversals, so nothing is ever silently rewritten."
+        subtitle="Your recorded activity, kept immutable and easy to scan."
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={exportCsv}>
@@ -185,14 +187,14 @@ function TransactionsPage() {
               onClick={() => openComposer("transaction")}
               className="bg-cyan text-background hover:bg-cyan/90"
             >
-              <Plus className="mr-1.5 h-4 w-4" /> Transaction
+              <Plus className="mr-1.5 h-4 w-4" /> Activity
             </Button>
           </div>
         }
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Metric label="Ledger records" value={String(query.data.transactions.length)} />
+        <Metric label="Records" value={String(query.data.transactions.length)} />
         <Metric
           label="Active"
           value={String(
@@ -220,7 +222,7 @@ function TransactionsPage() {
           <Input
             value={search.q}
             onChange={(event) => updateSearch({ q: event.target.value })}
-            placeholder="Search ledger…"
+            placeholder="Search activity…"
             className="pl-9"
           />
         </div>
@@ -238,18 +240,20 @@ function TransactionsPage() {
         </Select>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {transactions.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/70 px-4 py-14 text-center text-sm text-muted-foreground">
-            No matching transactions.
+            No matching activity.
           </div>
         ) : (
           transactions.map((transaction) => (
-            <article key={transaction.id} className="surface-section p-4 sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-display font-semibold">{transaction.description}</h2>
+            <article key={transaction.id} className="surface-section px-3 py-2.5 sm:px-3.5">
+              <TransactionSummaryRow
+                transaction={transaction}
+                locale={locale}
+                maxMovements={1}
+                trailing={
+                  <div className="flex shrink-0 items-center gap-1">
                     <span
                       className={cn(
                         "rounded-full px-2 py-1 text-[10px] uppercase tracking-wider",
@@ -260,53 +264,25 @@ function TransactionsPage() {
                     >
                       {transaction.state}
                     </span>
+                    {transaction.state === "active" && transaction.purpose === "standard" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={voiding === transaction.id}
+                        onClick={() => {
+                          setVoidError(null);
+                          setVoidTarget(transaction.id);
+                        }}
+                        className="h-11 w-11 text-muted-foreground hover:text-foreground"
+                        aria-label={`Void ${transaction.description}`}
+                        title="Void"
+                      >
+                        <Undo2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                  <div className="mt-1 break-all font-mono text-[10px] text-muted-foreground">
-                    {transaction.id}
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    {formatDateTime(transaction.occurredAt, profile?.locale ?? undefined)} ·{" "}
-                    {humanize(transaction.purpose)}
-                  </div>
-                </div>
-                {transaction.state === "active" && transaction.purpose === "standard" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={voiding === transaction.id}
-                    onClick={() => {
-                      setVoidError(null);
-                      setVoidTarget(transaction.id);
-                    }}
-                    className="self-start"
-                  >
-                    <Undo2 className="mr-1.5 h-4 w-4" /> Void
-                  </Button>
-                )}
-              </div>
-
-              <div className="mt-4 divide-y divide-border/40 rounded-xl border border-border/50 bg-card/20 px-3">
-                {transaction.legs.map((leg) => (
-                  <div key={leg.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{leg.accountName}</div>
-                      <div className="mt-1 text-[11px] text-muted-foreground">
-                        {leg.assetSymbol}
-                        {leg.memo ? ` · ${leg.memo}` : ""}
-                      </div>
-                    </div>
-                    <div
-                      className={cn(
-                        "font-mono text-sm tabular-nums",
-                        leg.quantity.startsWith("-") ? "text-destructive" : "text-success",
-                      )}
-                    >
-                      {leg.quantity.startsWith("-") ? "" : "+"}
-                      {formatQuantity(leg.quantity)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                }
+              />
             </article>
           ))
         )}

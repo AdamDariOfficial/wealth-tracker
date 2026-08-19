@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { advancedV2Keys } from "@/data/query-keys";
 import { FinancialError, FinancialLoading } from "@/features/wealth-v2/FinancialStatePanel";
+import { normalizeLocalizedDecimalInput } from "@/features/wealth-v2/form-utils";
 import { formatMoney, formatQuantity, humanize } from "@/features/wealth-v2/format";
 import { useAdvancedState } from "@/features/wealth-v2/use-advanced-state";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
@@ -106,7 +107,7 @@ function GoalsPage() {
     );
   }
 
-  const locale = financial.data.state.profile?.locale ?? "en-US";
+  const locale = financial.data.state.profile?.locale ?? "it-IT";
   const ownedAccounts = financial.data.state.accounts.filter(
     (account) => account.ownership === "owned",
   );
@@ -131,8 +132,10 @@ function GoalsPage() {
         id: editing?.id ?? crypto.randomUUID(),
         name: form.name,
         kind: form.kind,
-        targetAmount: form.targetAmount || null,
-        targetQuantity: form.targetQuantity || null,
+        targetAmount: form.targetAmount ? normalizeLocalizedDecimalInput(form.targetAmount) : null,
+        targetQuantity: form.targetQuantity
+          ? normalizeLocalizedDecimalInput(form.targetQuantity)
+          : null,
         targetAccountId: form.targetAccountId || null,
         targetAssetId: form.targetAssetId || null,
         targetDate: form.targetDate || null,
@@ -201,17 +204,19 @@ function GoalsPage() {
                   : "—";
 
             return (
-              <article key={item.goal.id} className="surface-section p-5">
+              <article
+                key={item.goal.id}
+                className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card/75 to-card/35 p-4 shadow-sm"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 shrink-0 text-cyan" aria-hidden="true" />
-                      <h2 className="truncate font-display font-semibold">{item.goal.name}</h2>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                       {humanize(item.kind)}
-                      {item.goal.targetDate ? ` · by ${item.goal.targetDate}` : ""}
-                    </p>
+                      {item.goal.targetDate ? ` · ${item.goal.targetDate}` : ""}
+                    </div>
+                    <h2 className="mt-1 truncate font-display text-base font-semibold">
+                      {item.goal.name}
+                    </h2>
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <Button
@@ -258,36 +263,40 @@ function GoalsPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 flex min-w-0 items-end justify-between gap-3">
+                <div className="mt-4 flex items-end justify-between gap-4">
                   <div className="min-w-0">
                     <div className="label-muted">Current</div>
-                    <div className="mt-1 truncate font-display text-xl font-semibold">
+                    <div className="mt-0.5 truncate font-display text-xl font-semibold">
                       {current}
                     </div>
+                    <div className="mt-1 truncate text-xs text-muted-foreground">
+                      Target {target}
+                    </div>
                   </div>
-                  <div className="min-w-0 text-right">
-                    <div className="label-muted">Target</div>
-                    <div className="mt-1 truncate font-mono text-sm">{target}</div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-mono text-2xl font-semibold text-cyan">
+                      {item.progressPercent.toFixed(1)}%
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted/50">
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/45">
                   <div
                     className="h-full rounded-full bg-cyan transition-[width] motion-reduce:transition-none"
                     style={{ width: `${item.progressPercent}%` }}
                   />
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3 text-xs">
-                  <span className="font-mono text-muted-foreground">
-                    {item.progressPercent.toFixed(1)}%
+                <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                  <span>
+                    {item.goal.targetDate ? `Due ${item.goal.targetDate}` : "No deadline"}
                   </span>
                   <span
                     className={cn(
-                      "rounded-full px-2 py-1 text-[10px]",
+                      "rounded-full px-2 py-1",
                       item.complete ? "bg-success/10 text-success" : "bg-warning/10 text-warning",
                     )}
                   >
-                    {item.complete ? "complete valuation" : "partial valuation"}
+                    {item.complete ? "Fully valued" : "Partial valuation"}
                   </span>
                 </div>
               </article>

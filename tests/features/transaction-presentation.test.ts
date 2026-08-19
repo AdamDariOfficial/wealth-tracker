@@ -72,4 +72,16 @@ describe("transaction presentation", () => {
     expect(movements[0]?.quantity).toBe("1500");
     expect(describeMovementFlow(movements[0]!)).toBe("Salary → Bank, Savings");
   });
+
+  test("omits hidden accounting counterparts from normal movement labels", () => {
+    const income = summarizeTransaction(
+      view([leg("l1", "", "EUR", "-240"), leg("l2", "Cash", "EUR", "240")]),
+    );
+    const expense = summarizeTransaction(
+      view([leg("l3", "Cash", "EUR", "-25"), leg("l4", "", "EUR", "25")]),
+    );
+
+    expect(describeMovementFlow(income[0]!)).toBe("Cash");
+    expect(describeMovementFlow(expense[0]!)).toBe("Cash");
+  });
 });

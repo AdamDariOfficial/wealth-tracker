@@ -1,6 +1,6 @@
 import { Decimal, type Money } from "@/domain/core";
 
-export function formatMoney(money: Money | null, locale = "en-US", digits = 2): string {
+export function formatMoney(money: Money | null, locale = "it-IT", digits = 2): string {
   if (!money) return "—";
 
   const exact = money.amount.toFixed(digits, "half-even");
@@ -16,7 +16,8 @@ export function formatMoney(money: Money | null, locale = "en-US", digits = 2): 
       minimumFractionDigits: digits,
       maximumFractionDigits: digits,
     });
-    const group = formatter.formatToParts(1000).find((part) => part.type === "group")?.value ?? ",";
+    const group =
+      formatter.formatToParts(10000).find((part) => part.type === "group")?.value ?? ".";
     const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, group);
     const template = formatter.formatToParts(negative ? -1 : 1);
     let integerWritten = false;
@@ -37,12 +38,20 @@ export function formatMoney(money: Money | null, locale = "en-US", digits = 2): 
   }
 }
 
-export function formatQuantity(value: string, maxDigits = 8): string {
+export function formatQuantity(value: string, maxDigits = 8, locale = "it-IT"): string {
   const decimal = Decimal.parse(value);
-  return decimal.toFixed(Math.min(decimal.scale, maxDigits), "half-even");
+  const exact = decimal.toFixed(Math.min(decimal.scale, maxDigits), "half-even");
+  try {
+    const separator =
+      new Intl.NumberFormat(locale).formatToParts(1.1).find((part) => part.type === "decimal")
+        ?.value ?? ".";
+    return exact.replace(".", separator);
+  } catch {
+    return exact;
+  }
 }
 
-export function formatDateTime(value: string, locale = "en-US"): string {
+export function formatDateTime(value: string, locale = "it-IT"): string {
   const date = new Date(value);
   try {
     return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(

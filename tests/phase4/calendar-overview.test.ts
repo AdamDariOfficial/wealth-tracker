@@ -195,4 +195,22 @@ describe("Phase 4A calendar overview", () => {
       "voided",
     ]);
   });
+
+  test("does not project a current valuation into future buckets", () => {
+    const calendar = buildCalendarOverview(overview(), {
+      scope: "year",
+      anchor: august(),
+      now: new Date(2026, 7, 10, 12, 0, 0, 0),
+    });
+
+    const current = calendar.buckets.find((bucket) => bucket.key === "2026-08-01");
+    const future = calendar.buckets.find((bucket) => bucket.key === "2026-09-01");
+
+    expect(current?.future).toBe(false);
+    expect(current?.knownNetWorth?.amount.toString()).toBe("100");
+    expect(future?.future).toBe(true);
+    expect(future?.knownNetWorth).toBeNull();
+    expect(future?.knownDelta).toBeNull();
+    expect(future?.valuationComplete).toBe(false);
+  });
 });

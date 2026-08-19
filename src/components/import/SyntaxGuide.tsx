@@ -88,7 +88,7 @@ export function SyntaxGuide({ onInsert }: { onInsert?: (code: string) => void })
   }
 
   return (
-    <Card className="surface-section overflow-hidden p-0">
+    <Card className="glass p-0 overflow-hidden">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger asChild>
           <button className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold hover:bg-muted/20 transition-colors">
@@ -111,7 +111,9 @@ export function SyntaxGuide({ onInsert }: { onInsert?: (code: string) => void })
           <div className="border-t border-border/40 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/30">
             {SECTIONS.map((sec) => (
               <div key={sec.title} className="p-3 space-y-2">
-                <div className="label-muted">{sec.title}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {sec.title}
+                </div>
                 <div className="space-y-1.5">
                   {sec.examples.map((ex) => (
                     <div key={ex.code} className="group flex items-center gap-1.5">

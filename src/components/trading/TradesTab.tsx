@@ -41,6 +41,14 @@ const blank = {
   notes: "",
 };
 
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  return fallback;
+}
 export function TradesTab() {
   const { rows, insert, remove } = useUserTable<Trade>("trades", { col: "trade_date", asc: false });
   const [open, setOpen] = useState(false);
@@ -57,12 +65,12 @@ export function TradesTab() {
 
   const save = async () => {
     try {
-      await insert(form as any);
+      await insert(form);
       toast.success("Trade logged");
       setOpen(false);
       setForm(blank);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Failed to save trade"));
     }
   };
 
@@ -91,14 +99,14 @@ export function TradesTab() {
           { l: "Avg R:R", v: stats.avgRR.toFixed(2), c: "text-cyan" },
           { l: "Trades", v: `${rows.length}` },
         ].map((s) => (
-          <div key={s.l} className="surface-section p-4">
-            <div className="label-muted">{s.l}</div>
+          <div key={s.l} className="glass rounded-2xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.l}</div>
             <div className={cn("font-display text-2xl font-semibold mt-1", s.c)}>{s.v}</div>
           </div>
         ))}
       </div>
 
-      <div className="surface-section overflow-hidden">
+      <div className="glass rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="text-[11px] uppercase tracking-wider text-muted-foreground border-y border-border/40">
             <tr>

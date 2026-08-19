@@ -67,7 +67,7 @@ export function AppMobileNavigation() {
         </Link>
         <button
           type="button"
-          onClick={() => openComposer("transaction")}
+          onClick={() => openComposer("transaction", "general")}
           className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold text-cyan"
           aria-label="Add financial record"
         >

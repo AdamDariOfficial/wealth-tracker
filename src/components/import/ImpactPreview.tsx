@@ -15,10 +15,12 @@ export function ImpactPreview({ impact, ccy }: { impact: ImpactReport; ccy: stri
   const nwUp = impact.netWorthDelta >= 0;
 
   return (
-    <Card className="surface-section border-cyan/20 p-4">
+    <Card className="glass p-4 border-cyan/20">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <div className="label-muted">Impact preview</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Impact preview
+          </div>
           <div className="flex items-baseline gap-2 mt-0.5">
             <span className="text-xs text-muted-foreground">Net worth</span>
             <span className="font-mono tabular-nums text-sm">
@@ -69,7 +71,9 @@ export function ImpactPreview({ impact, ccy }: { impact: ImpactReport; ccy: stri
               key={slice.name}
               className="rounded-md border border-border/40 px-2 py-1.5 bg-card/40"
             >
-              <div className="label-muted">{slice.name}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {slice.name}
+              </div>
               <div className="font-mono text-xs tabular-nums flex items-center gap-1">
                 <span className="text-muted-foreground">{before}%</span>
                 <span className="text-muted-foreground">→</span>
@@ -176,7 +180,7 @@ export function ImpactPreview({ impact, ccy }: { impact: ImpactReport; ccy: stri
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="label-muted mb-1">{title}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{title}</div>
       <div className="rounded-md border border-border/30 bg-card/30 divide-y divide-border/20">
         {children}
       </div>

@@ -25,7 +25,8 @@ export type AssetMovementView = Readonly<{
 }>;
 
 function pushUnique(target: string[], value: string): void {
-  if (!target.includes(value)) target.push(value);
+  if (!value || target.includes(value)) return;
+  target.push(value);
 }
 
 export function summarizeTransaction(transaction: TransactionView): readonly AssetMovementView[] {

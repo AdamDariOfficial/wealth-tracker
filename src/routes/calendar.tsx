@@ -1,13 +1,6 @@
 import { MetricCard, metricToneFromClass } from "@/components/MetricCard";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  History,
-} from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CalendarDays, History } from "lucide-react";
 import { useMemo } from "react";
 import {
   CALENDAR_SCOPES,
@@ -29,7 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { Decimal, type Money } from "@/domain/core";
 import { FinancialError, FinancialLoading } from "@/features/wealth-v2/FinancialStatePanel";
-import { formatDateTime, formatMoney, formatQuantity, humanize } from "@/features/wealth-v2/format";
+import { formatDateTime, formatMoney } from "@/features/wealth-v2/format";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { cn } from "@/lib/utils";
 
@@ -132,6 +125,7 @@ function CalendarPage() {
       scope: view,
       anchor: anchorDate,
       selectedDay,
+      now: new Date(),
     });
   }, [financial.data, view, anchorDate, selectedDay]);
 
@@ -154,14 +148,6 @@ function CalendarPage() {
 
   const setView = (next: CalendarScope) => {
     updateSearch({ view: next, anchor: dateKey(anchorDate), day: undefined });
-  };
-
-  const shift = (direction: -1 | 1) => {
-    if (view === "day") return setAnchor(addCalendarDays(anchorDate, direction));
-    if (view === "week") return setAnchor(addCalendarDays(anchorDate, direction * 7));
-    if (view === "month") return setAnchor(addCalendarMonths(anchorDate, direction));
-    if (view === "quarter") return setAnchor(addCalendarMonths(anchorDate, direction * 3));
-    setAnchor(new Date(anchorDate.getFullYear() + direction, 0, 1));
   };
 
   const openBucket = (bucket: CalendarBucketView) => {
@@ -194,52 +180,24 @@ function CalendarPage() {
 
       <ScopeSwitcher value={view} onChange={setView} />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="min-h-11 min-w-11"
-            onClick={() => shift(-1)}
-            aria-label="Previous period"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="min-h-11 min-w-11"
-            onClick={() => shift(1)}
-            aria-label="Next period"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <h2 className="min-w-0 truncate font-display text-xl font-semibold sm:text-2xl">
-            {periodTitle(view, anchorDate, locale)}
-          </h2>
-        </div>
-
-        <div className="flex max-w-full gap-1 overflow-x-auto pb-1">
-          {workspace.activeYears.map((year) => (
-            <button
-              type="button"
-              key={year}
-              onClick={() =>
-                setAnchor(new Date(year, view === "year" ? 0 : anchorDate.getMonth(), 1))
-              }
-              className={cn(
-                "min-h-11 shrink-0 rounded-lg px-3 font-mono text-xs transition-colors",
-                year === anchorDate.getFullYear()
-                  ? "bg-cyan/10 text-cyan ring-1 ring-cyan/30"
-                  : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
-              )}
-            >
-              {year}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="min-w-0 truncate font-display text-xl font-semibold sm:text-2xl">
+          {periodTitle(view, anchorDate, locale)}
+        </h2>
+        <label className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-border/60 bg-card/35 px-3 text-sm text-foreground sm:w-auto">
+          <CalendarDays className="h-4 w-4 shrink-0 text-cyan" aria-hidden="true" />
+          <span className="sr-only">Jump to date</span>
+          <input
+            type="date"
+            value={dateKey(anchorDate)}
+            onChange={(event) => {
+              const next = parseDateKey(event.target.value);
+              if (next) setAnchor(next);
+            }}
+            className="min-h-10 bg-transparent font-medium outline-none [color-scheme:dark]"
+            aria-label="Jump directly to date"
+          />
+        </label>
       </div>
 
       <SummaryGrid
@@ -373,7 +331,7 @@ function SummaryGrid({
         tone={moneyTone(delta)}
         icon={delta?.amount.compare(Decimal.zero()) === -1 ? ArrowDownRight : ArrowUpRight}
       />
-      <SummaryCard label="Ledger events" value={String(eventCount)} hint="Economic-date events" />
+      <SummaryCard label="Activity" value={String(eventCount)} hint="Recorded in this period" />
       <SummaryCard
         label="Valuation coverage"
         value={`${knownPositions}/${totalPositions}`}
@@ -442,12 +400,14 @@ function BucketGrid({
             <span
               className={cn(
                 "shrink-0 rounded-full px-2 py-1 text-[10px]",
-                bucket.valuationComplete
-                  ? "bg-success/10 text-success"
-                  : "bg-warning/10 text-warning",
+                bucket.future
+                  ? "bg-muted/40 text-muted-foreground"
+                  : bucket.valuationComplete
+                    ? "bg-success/10 text-success"
+                    : "bg-warning/10 text-warning",
               )}
             >
-              {bucket.valuationComplete ? "complete" : "partial"}
+              {bucket.future ? "future" : bucket.valuationComplete ? "complete" : "partial"}
             </span>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
@@ -500,9 +460,11 @@ function MonthGrid({
                   onClick={() => onOpen(bucket)}
                   className={cn(
                     "min-h-16 min-w-0 rounded-lg border p-1.5 text-left transition-colors sm:min-h-24 sm:p-2",
-                    bucket.eventCount > 0
-                      ? "border-cyan/20 bg-cyan/[0.04] hover:border-cyan/40"
-                      : "border-border/30 bg-muted/10 hover:bg-muted/20",
+                    bucket.future
+                      ? "border-border/20 bg-muted/5 text-muted-foreground"
+                      : bucket.eventCount > 0
+                        ? "border-cyan/20 bg-cyan/[0.04] hover:border-cyan/40"
+                        : "border-border/30 bg-muted/10 hover:bg-muted/20",
                   )}
                 >
                   <div className="flex items-start justify-between gap-1">
@@ -521,7 +483,7 @@ function MonthGrid({
                   >
                     {formatMoney(bucket.knownDelta, locale)}
                   </div>
-                  {!bucket.valuationComplete && bucket.knownNetWorth ? (
+                  {!bucket.future && !bucket.valuationComplete && bucket.knownNetWorth ? (
                     <div
                       className="mt-1 h-1.5 w-1.5 rounded-full bg-warning"
                       aria-label="Partial valuation"
@@ -570,36 +532,11 @@ function EventList({ events, locale }: { events: readonly TransactionView[]; loc
                 {formatDateTime(event.occurredAt, locale)}
               </div>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-1.5">
-              <span className="rounded-full bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">
-                {humanize(event.purpose)}
+            {event.purpose !== "standard" ? (
+              <span className="shrink-0 rounded-full bg-warning/10 px-2 py-1 text-[10px] text-warning">
+                Correction
               </span>
-              <span
-                className={cn(
-                  "rounded-full px-2 py-1 text-[10px]",
-                  event.state === "active"
-                    ? "bg-success/10 text-success"
-                    : "bg-warning/10 text-warning",
-                )}
-              >
-                {humanize(event.state)}
-              </span>
-            </div>
-          </div>
-          <div className="mt-3 space-y-2">
-            {event.legs.map((leg) => (
-              <div
-                key={leg.id}
-                className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-lg bg-background/40 px-3 py-2 text-xs"
-              >
-                <div className="min-w-0 truncate text-muted-foreground">
-                  {leg.accountName} · {leg.assetSymbol}
-                </div>
-                <div className="max-w-[46vw] truncate font-mono text-foreground sm:max-w-none">
-                  {formatQuantity(leg.quantity)}
-                </div>
-              </div>
-            ))}
+            ) : null}
           </div>
         </article>
       ))}

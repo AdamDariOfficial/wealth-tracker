@@ -1,7 +1,7 @@
 import { MetricCard } from "@/components/MetricCard";
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   Archive,
   Bitcoin,
@@ -63,17 +63,22 @@ function AccountsPage() {
   const openComposer = useCoreUI((state) => state.openComposer);
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const path = useRouterState({ select: (state) => state.location.pathname });
+  const showingDetail = path.startsWith("/accounts/");
 
   const accounts = useMemo(() => {
     if (!query.data) return [];
     const needle = search.q.trim().toLowerCase();
     return query.data.accounts.filter(
       (account) =>
+        account.ownership !== "system" &&
         (search.archived || !account.archived) &&
         (!needle ||
           `${account.name} ${account.kind} ${account.ownership}`.toLowerCase().includes(needle)),
     );
   }, [query.data, search.archived, search.q]);
+
+  if (showingDetail) return <Outlet />;
 
   if (query.isLoading) return <FinancialLoading />;
   if (query.isError || !query.data) {
@@ -111,7 +116,7 @@ function AccountsPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Accounts"
-        subtitle="Every bank, brokerage and wallet you hold. Balances update automatically from your recorded activity."
+        subtitle="Your banks, brokers, exchanges and wallets — the places where your money and investments are held."
         action={
           <Button
             onClick={() => openComposer("account")}
@@ -126,10 +131,19 @@ function AccountsPage() {
           label="Known net worth"
           value={formatMoney(query.data.knownNetWorth, profile?.locale ?? undefined)}
         />
-        <Summary label="Accounts" value={String(query.data.accounts.length)} />
+        <Summary
+          label="Accounts"
+          value={String(
+            query.data.accounts.filter((account) => account.ownership !== "system").length,
+          )}
+        />
         <Summary
           label="Active"
-          value={String(query.data.accounts.filter((account) => !account.archived).length)}
+          value={String(
+            query.data.accounts.filter(
+              (account) => account.ownership !== "system" && !account.archived,
+            ).length,
+          )}
         />
         <Summary
           label="Unknown positions"
@@ -166,49 +180,47 @@ function AccountsPage() {
             return (
               <article
                 key={account.id}
-                className={cn("surface-section p-4 sm:p-5", account.archived && "opacity-60")}
+                className={cn(
+                  "surface-section relative p-2.5 sm:p-3",
+                  account.archived && "opacity-60",
+                )}
               >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
-                    <Icon className="h-5 w-5" />
+                <Link
+                  to="/accounts/$id"
+                  search={{ q: "", archived: false, edit: false }}
+                  params={{ id: account.id }}
+                  className="surface-interactive flex min-w-0 items-center gap-3 rounded-xl pr-12"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan/10 text-cyan">
+                    <Icon className="h-4 w-4" />
                   </div>
-                  <Link
-                    to="/accounts/$id"
-                    search={{ q: "", archived: false, edit: false }}
-                    params={{ id: account.id }}
-                    className="min-w-0 flex-1"
-                  >
+                  <div className="min-w-0 flex-1">
                     <div className="truncate font-display font-semibold">{account.name}</div>
-                    <div className="mt-1 label-muted">
-                      {humanize(account.kind)} · {humanize(account.ownership)}
+                    <div className="mt-0.5 label-muted">{humanize(account.kind)}</div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-display text-base font-semibold">
+                      {account.includeInNetWorth
+                        ? formatMoney(account.knownValue, profile?.locale ?? undefined)
+                        : "Excluded"}
                     </div>
-                  </Link>
-                </div>
-                <div className="mt-5">
-                  <div className="label-muted">Known value</div>
-                  <div className="mt-1 font-display text-xl font-semibold">
-                    {account.includeInNetWorth
-                      ? formatMoney(account.knownValue, profile?.locale ?? undefined)
-                      : "Excluded"}
+                    <div className="mt-0.5 text-[10px] text-muted-foreground">
+                      {account.positionCount} holding{account.positionCount === 1 ? "" : "s"}
+                      {account.unknownPositionCount > 0
+                        ? ` · ${account.unknownPositionCount} needs value`
+                        : ""}
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4 flex items-center justify-between gap-3">
-                  <div className="text-[11px] text-muted-foreground">
-                    {account.positionCount} balance{account.positionCount === 1 ? "" : "s"}
-                    {account.unknownPositionCount > 0
-                      ? ` · ${account.unknownPositionCount} unknown`
-                      : ""}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void toggleArchive(account.id)}
-                    className="h-10 w-10 shrink-0 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                    title={account.archived ? "Restore account" : "Archive account"}
-                    aria-label={`${account.archived ? "Restore" : "Archive"} ${account.name}`}
-                  >
-                    <Archive className="mx-auto h-4 w-4" />
-                  </button>
-                </div>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void toggleArchive(account.id)}
+                  className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  title={account.archived ? "Restore account" : "Archive account"}
+                  aria-label={`${account.archived ? "Restore" : "Archive"} ${account.name}`}
+                >
+                  <Archive className="h-4 w-4" />
+                </button>
               </article>
             );
           })}

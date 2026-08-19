@@ -249,7 +249,7 @@ export function InlineEditDialog({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1 min-w-0">
-      <label className="label-muted">{label}</label>
+      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</label>
       {children}
     </div>
   );

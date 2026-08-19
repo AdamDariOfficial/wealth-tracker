@@ -9,17 +9,15 @@ import {
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
-import { LogOut, Search } from "lucide-react";
+import { useEffect, useState } from "react";
 import { AppMobileNavigation } from "@/components/AppMobileNavigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { CommandPalette } from "@/components/CommandPalette";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { financialV2Keys } from "@/data/query-keys";
 import { CoreComposer } from "@/features/wealth-v2/CoreComposer";
+import { GlobalFinancialWarnings } from "@/features/wealth-v2/GlobalFinancialWarnings";
 import { useAuth } from "@/lib/auth-store";
-import { useCoreUI } from "@/lib/core-ui-store";
 import appCss from "../styles.css?url";
 
 const PUBLIC_ROUTES = ["/login", "/signup"];
@@ -47,6 +45,7 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
+  void error;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -55,7 +54,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           This page didn&apos;t load
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {error.message || "Something went wrong while loading this page."}
+          Something went wrong while loading this page. Try again, or return home if the problem
+          continues.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -139,13 +139,8 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const path = useRouterState({ select: (state) => state.location.pathname });
   const navigate = useNavigate();
-  const { user, profile, loading, init, signOut } = useAuth();
+  const { user, profile, loading, init } = useAuth();
   const [mounted, setMounted] = useState(false);
-
-  const handleSignOut = useCallback(async () => {
-    await signOut();
-    queryClient.removeQueries({ queryKey: financialV2Keys.all });
-  }, [queryClient, signOut]);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -190,21 +185,20 @@ function RootComponent() {
       ) : bare ? (
         <Outlet />
       ) : (
-        <SidebarProvider>
+        <SidebarProvider open={true}>
           <div className="flex min-h-screen w-full">
             <AppSidebar />
             <div className="flex min-w-0 flex-1 flex-col">
-              <AppHeader
-                userInitials={(profile?.displayName ?? user.email ?? "U").slice(0, 2).toUpperCase()}
-                onSignOut={() => void handleSignOut()}
-              />
-              <main className="safe-x mx-auto w-full max-w-[1600px] flex-1 px-3 py-4 pb-24 sm:px-5 sm:py-6 md:pb-6 lg:px-8 lg:py-8">
-                <Outlet />
+              <AppHeader />
+              <main className="safe-x mx-auto w-full max-w-[1440px] flex-1 py-5 pb-24 sm:py-6 md:pb-6 lg:py-7">
+                <div className="min-w-0 px-4 sm:px-6 lg:px-8">
+                  <GlobalFinancialWarnings />
+                  <Outlet />
+                </div>
               </main>
             </div>
           </div>
           <AppMobileNavigation />
-          <CommandPalette />
           <CoreComposer />
         </SidebarProvider>
       )}
@@ -212,37 +206,10 @@ function RootComponent() {
   );
 }
 
-function AppHeader({ userInitials, onSignOut }: { userInitials: string; onSignOut: () => void }) {
-  const togglePalette = useCoreUI((state) => state.togglePalette);
-
+function AppHeader() {
   return (
-    <header className="safe-top sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-border/50 bg-background/70 px-3 backdrop-blur-xl sm:px-4">
-      <SidebarTrigger className="touch-target hidden md:inline-flex" />
-      <button
-        onClick={() => togglePalette(true)}
-        className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border/50 bg-card/40 px-3 text-xs text-muted-foreground transition-colors hover:text-foreground md:ml-2 md:max-w-sm"
-        aria-label="Open command palette"
-      >
-        <Search className="h-4 w-4 shrink-0" />
-        <span className="truncate">Search or run a command…</span>
-        <kbd className="ml-auto hidden rounded border border-border/50 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] md:inline">
-          ⌘K
-        </kbd>
-      </button>
-      <button
-        onClick={onSignOut}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/50 text-muted-foreground hover:text-foreground"
-        title="Sign out"
-        aria-label="Sign out"
-      >
-        <LogOut className="h-4 w-4" />
-      </button>
-      <div
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-cyan-glow text-xs font-semibold text-background"
-        aria-label="User profile"
-      >
-        {userInitials}
-      </div>
+    <header className="safe-top sticky top-0 z-30 flex min-h-14 items-center justify-center border-b border-border/50 bg-background/70 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+      <CommandPalette />
     </header>
   );
 }

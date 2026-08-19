@@ -58,11 +58,25 @@ export const useAuth = create<AuthState>((set, get) => ({
     initialized = true;
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user ?? null;
-      set({ session, user, profile: null, loading: user !== null });
-      if (!user) return;
+      const nextUser = session?.user ?? null;
+      const current = get();
+      const currentUserId = current.user?.id ?? null;
+      const nextUserId = nextUser?.id ?? null;
 
-      const expectedUserId = user.id;
+      if (!nextUser) {
+        set({ session: null, user: null, profile: null, loading: false });
+        return;
+      }
+
+      const sameUser = currentUserId === nextUserId;
+      if (sameUser) {
+        set({ session, user: nextUser });
+        if (current.profile) return;
+      } else {
+        set({ session, user: nextUser, profile: null, loading: true });
+      }
+
+      const expectedUserId = nextUser.id;
       window.setTimeout(() => {
         void get()
           .refreshProfile()
