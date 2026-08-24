@@ -4,6 +4,7 @@ import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { useI18n } from "@/lib/use-i18n";
 
 const AlertDialog = AlertDialogPrimitive.Root;
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
@@ -34,7 +35,7 @@ const AlertDialogContent = React.forwardRef<
       <AlertDialogPrimitive.Content
         ref={ref}
         className={cn(
-          "pointer-events-auto relative grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 motion-reduce:animate-none motion-reduce:transition-none motion-reduce:duration-0 sm:rounded-lg",
+          "pointer-events-auto relative grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 motion-reduce:animate-none motion-reduce:transition-none motion-reduce:duration-0 rounded-2xl",
           className,
         )}
         {...props}
@@ -60,45 +61,65 @@ AlertDialogFooter.displayName = "AlertDialogFooter";
 const AlertDialogTitle = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Title
-    ref={ref}
-    className={cn("text-lg font-semibold", className)}
-    {...props}
-  />
-));
+>(({ className, children, ...props }, ref) => {
+  const { t } = useI18n();
+  return (
+    <AlertDialogPrimitive.Title
+      ref={ref}
+      className={cn("text-lg font-semibold", className)}
+      {...props}
+    >
+      {typeof children === "string" ? t(children) : children}
+    </AlertDialogPrimitive.Title>
+  );
+});
 AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName;
 
 const AlertDialogDescription = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-));
+>(({ className, children, ...props }, ref) => {
+  const { t } = useI18n();
+  return (
+    <AlertDialogPrimitive.Description
+      ref={ref}
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    >
+      {typeof children === "string" ? t(children) : children}
+    </AlertDialogPrimitive.Description>
+  );
+});
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName;
 
 const AlertDialogAction = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Action>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Action ref={ref} className={cn(buttonVariants(), className)} {...props} />
-));
+>(({ className, children, ...props }, ref) => {
+  const { t } = useI18n();
+  return (
+    <AlertDialogPrimitive.Action ref={ref} className={cn(buttonVariants(), className)} {...props}>
+      {typeof children === "string" ? t(children) : children}
+    </AlertDialogPrimitive.Action>
+  );
+});
 AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName;
 
 const AlertDialogCancel = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Cancel>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Cancel
-    ref={ref}
-    className={cn(buttonVariants({ variant: "outline" }), "mt-2 sm:mt-0", className)}
-    {...props}
-  />
-));
+>(({ className, children, ...props }, ref) => {
+  const { t } = useI18n();
+  return (
+    <AlertDialogPrimitive.Cancel
+      ref={ref}
+      className={cn(buttonVariants({ variant: "outline" }), "mt-2 sm:mt-0", className)}
+      {...props}
+    >
+      {typeof children === "string" ? t(children) : children}
+    </AlertDialogPrimitive.Cancel>
+  );
+});
 AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName;
 
 export {

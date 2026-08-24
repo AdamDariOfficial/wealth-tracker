@@ -15,6 +15,7 @@ import {
 import { financialV2Keys } from "@/data/query-keys";
 import { Asset, ASSET_KINDS, assetId } from "@/domain/assets";
 import { financialV2Repository } from "@/lib/v2-runtime";
+import { useI18n } from "@/lib/use-i18n";
 import { normalizeCurrency, safeEntityId } from "../form-utils";
 import { humanize } from "../format";
 import { describeActionError } from "@/features/wealth-v2/user-message";
@@ -24,11 +25,12 @@ export function AssetForm({
   existing,
   identityLocked = false,
 }: {
-  onSaved: () => void;
+  onSaved: (asset?: Asset) => void;
   existing?: Asset;
   identityLocked?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const { t } = useI18n();
   const [symbol, setSymbol] = useState(() => existing?.symbol ?? "");
   const [name, setName] = useState(() => existing?.name ?? "");
   const [kind, setKind] = useState<(typeof ASSET_KINDS)[number]>(() => existing?.kind ?? "etf");
@@ -50,10 +52,10 @@ export function AssetForm({
       });
       await putValidatedAsset(financialV2Repository, asset);
       await queryClient.invalidateQueries({ queryKey: financialV2Keys.all });
-      toast.success(existing ? "Asset saved" : "Asset created");
-      onSaved();
+      toast.success(t(existing ? "Asset saved" : "Asset created"));
+      onSaved(asset);
     } catch (error) {
-      toast.error(describeActionError(error, "Could not create asset"));
+      toast.error(describeActionError(error, t("Could not create asset")));
     } finally {
       setSaving(false);
     }
@@ -93,13 +95,13 @@ export function AssetForm({
             disabled={identityLocked}
             onValueChange={(value) => setKind(value as (typeof ASSET_KINDS)[number])}
           >
-            <SelectTrigger aria-label="Asset kind">
+            <SelectTrigger aria-label={t("Asset kind")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {ASSET_KINDS.map((value) => (
                 <SelectItem key={value} value={value}>
-                  {humanize(value)}
+                  {t(humanize(value))}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -120,12 +122,14 @@ export function AssetForm({
       </div>
       {kind === "fiat" && (
         <p className="text-xs text-muted-foreground">
-          For fiat assets the symbol is also used as the ISO-style currency code.
+          {t("For fiat assets the symbol is also used as the ISO-style currency code.")}
         </p>
       )}
       {identityLocked && (
         <p className="text-xs text-muted-foreground">
-          Kind and fiat identity are locked because this asset already appears in ledger history.
+          {t(
+            "Kind and fiat identity are locked because this asset already appears in ledger history.",
+          )}
         </p>
       )}
       <Button
@@ -133,7 +137,7 @@ export function AssetForm({
         disabled={saving || !symbol.trim() || !name.trim()}
         className="w-full bg-cyan text-background hover:bg-cyan/90"
       >
-        {saving ? "Saving…" : existing ? "Save asset" : "Create asset"}
+        {saving ? t("Saving…") : t(existing ? "Save asset" : "Create asset")}
       </Button>
     </form>
   );

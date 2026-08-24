@@ -1,6 +1,7 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/use-i18n";
 
 /**
  * Route-shaped loading skeleton. Mirrors the common page rhythm
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils";
  * when it arrives. Animation is suppressed under reduced motion.
  */
 export function FinancialLoading({ className }: { className?: string }) {
+  const { t } = useI18n();
   return (
     <div
       className={cn("space-y-5 sm:space-y-6", className)}
@@ -15,7 +17,7 @@ export function FinancialLoading({ className }: { className?: string }) {
       aria-live="polite"
       aria-busy="true"
     >
-      <span className="sr-only">Loading your financial data</span>
+      <span className="sr-only">{t("Loading your financial data")}</span>
 
       {/* Page header */}
       <div className="space-y-2">
@@ -61,6 +63,7 @@ export function FinancialLoading({ className }: { className?: string }) {
  */
 export function FinancialError({ error, retry }: { error: unknown; retry: () => void }) {
   void error;
+  const { t } = useI18n();
 
   return (
     <div
@@ -70,13 +73,16 @@ export function FinancialError({ error, retry }: { error: unknown; retry: () => 
       <div className="flex items-start gap-3">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-base font-semibold">We couldn&apos;t load your data</h2>
+          <h2 className="font-display text-base font-semibold">
+            {t("We couldn’t load your data")}
+          </h2>
           <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-            Your accounts and balances didn&apos;t load. Try again. If it keeps happening, check
-            your connection and reload the page.
+            {t(
+              "Your accounts and balances didn’t load. Try again. If it keeps happening, check your connection and reload the page.",
+            )}
           </p>
           <Button type="button" variant="outline" size="sm" className="mt-4" onClick={retry}>
-            <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" /> Try again
+            <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" /> {t("Try again")}
           </Button>
         </div>
       </div>

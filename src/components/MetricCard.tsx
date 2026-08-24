@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/use-i18n";
 
 export type MetricTone = "neutral" | "positive" | "negative" | "warning" | "accent";
 
@@ -10,6 +11,14 @@ const toneClass: Record<MetricTone, string> = {
   negative: "text-destructive",
   warning: "text-warning",
   accent: "text-cyan",
+};
+
+const toneSurfaceClass: Record<MetricTone, string> = {
+  neutral: "",
+  positive: "semantic-surface-positive-1",
+  negative: "semantic-surface-negative-1",
+  warning: "semantic-surface-warning",
+  accent: "",
 };
 
 /**
@@ -56,10 +65,16 @@ export function MetricCard({
   className?: string;
 }) {
   const hero = emphasis === "hero";
+  const { t } = useI18n();
 
   return (
     <div
-      className={cn("min-w-0 p-4 sm:p-5", hero ? "surface-focal" : "surface-section", className)}
+      className={cn(
+        "min-w-0 p-4 sm:p-5",
+        hero ? "surface-focal" : "surface-section",
+        !hero && toneSurfaceClass[tone],
+        className,
+      )}
     >
       <div className="flex items-center gap-2">
         {Icon && (
@@ -68,7 +83,7 @@ export function MetricCard({
             aria-hidden="true"
           />
         )}
-        <span className="label-muted min-w-0 truncate">{label}</span>
+        <span className="label-muted min-w-0 truncate">{t(label)}</span>
       </div>
 
       <div
@@ -82,7 +97,7 @@ export function MetricCard({
         <span className="min-w-0">{value}</span>
       </div>
 
-      {hint && <div className="mt-1.5 text-xs leading-5 text-muted-foreground">{hint}</div>}
+      {hint && <div className="mt-1.5 text-xs leading-5 text-muted-foreground">{t(hint)}</div>}
     </div>
   );
 }

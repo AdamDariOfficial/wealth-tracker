@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCoreUI, type CoreComposerTab } from "@/lib/core-ui-store";
+import { useI18n } from "@/lib/use-i18n";
 import { AccountForm } from "./forms/AccountForm";
 import { AssetForm } from "./forms/AssetForm";
 import { MarketDataForm } from "./forms/MarketDataForm";
@@ -49,6 +50,7 @@ export function CoreComposer() {
   const mode = useCoreUI((state) => state.composerMode);
   const openComposer = useCoreUI((state) => state.openComposer);
   const closeComposer = useCoreUI((state) => state.closeComposer);
+  const { t } = useI18n();
 
   const renderForm = (value: CoreComposerTab) => {
     if (value === "account") return <AccountForm onSaved={closeComposer} />;
@@ -69,11 +71,13 @@ export function CoreComposer() {
       <DialogContent className="max-h-[min(90dvh,860px)] w-[min(720px,calc(100vw-2rem))] overflow-y-auto p-0 sm:max-w-2xl">
         <div className="sticky top-0 z-10 border-b border-border/60 bg-background/95 px-5 py-4 backdrop-blur-xl sm:px-6">
           <DialogHeader className="text-left">
-            <DialogTitle>{mode === "general" ? "Add record" : copy.title}</DialogTitle>
+            <DialogTitle>{t(mode === "general" ? "Add record" : copy.title)}</DialogTitle>
             <DialogDescription>
-              {mode === "general"
-                ? "Choose what you want to add. Each workflow stays focused on one task."
-                : copy.description}
+              {t(
+                mode === "general"
+                  ? "Choose what you want to add. Each workflow stays focused on one task."
+                  : copy.description,
+              )}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -93,7 +97,7 @@ export function CoreComposer() {
                     className="min-h-11 flex-col gap-1 px-2 text-[11px] sm:flex-row sm:gap-2 sm:text-xs"
                   >
                     <item.icon className="h-4 w-4" />
-                    <span className="max-w-full truncate">{item.label}</span>
+                    <span className="max-w-full truncate">{t(item.label)}</span>
                   </TabsTrigger>
                 ))}
               </TabsList>

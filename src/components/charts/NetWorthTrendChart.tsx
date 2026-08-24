@@ -13,6 +13,7 @@ import type { NetWorthPointView } from "@/application/view-models";
 import { Money } from "@/domain/core";
 import { formatMoney } from "@/features/wealth-v2/format";
 import { chartTooltipProps } from "@/lib/chart-style";
+import { normalizeAppLocale, tr } from "@/lib/i18n";
 
 /**
  * Known net worth at each month close.
@@ -37,7 +38,11 @@ export function NetWorthTrendChart({
     [locale],
   );
   const monthYearLabel = useMemo(
-    () => new Intl.DateTimeFormat(locale ?? "en-US", { month: "long", year: "numeric" }),
+    () =>
+      new Intl.DateTimeFormat(locale ?? "en-US", {
+        month: "long",
+        year: "numeric",
+      }),
     [locale],
   );
 
@@ -61,7 +66,10 @@ export function NetWorthTrendChart({
         maximumFractionDigits: 1,
       });
     } catch {
-      return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+      return new Intl.NumberFormat("en-US", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      });
     }
   }, [locale]);
 
@@ -92,7 +100,11 @@ export function NetWorthTrendChart({
         />
         <Tooltip
           {...chartTooltipProps}
-          cursor={{ stroke: "var(--color-cyan)", strokeOpacity: 0.35, strokeWidth: 1 }}
+          cursor={{
+            stroke: "var(--color-cyan)",
+            strokeOpacity: 0.35,
+            strokeWidth: 1,
+          }}
           animationDuration={reduceMotion ? 0 : chartTooltipProps.animationDuration}
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
@@ -104,7 +116,7 @@ export function NetWorthTrendChart({
                 <div className="font-mono text-sm">{point.display}</div>
                 {!point.complete && (
                   <div className="mt-1 text-[11px] text-muted-foreground">
-                    Some positions were unvalued
+                    {tr(normalizeAppLocale(locale), "Some positions were unvalued")}
                   </div>
                 )}
               </div>

@@ -95,7 +95,12 @@ function etfPosition(owned: Account, external: Account, etf: Asset) {
   });
 }
 
-function overview(input?: { withEtf?: boolean; withPrice?: boolean; reversed?: boolean }) {
+function overview(input?: {
+  withEtf?: boolean;
+  withPrice?: boolean;
+  priceCurrency?: "EUR" | "USD";
+  reversed?: boolean;
+}) {
   const { owned, external, eur, etf } = baseFixture();
   const cash = openingCash(owned, external, eur);
   const transactions: LedgerTransaction[] = [cash];
@@ -116,7 +121,7 @@ function overview(input?: { withEtf?: boolean; withPrice?: boolean; reversed?: b
     ? [
         PriceQuote.create({
           assetId: etf.id,
-          unitPrice: Money.of("100", "EUR"),
+          unitPrice: Money.of("100", input?.priceCurrency ?? "EUR"),
           asOf: at("2026-08-03T12:00:00Z"),
         }),
       ]
@@ -138,6 +143,96 @@ function overview(input?: { withEtf?: boolean; withPrice?: boolean; reversed?: b
     snapshot: replayLedger({ accounts, assets, transactions }),
   });
 
+  return buildWealthOverview(state);
+}
+
+function cashFlowOverview() {
+  const owned = Account.create({
+    id: accountId("account:cash-flow"),
+    name: "Bank",
+    kind: "bank",
+    ownership: "owned",
+    includeInNetWorth: true,
+  });
+  const income = Account.create({
+    id: accountId("account:income"),
+    name: "Income",
+    kind: "income",
+    ownership: "system",
+    includeInNetWorth: false,
+  });
+  const expense = Account.create({
+    id: accountId("account:expense"),
+    name: "Expense",
+    kind: "expense",
+    ownership: "system",
+    includeInNetWorth: false,
+  });
+  const eur = Asset.create({
+    id: assetId("asset:flow-eur"),
+    symbol: "EUR",
+    name: "Euro",
+    kind: "fiat",
+    precision: 2,
+    fiatCurrency: "EUR",
+  });
+  const inflow = LedgerTransaction.create({
+    id: transactionId("tx:income"),
+    occurredAt: at("2026-08-05T09:00:00Z"),
+    recordedAt: at("2026-08-05T09:00:01Z"),
+    description: "Salary",
+    legs: [
+      {
+        id: transactionLegId("leg:income-bank"),
+        accountId: owned.id,
+        assetId: eur.id,
+        quantity: "200",
+      },
+      {
+        id: transactionLegId("leg:income-system"),
+        accountId: income.id,
+        assetId: eur.id,
+        quantity: "-200",
+      },
+    ],
+  });
+  const outflow = LedgerTransaction.create({
+    id: transactionId("tx:expense"),
+    occurredAt: at("2026-08-05T13:00:00Z"),
+    recordedAt: at("2026-08-05T13:00:01Z"),
+    description: "Groceries",
+    legs: [
+      {
+        id: transactionLegId("leg:expense-bank"),
+        accountId: owned.id,
+        assetId: eur.id,
+        quantity: "-40",
+      },
+      {
+        id: transactionLegId("leg:expense-system"),
+        accountId: expense.id,
+        assetId: eur.id,
+        quantity: "40",
+      },
+    ],
+  });
+  const accounts = [owned, income, expense];
+  const assets = [eur];
+  const transactions = [inflow, outflow];
+  const state = Object.freeze({
+    profile: userProfile({
+      displayName: "Adam",
+      baseCurrency: "EUR",
+      locale: "it-IT",
+      onboarded: true,
+    }),
+    accounts,
+    assets,
+    transactions,
+    priceQuotes: [],
+    fxRates: [],
+    snapshot: replayLedger({ accounts, assets, transactions }),
+  });
   return buildWealthOverview(state);
 }
 
@@ -177,6 +272,49 @@ describe("Phase 4A calendar overview", () => {
     expect(third?.knownNetWorth?.amount.toString()).toBe("300");
     expect(third?.knownDelta?.amount.toString()).toBe("200");
     expect(third?.valuationComplete).toBe(true);
+  });
+
+  test("reports the exact missing historical price and FX pair without inventing values", () => {
+    const missingPrice = buildCalendarOverview(overview({ withEtf: true }), {
+      scope: "month",
+      anchor: august(),
+      now: new Date(2026, 7, 2, 23, 59, 59, 999),
+    });
+    const priceIssue = missingPrice.diagnostics.find((issue) => issue.reason === "missing-price");
+
+    expect(priceIssue?.assetSymbol).toBe("VWCE");
+    expect(priceIssue?.sourceCurrency).toBeNull();
+    expect(priceIssue?.targetCurrency).toBeNull();
+
+    const missingFx = buildCalendarOverview(
+      overview({ withEtf: true, withPrice: true, priceCurrency: "USD" }),
+      {
+        scope: "month",
+        anchor: august(),
+        now: new Date(2026, 7, 3, 23, 59, 59, 999),
+      },
+    );
+    const fxIssue = missingFx.diagnostics.find((issue) => issue.reason === "missing-fx-rate");
+
+    expect(fxIssue?.assetSymbol).toBe("VWCE");
+    expect(fxIssue?.sourceCurrency).toBe("USD");
+    expect(fxIssue?.targetCurrency).toBe("EUR");
+    expect(missingFx.endValuation?.knownNetWorth.amount.toString()).toBe("100");
+    expect(missingFx.endValuation?.complete).toBe(false);
+  });
+
+  test("exposes known daily income and expense without inventing flow values", () => {
+    const calendar = buildCalendarOverview(cashFlowOverview(), {
+      scope: "month",
+      anchor: august(),
+      now: new Date(2026, 7, 5, 23, 59, 59, 999),
+    });
+    const fifth = calendar.buckets.find((bucket) => bucket.key === "2026-08-05");
+
+    expect(fifth?.knownInflow?.amount.toString()).toBe("200");
+    expect(fifth?.knownOutflow?.amount.toString()).toBe("40");
+    expect(fifth?.flowComplete).toBe(true);
+    expect(fifth?.knownDelta?.amount.toString()).toBe("160");
   });
 
   test("shows current corrected economic history with explicit correction events", () => {

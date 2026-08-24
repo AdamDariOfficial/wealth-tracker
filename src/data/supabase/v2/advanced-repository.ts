@@ -48,6 +48,13 @@ export class SupabaseV2AdvancedRepository implements AdvancedRepository {
     });
   }
 
+  async saveWeeklyReview(input: WeeklyReviewInput, finalize: boolean): Promise<void> {
+    await this.#transport.rpc("v2_save_weekly_review", {
+      p_review: serializeWeeklyReview(input),
+      p_finalize: finalize,
+    });
+  }
+
   async finalizeWeeklyReview(reviewId: string): Promise<void> {
     await this.#transport.rpc("v2_finalize_weekly_review", { p_review_id: reviewId });
   }

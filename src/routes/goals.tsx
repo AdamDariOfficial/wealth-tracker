@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Target, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Plus, Target, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { GoalInput, GoalKind, GoalRecord } from "@/application/advanced";
 import { putValidatedGoal } from "@/application/services";
 import { buildGoalsOverview } from "@/application/view-models";
+import { MetricCard } from "@/components/MetricCard";
 import { PageHeader } from "@/components/PageHeader";
 import {
   AlertDialog,
@@ -37,16 +38,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { advancedV2Keys } from "@/data/query-keys";
+import { EntityCombobox } from "@/features/wealth-v2/EntityCombobox";
 import { FinancialError, FinancialLoading } from "@/features/wealth-v2/FinancialStatePanel";
+import { AccountForm } from "@/features/wealth-v2/forms/AccountForm";
+import { AssetForm } from "@/features/wealth-v2/forms/AssetForm";
 import { normalizeLocalizedDecimalInput } from "@/features/wealth-v2/form-utils";
-import { formatMoney, formatQuantity, humanize } from "@/features/wealth-v2/format";
+import { formatMoney, formatQuantity } from "@/features/wealth-v2/format";
 import { useAdvancedState } from "@/features/wealth-v2/use-advanced-state";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
+import { useI18n } from "@/lib/use-i18n";
 import { advancedV2Repository } from "@/lib/v2-runtime";
 import { cn } from "@/lib/utils";
 import { describeActionError } from "@/features/wealth-v2/user-message";
 
 export const Route = createFileRoute("/goals")({ component: GoalsPage });
+
+type GoalStatusFilter = "all" | "in-progress" | "completed";
+type GoalSort = "deadline" | "progress" | "name";
+type GoalSortDirection = "asc" | "desc";
 
 type GoalFormState = {
   name: string;
@@ -80,14 +89,43 @@ function formFromGoal(goal: GoalRecord): GoalFormState {
   };
 }
 
+function goalKindLabel(kind: GoalKind): string {
+  switch (kind) {
+    case "net_worth":
+      return "Net worth";
+    case "liquid":
+      return "Cash & liquidity";
+    case "account_balance":
+      return "Account";
+    case "asset_quantity":
+      return "Asset quantity";
+    case "asset_value":
+      return "Asset value";
+  }
+}
+
+function formatGoalDate(value: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
 function GoalsPage() {
   const financial = useFinancialState();
   const advanced = useAdvancedState();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<GoalRecord | null>(null);
   const [form, setForm] = useState<GoalFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<GoalStatusFilter>("all");
+  const [goalSort, setGoalSort] = useState<GoalSort>("deadline");
+  const [goalSortDirection, setGoalSortDirection] = useState<GoalSortDirection>("asc");
+  const [quickAccountOpen, setQuickAccountOpen] = useState(false);
+  const [quickAssetOpen, setQuickAssetOpen] = useState(false);
 
   const goals = useMemo(() => {
     if (!financial.data || !advanced.data) return [];
@@ -108,10 +146,52 @@ function GoalsPage() {
   }
 
   const locale = financial.data.state.profile?.locale ?? "it-IT";
+  const completedGoalCount = goals.filter((goal) => goal.progressPercent >= 100).length;
+  const activeGoalCount = goals.length - completedGoalCount;
+  const nextDeadlineGoal = [...goals]
+    .filter((goal) => goal.progressPercent < 100 && goal.goal.targetDate)
+    .sort((left, right) =>
+      (left.goal.targetDate ?? "").localeCompare(right.goal.targetDate ?? ""),
+    )[0];
+  const nextDeadline = nextDeadlineGoal?.goal.targetDate
+    ? formatGoalDate(nextDeadlineGoal.goal.targetDate, locale)
+    : t("No deadline");
+
+  const visibleGoals = (() => {
+    const filtered = goals.filter((item) =>
+      statusFilter === "completed"
+        ? item.progressPercent >= 100
+        : statusFilter === "in-progress"
+          ? item.progressPercent < 100
+          : true,
+    );
+    const direction = goalSortDirection === "asc" ? 1 : -1;
+    return [...filtered].sort((left, right) => {
+      if (goalSort === "name") {
+        return left.goal.name.localeCompare(right.goal.name, locale) * direction;
+      }
+      if (goalSort === "progress") {
+        return (left.progressPercent - right.progressPercent) * direction;
+      }
+      const leftDate = left.goal.targetDate ?? "9999-12-31";
+      const rightDate = right.goal.targetDate ?? "9999-12-31";
+      return leftDate.localeCompare(rightDate) * direction;
+    });
+  })();
   const ownedAccounts = financial.data.state.accounts.filter(
     (account) => account.ownership === "owned",
   );
   const assets = financial.data.state.assets;
+  const accountOptions = ownedAccounts.map((account) => ({
+    value: account.id.toString(),
+    label: account.name,
+    keywords: account.kind,
+  }));
+  const assetOptions = assets.map((asset) => ({
+    value: asset.id.toString(),
+    label: `${asset.symbol} · ${asset.name}`,
+    keywords: asset.kind,
+  }));
 
   const openCreate = () => {
     setEditing(null);
@@ -145,9 +225,9 @@ function GoalsPage() {
       setDialogOpen(false);
       setEditing(null);
       setForm(EMPTY_FORM);
-      toast.success(editing ? "Goal updated" : "Goal created");
+      toast.success(t(editing ? "Goal updated" : "Goal created"));
     } catch (error) {
-      toast.error(describeActionError(error, "Could not save goal"));
+      toast.error(describeActionError(error, t("Could not save goal")));
     } finally {
       setSaving(false);
     }
@@ -157,9 +237,9 @@ function GoalsPage() {
     try {
       await advancedV2Repository.archiveGoal(goal.id);
       await queryClient.invalidateQueries({ queryKey: advancedV2Keys.all });
-      toast.success("Goal archived");
+      toast.success(t("Goal archived"));
     } catch (error) {
-      toast.error(describeActionError(error, "Could not archive goal"));
+      toast.error(describeActionError(error, t("Could not archive goal")));
     }
   };
 
@@ -174,22 +254,85 @@ function GoalsPage() {
             onClick={openCreate}
           >
             <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            New goal
+            {t("New goal")}
           </Button>
         }
       />
 
+      {goals.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <MetricCard label="In progress" value={String(activeGoalCount)} />
+          <MetricCard
+            label="Completed"
+            value={String(completedGoalCount)}
+            tone={completedGoalCount > 0 ? "positive" : "neutral"}
+          />
+          <MetricCard
+            label="Next deadline"
+            value={nextDeadline}
+            hint={nextDeadlineGoal?.goal.name ?? t("No active deadline")}
+          />
+        </div>
+      ) : null}
+
+      {goals.length > 0 ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value as GoalStatusFilter)}
+          >
+            <SelectTrigger className="w-full sm:w-44" aria-label={t("Goal status")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="in-progress">In progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex gap-2">
+            <Select value={goalSort} onValueChange={(value) => setGoalSort(value as GoalSort)}>
+              <SelectTrigger className="min-w-0 flex-1 sm:w-44" aria-label={t("Goal sort")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="deadline">Deadline</SelectItem>
+                <SelectItem value="progress">Progress</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              aria-label={t(goalSortDirection === "asc" ? "Ascending" : "Descending")}
+              title={t(goalSortDirection === "asc" ? "Ascending" : "Descending")}
+              onClick={() =>
+                setGoalSortDirection((current) => (current === "asc" ? "desc" : "asc"))
+              }
+            >
+              {goalSortDirection === "asc" ? (
+                <ArrowUp className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <ArrowDown className="h-4 w-4" aria-hidden="true" />
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {goals.length === 0 ? (
         <div className="surface-section border-dashed p-8 text-center sm:p-12">
           <Target className="mx-auto h-8 w-8 text-cyan" aria-hidden="true" />
-          <h2 className="mt-3 font-display font-semibold">No active goals</h2>
+          <h2 className="mt-3 font-display font-semibold">{t("No active goals")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a net-worth, liquidity, account, quantity or asset-value target.
+            {t("Create a net-worth, liquidity, account, quantity or asset-value target.")}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {goals.map((item) => {
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {visibleGoals.map((item) => {
             const current =
               item.currentMoney !== null
                 ? formatMoney(item.currentMoney, locale)
@@ -202,6 +345,33 @@ function GoalsPage() {
                 : item.targetQuantity !== null
                   ? `${formatQuantity(item.targetQuantity.toString())} ${item.assetSymbol ?? ""}`.trim()
                   : "—";
+            const goalReached = item.progressPercent >= 100;
+            const remainingMoney =
+              item.currentMoney && item.targetMoney
+                ? item.targetMoney.amount.compare(item.currentMoney.amount) <= 0
+                  ? null
+                  : item.targetMoney.minus(item.currentMoney)
+                : null;
+            const remainingQuantity =
+              item.currentQuantity && item.targetQuantity
+                ? item.targetQuantity.compare(item.currentQuantity) <= 0
+                  ? null
+                  : item.targetQuantity.minus(item.currentQuantity)
+                : null;
+            const remaining = goalReached
+              ? t("Goal reached")
+              : remainingMoney
+                ? formatMoney(remainingMoney, locale)
+                : remainingQuantity
+                  ? `${formatQuantity(remainingQuantity.toString())} ${item.assetSymbol ?? ""}`.trim()
+                  : "—";
+            const deadline = item.goal.targetDate
+              ? formatGoalDate(item.goal.targetDate, locale)
+              : t("No deadline");
+            const overdue =
+              !goalReached &&
+              Boolean(item.goal.targetDate) &&
+              new Date(`${item.goal.targetDate}T23:59:59`).getTime() < Date.now();
 
             return (
               <article
@@ -210,11 +380,21 @@ function GoalsPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                      {humanize(item.kind)}
-                      {item.goal.targetDate ? ` · ${item.goal.targetDate}` : ""}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-cyan/10 px-2 py-1 text-[10px] font-medium text-cyan">
+                        {t(goalKindLabel(item.kind))}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs",
+                          overdue ? "text-destructive" : "text-muted-foreground",
+                        )}
+                      >
+                        {overdue ? `${t("Overdue")} · ` : ""}
+                        {deadline}
+                      </span>
                     </div>
-                    <h2 className="mt-1 truncate font-display text-base font-semibold">
+                    <h2 className="mt-2 truncate font-display text-base font-semibold">
                       {item.goal.name}
                     </h2>
                   </div>
@@ -225,7 +405,7 @@ function GoalsPage() {
                       size="icon"
                       className="min-h-11 min-w-11"
                       onClick={() => openEdit(item.goal)}
-                      aria-label={`Edit ${item.goal.name}`}
+                      aria-label={`${t("Edit")} ${item.goal.name}`}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -236,7 +416,7 @@ function GoalsPage() {
                           variant="ghost"
                           size="icon"
                           className="min-h-11 min-w-11 text-destructive"
-                          aria-label={`Archive ${item.goal.name}`}
+                          aria-label={`${t("Archive")} ${item.goal.name}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -245,8 +425,9 @@ function GoalsPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Archive this goal?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            The target will leave the active Goals view. Financial history is not
-                            changed.
+                            {t(
+                              "The target will leave the active Goals view. Financial history is not changed.",
+                            )}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -265,16 +446,18 @@ function GoalsPage() {
 
                 <div className="mt-4 flex items-end justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="label-muted">Current</div>
+                    <div className="label-muted">{t("Current")}</div>
                     <div className="mt-0.5 truncate font-display text-xl font-semibold">
                       {current}
                     </div>
-                    <div className="mt-1 truncate text-xs text-muted-foreground">
-                      Target {target}
-                    </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="font-mono text-2xl font-semibold text-cyan">
+                    <div
+                      className={cn(
+                        "font-mono text-2xl font-semibold",
+                        goalReached ? "text-success" : "text-cyan",
+                      )}
+                    >
                       {item.progressPercent.toFixed(1)}%
                     </div>
                   </div>
@@ -282,22 +465,38 @@ function GoalsPage() {
 
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted/45">
                   <div
-                    className="h-full rounded-full bg-cyan transition-[width] motion-reduce:transition-none"
+                    className={cn(
+                      "h-full rounded-full transition-[width] motion-reduce:transition-none",
+                      goalReached ? "bg-success" : "bg-cyan",
+                    )}
                     style={{ width: `${item.progressPercent}%` }}
                   />
                 </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-muted/15 p-3">
+                  <div className="min-w-0">
+                    <div className="label-muted">{t("Target")}</div>
+                    <div className="mt-1 truncate text-sm font-medium">{target}</div>
+                  </div>
+                  <div className="min-w-0 text-right">
+                    <div className="label-muted">{t("Remaining")}</div>
+                    <div className="mt-1 truncate text-sm font-medium">{remaining}</div>
+                  </div>
+                </div>
+
                 <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-                  <span>
-                    {item.goal.targetDate ? `Due ${item.goal.targetDate}` : "No deadline"}
-                  </span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-1",
-                      item.complete ? "bg-success/10 text-success" : "bg-warning/10 text-warning",
-                    )}
-                  >
-                    {item.complete ? "Fully valued" : "Partial valuation"}
-                  </span>
+                  <span>{deadline}</span>
+                  {goalReached ? (
+                    <span className="rounded-full bg-success/10 px-2 py-1 text-success">
+                      {t("Completed")}
+                    </span>
+                  ) : !item.complete ? (
+                    <span className="rounded-full bg-warning/10 px-2 py-1 text-warning">
+                      {t("Data incomplete")}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-muted/40 px-2 py-1">{t("In progress")}</span>
+                  )}
                 </div>
               </article>
             );
@@ -310,7 +509,7 @@ function GoalsPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Edit goal" : "New goal"}</DialogTitle>
             <DialogDescription>
-              You set the target — progress is calculated automatically from your accounts.
+              {t("You set the target — progress is calculated automatically from your accounts.")}
             </DialogDescription>
           </DialogHeader>
 
@@ -356,46 +555,36 @@ function GoalsPage() {
             {form.kind === "account_balance" ? (
               <div className="space-y-2">
                 <Label>Account</Label>
-                <Select
+                <EntityCombobox
                   value={form.targetAccountId}
                   onValueChange={(value) =>
                     setForm((current) => ({ ...current, targetAccountId: value }))
                   }
-                >
-                  <SelectTrigger className="min-h-11">
-                    <SelectValue placeholder="Select an owned account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ownedAccounts.map((account) => (
-                      <SelectItem key={account.id.toString()} value={account.id.toString()}>
-                        {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={accountOptions}
+                  placeholder="Select an owned account"
+                  searchPlaceholder="Search accounts…"
+                  emptyText="No matching accounts."
+                  createLabel="+ Create new account"
+                  onCreate={() => setQuickAccountOpen(true)}
+                />
               </div>
             ) : null}
 
             {form.kind === "asset_quantity" || form.kind === "asset_value" ? (
               <div className="space-y-2">
                 <Label>Asset</Label>
-                <Select
+                <EntityCombobox
                   value={form.targetAssetId}
                   onValueChange={(value) =>
                     setForm((current) => ({ ...current, targetAssetId: value }))
                   }
-                >
-                  <SelectTrigger className="min-h-11">
-                    <SelectValue placeholder="Select an asset" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assets.map((asset) => (
-                      <SelectItem key={asset.id.toString()} value={asset.id.toString()}>
-                        {asset.symbol} · {asset.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={assetOptions}
+                  placeholder="Select an asset"
+                  searchPlaceholder="Search assets…"
+                  emptyText="No matching assets."
+                  createLabel="+ Create new asset"
+                  onCreate={() => setQuickAssetOpen(true)}
+                />
               </div>
             ) : null}
 
@@ -433,7 +622,7 @@ function GoalsPage() {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button
               type="button"
@@ -441,9 +630,49 @@ function GoalsPage() {
               className="bg-cyan text-background hover:bg-cyan/90"
               onClick={() => void saveGoal()}
             >
-              {saving ? "Saving…" : editing ? "Save changes" : "Create goal"}
+              {saving ? t("Saving…") : editing ? t("Save changes") : t("Create goal")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={quickAccountOpen} onOpenChange={setQuickAccountOpen}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("Create account")}</DialogTitle>
+            <DialogDescription>
+              {t(
+                "Create the account without closing the goal form. It will be selected automatically.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <AccountForm
+            onSaved={(account) => {
+              if (!account) return;
+              setForm((current) => ({ ...current, targetAccountId: account.id.toString() }));
+              setQuickAccountOpen(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={quickAssetOpen} onOpenChange={setQuickAssetOpen}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("Create asset")}</DialogTitle>
+            <DialogDescription>
+              {t(
+                "Create the asset without closing the goal form. It will be selected automatically.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <AssetForm
+            onSaved={(asset) => {
+              if (!asset) return;
+              setForm((current) => ({ ...current, targetAssetId: asset.id.toString() }));
+              setQuickAssetOpen(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>
