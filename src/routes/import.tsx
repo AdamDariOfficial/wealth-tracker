@@ -1,11 +1,11 @@
 import { MetricCard, metricToneFromClass } from "@/components/MetricCard";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertTriangle,
   CheckCircle2,
-  Clipboard,
+  Download,
   FileText,
   History,
   RotateCcw,
@@ -32,12 +32,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { advancedV2Keys, financialV2Keys } from "@/data/query-keys";
 import { useAdvancedState } from "@/features/wealth-v2/use-advanced-state";
 import { FinancialError, FinancialLoading } from "@/features/wealth-v2/FinancialStatePanel";
 import { formatDateTime, formatQuantity } from "@/features/wealth-v2/format";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
+import { useI18n } from "@/lib/use-i18n";
 import { advancedV2Repository } from "@/lib/v2-runtime";
 import { PageHeader } from "@/components/PageHeader";
 import { describeActionError } from "@/features/wealth-v2/user-message";
@@ -48,7 +48,10 @@ function ImportPage() {
   const financial = useFinancialState();
   const advanced = useAdvancedState();
   const queryClient = useQueryClient();
+  const { locale, t } = useI18n();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [sourceText, setSourceText] = useState("");
+  const [sourceFilename, setSourceFilename] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [committing, setCommitting] = useState(false);
   const [rollbackId, setRollbackId] = useState<string | null>(null);
@@ -58,6 +61,42 @@ function ImportPage() {
     if (!financial.data || !sourceText.trim()) return null;
     return parseLedgerImport(sourceText, financial.data.state);
   }, [financial.data, sourceText]);
+
+  const loadImportFile = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      toast.error(t("Choose a .csv file"));
+      return;
+    }
+    try {
+      const text = await file.text();
+      if (!text.trim()) {
+        toast.error(t("The selected CSV file is empty"));
+        return;
+      }
+      setSourceText(text);
+      setSourceFilename(file.name);
+      setLabel((current) => current || file.name.replace(/\.[^.]+$/, ""));
+    } catch (error) {
+      toast.error(describeActionError(error, t("Could not read CSV file")));
+    }
+  };
+
+  const clearImportFile = () => {
+    setSourceText("");
+    setSourceFilename(null);
+  };
+
+  const downloadTemplate = () => {
+    const blob = new Blob([LEDGER_IMPORT_EXAMPLE], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "nebula-import-template.csv";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   const refreshCanonicalState = async () => {
     await Promise.all([
@@ -84,11 +123,14 @@ function ImportPage() {
         transactions: preview.transactions,
       });
       await refreshCanonicalState();
-      toast.success(`Imported ${preview.transactionCount} transaction(s).`);
+      toast.success(
+        `${t("Imported")} ${preview.transactionCount} ${t(preview.transactionCount === 1 ? "transaction" : "transactions")}.`,
+      );
       setSourceText("");
+      setSourceFilename(null);
       setLabel("");
     } catch (error) {
-      toast.error(describeActionError(error, "Import failed"));
+      toast.error(describeActionError(error, t("Import failed")));
     } finally {
       setCommitting(false);
     }
@@ -100,10 +142,10 @@ function ImportPage() {
     try {
       await advancedV2Repository.rollbackImportBatch(rollbackId);
       await refreshCanonicalState();
-      toast.success("Import undone. Reversals were recorded for every affected transaction.");
+      toast.success(t("Import undone."));
       setRollbackId(null);
     } catch (error) {
-      toast.error(describeActionError(error, "Rollback failed"));
+      toast.error(describeActionError(error, t("Could not undo import")));
     } finally {
       setRollingBack(false);
     }
@@ -124,7 +166,7 @@ function ImportPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Import"
-        subtitle="Bring in your history from a spreadsheet. Review every row before anything is saved, and undo the whole import at any time."
+        subtitle="Upload a CSV file, review it, then import when everything looks right."
       />
 
       <section className="surface-section p-4 sm:p-6">
@@ -132,52 +174,95 @@ function ImportPage() {
           <div className="max-w-3xl">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-cyan" aria-hidden="true" />
-              <h2 className="font-display font-semibold">Import from CSV</h2>
+              <h2 className="font-display font-semibold">{t("Import from CSV")}</h2>
             </div>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Each transaction uses two or more rows that share the same transaction id. Amounts are
-              written exactly as you type them. The whole file is checked before anything is saved —
-              if one row is wrong, nothing is imported.
+              {t(
+                "Upload a CSV file and review the result before anything is saved. You never need to type CSV rows by hand.",
+              )}
             </p>
           </div>
           <Button
             type="button"
             variant="outline"
             className="min-h-11 shrink-0"
-            onClick={() => setSourceText(LEDGER_IMPORT_EXAMPLE)}
+            onClick={downloadTemplate}
           >
-            <Clipboard className="mr-2 h-4 w-4" aria-hidden="true" />
-            Load example
+            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+            {t("Download template")}
           </Button>
         </div>
 
-        <div className="mt-5 rounded-xl border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Exact header:</span>{" "}
-          <code className="break-all font-mono">{LEDGER_IMPORT_HEADER.join(",")}</code>
+        <div
+          className="mt-5 rounded-2xl border border-dashed border-border/70 bg-muted/10 p-5 text-center sm:p-7"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            const file = event.dataTransfer.files?.[0];
+            if (file) void loadImportFile(file);
+          }}
+        >
+          <Upload className="mx-auto h-7 w-7 text-cyan" aria-hidden="true" />
+          <div className="mt-3 font-display font-semibold">
+            {sourceFilename ?? t("Drop your CSV file here")}
+          </div>
+          <p className="mx-auto mt-1 max-w-lg text-sm leading-6 text-muted-foreground">
+            {t(
+              sourceFilename
+                ? "The file is loaded. Review the preview below before importing."
+                : "Or choose a .csv file from your device.",
+            )}
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t(sourceFilename ? "Replace file" : "Choose CSV file")}
+            </Button>
+            {sourceFilename ? (
+              <Button type="button" variant="ghost" className="min-h-11" onClick={clearImportFile}>
+                {t("Remove")}
+              </Button>
+            ) : null}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void loadImportFile(file);
+            }}
+          />
         </div>
 
-        <div className="mt-5 grid gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="import-label">Receipt label</Label>
-            <Input
-              id="import-label"
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              maxLength={120}
-              placeholder="August broker export"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="import-source">CSV rows</Label>
-            <Textarea
-              id="import-source"
-              value={sourceText}
-              onChange={(event) => setSourceText(event.target.value)}
-              className="min-h-64 font-mono text-xs leading-5"
-              spellCheck={false}
-              placeholder={LEDGER_IMPORT_EXAMPLE}
-            />
-          </div>
+        <details className="mt-4 rounded-xl border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium text-foreground">
+            {t("CSV format details")}
+          </summary>
+          <p className="mt-3 leading-5">
+            {t(
+              "A transaction may use more than one row. Rows that belong together use the same transaction ID.",
+            )}
+          </p>
+          <code className="mt-2 block break-all font-mono">{LEDGER_IMPORT_HEADER.join(",")}</code>
+        </details>
+
+        <div className="mt-5 space-y-2">
+          <Label htmlFor="import-label">{t("Import name")}</Label>
+          <Input
+            id="import-label"
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            maxLength={120}
+            placeholder={t("August transactions")}
+          />
         </div>
       </section>
 
@@ -185,14 +270,14 @@ function ImportPage() {
         <section className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Metric label="Transactions" value={String(preview.transactionCount)} />
-            <Metric label="Leg rows" value={String(preview.legCount)} />
+            <Metric label="Rows" value={String(preview.legCount)} />
             <Metric
               label="Issues"
               value={String(preview.issues.length)}
               tone={preview.issues.length ? "text-destructive" : "text-success"}
             />
             <Metric
-              label="Commit"
+              label="Status"
               value={
                 preview.issues.length === 0 && preview.transactionCount > 0 ? "Ready" : "Blocked"
               }
@@ -208,13 +293,13 @@ function ImportPage() {
             <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 sm:p-5">
               <div className="flex items-center gap-2 font-medium text-destructive">
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                Fix every issue before committing
+                {t("Fix these issues before importing")}
               </div>
               <ul className="mt-3 space-y-2 text-sm">
                 {preview.issues.map((issue, index) => (
                   <li key={`${issue.line ?? "batch"}-${index}`} className="flex gap-2">
                     <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                      {issue.line === null ? "Batch" : `Line ${issue.line}`}
+                      {issue.line === null ? t("Batch") : `${t("Line")} ${issue.line}`}
                     </span>
                     <span>{issue.message}</span>
                   </li>
@@ -225,28 +310,28 @@ function ImportPage() {
             <div className="rounded-2xl border border-success/30 bg-success/5 p-4 text-sm text-success">
               <div className="flex items-center gap-2 font-medium">
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                Batch passed application-level ledger validation.
+                {t("File is ready to import.")}
               </div>
             </div>
           )}
 
           <div className="surface-section overflow-hidden">
             <div className="border-b border-border/40 p-4 sm:p-5">
-              <h2 className="font-display font-semibold">Row preview</h2>
+              <h2 className="font-display font-semibold">{t("Row preview")}</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Preview shows the exact values that will be saved.
+                {t("Preview shows the exact values that will be saved.")}
               </p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-[920px] w-full text-sm">
                 <thead className="text-left label-muted">
                   <tr className="border-b border-border/40">
-                    <th className="px-4 py-3">Line</th>
-                    <th className="px-4 py-3">Transaction</th>
-                    <th className="px-4 py-3">Account</th>
-                    <th className="px-4 py-3">Asset</th>
-                    <th className="px-4 py-3 text-right">Quantity</th>
-                    <th className="px-4 py-3">Description</th>
+                    <th className="px-4 py-3">{t("Line")}</th>
+                    <th className="px-4 py-3">{t("Transaction")}</th>
+                    <th className="px-4 py-3">{t("Account")}</th>
+                    <th className="px-4 py-3">{t("Asset")}</th>
+                    <th className="px-4 py-3 text-right">{t("Quantity")}</th>
+                    <th className="px-4 py-3">{t("Description")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -259,7 +344,7 @@ function ImportPage() {
                       <td className="px-4 py-3">{row.accountName}</td>
                       <td className="px-4 py-3 font-mono">{row.assetSymbol}</td>
                       <td className="px-4 py-3 text-right font-mono">
-                        {formatQuantity(row.quantity, 18)}
+                        {formatQuantity(row.quantity, 18, locale)}
                       </td>
                       <td className="max-w-64 truncate px-4 py-3">{row.description}</td>
                     </tr>
@@ -277,7 +362,9 @@ function ImportPage() {
               onClick={() => void commit()}
             >
               <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-              {committing ? "Importing…" : `Import ${preview.transactionCount} transactions`}
+              {committing
+                ? t("Importing…")
+                : `${t("Import")} ${preview.transactionCount} ${t(preview.transactionCount === 1 ? "transaction" : "transactions")}`}
             </Button>
           </div>
         </section>
@@ -286,15 +373,16 @@ function ImportPage() {
       <section className="surface-section p-4 sm:p-6">
         <div className="flex items-center gap-2">
           <History className="h-4 w-4 text-cyan" aria-hidden="true" />
-          <h2 className="font-display font-semibold">Import receipts</h2>
+          <h2 className="font-display font-semibold">{t("Import history")}</h2>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Rollback never deletes posted history. It creates exact reversal transactions for the
-          whole batch.
+          {t("You can undo an import later without deleting the activity that existed before it.")}
         </p>
 
         {receipts.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">No imports yet.</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            {t("No imports yet.")}
+          </div>
         ) : (
           <div className="mt-5 space-y-3">
             {receipts.map((receipt) => (
@@ -304,16 +392,19 @@ function ImportPage() {
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{receipt.label ?? "Ledger import"}</span>
-                    <Badge variant="secondary">{receipt.transactionCount} tx</Badge>
-                    {receipt.rolledBackAt ? <Badge variant="outline">Rolled back</Badge> : null}
+                    <span className="font-medium">{receipt.label ?? t("CSV import")}</span>
+                    <Badge variant="secondary">
+                      {receipt.transactionCount}{" "}
+                      {t(receipt.transactionCount === 1 ? "transaction" : "transactions")}
+                    </Badge>
+                    {receipt.rolledBackAt ? <Badge variant="outline">{t("Undone")}</Badge> : null}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {formatDateTime(receipt.createdAt)} · {receipt.id}
+                    {formatDateTime(receipt.createdAt, locale)}
                   </div>
                   {receipt.rolledBackAt ? (
                     <div className="mt-1 text-xs text-muted-foreground">
-                      Reversed {formatDateTime(receipt.rolledBackAt)}
+                      {t("Undone")} {formatDateTime(receipt.rolledBackAt, locale)}
                     </div>
                   ) : null}
                 </div>
@@ -325,7 +416,7 @@ function ImportPage() {
                   onClick={() => setRollbackId(receipt.id)}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
-                  Roll back batch
+                  {t("Undo import")}
                 </Button>
               </article>
             ))}
@@ -336,11 +427,11 @@ function ImportPage() {
       <AlertDialog open={rollbackId !== null} onOpenChange={(open) => !open && setRollbackId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Roll back this import?</AlertDialogTitle>
+            <AlertDialogTitle>Undo this import?</AlertDialogTitle>
             <AlertDialogDescription>
-              Every transaction from this import will be reversed exactly. If any imported
-              transaction has already been corrected, the entire rollback fails without partial
-              changes.
+              {t(
+                "This removes the effect of every transaction added by this import. If it cannot be undone safely, nothing changes.",
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -353,7 +444,7 @@ function ImportPage() {
                 void rollback();
               }}
             >
-              {rollingBack ? "Rolling back…" : "Create reversals"}
+              {rollingBack ? t("Undoing…") : t("Undo import")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

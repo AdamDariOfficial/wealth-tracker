@@ -18,25 +18,27 @@ import { Toaster } from "@/components/ui/sonner";
 import { CoreComposer } from "@/features/wealth-v2/CoreComposer";
 import { GlobalFinancialWarnings } from "@/features/wealth-v2/GlobalFinancialWarnings";
 import { useAuth } from "@/lib/auth-store";
+import { useI18n } from "@/lib/use-i18n";
 import appCss from "../styles.css?url";
 
 const PUBLIC_ROUTES = ["/login", "/signup"];
 const ONBOARDING_ROUTE = "/onboarding";
 
 function NotFoundComponent() {
+  const { t } = useI18n();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">{t("Page not found")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you&apos;re looking for doesn&apos;t exist or has been moved.
+          {t("The page you're looking for doesn't exist or has been moved.")}
         </p>
         <Link
           to="/"
           className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
         >
-          Go home
+          {t("Go home")}
         </Link>
       </div>
     </div>
@@ -45,17 +47,19 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
+  const { t } = useI18n();
   void error;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn&apos;t load
+          {t("This page didn't load")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong while loading this page. Try again, or return home if the problem
-          continues.
+          {t(
+            "Something went wrong while loading this page. Try again, or return home if the problem continues.",
+          )}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -65,13 +69,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="min-h-11 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground"
           >
-            Try again
+            {t("Try again")}
           </button>
           <Link
             to="/"
             className="inline-flex min-h-11 items-center rounded-xl border border-input px-4 text-sm font-medium"
           >
-            Go home
+            {t("Go home")}
           </Link>
         </div>
       </div>
@@ -208,8 +212,10 @@ function RootComponent() {
 
 function AppHeader() {
   return (
-    <header className="safe-top sticky top-0 z-30 flex min-h-14 items-center justify-center border-b border-border/50 bg-background/70 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
-      <CommandPalette />
+    <header className="safe-top sticky top-0 z-30 border-b border-border/50 bg-background/70 px-4 pb-3 backdrop-blur-xl sm:px-6 sm:pb-3.5 lg:px-8">
+      <div className="mt-3.5 flex w-full items-center justify-center sm:mt-4">
+        <CommandPalette />
+      </div>
     </header>
   );
 }

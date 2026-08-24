@@ -9,6 +9,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
+import { useI18n } from "@/lib/use-i18n";
 
 export type QuickAction =
   | { kind: "open-account" }
@@ -78,12 +79,13 @@ const CARDS: {
 ];
 
 export function QuickActions({ onPick }: { onPick: (a: QuickAction["kind"]) => void }) {
+  const { t } = useI18n();
   return (
     <Card className="glass p-4">
       <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-        <Plus className="h-4 w-4 text-cyan" /> Quick Add
+        <Plus className="h-4 w-4 text-cyan" /> {t("Quick Add")}
         <span className="text-[11px] text-muted-foreground font-normal ml-2">
-          Generates valid syntax and inserts it into the editor
+          {t("Generates valid syntax and inserts it into the editor")}
         </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
@@ -94,8 +96,8 @@ export function QuickActions({ onPick }: { onPick: (a: QuickAction["kind"]) => v
             className="text-left rounded-md border border-border/40 bg-card/40 hover:bg-card/70 hover:border-cyan/40 transition p-3 group"
           >
             <div className={`mb-1 ${c.tone}`}>{c.icon}</div>
-            <div className="text-xs font-semibold leading-tight">{c.label}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">{c.hint}</div>
+            <div className="text-xs font-semibold leading-tight">{t(c.label)}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">{t(c.hint)}</div>
           </button>
         ))}
       </div>

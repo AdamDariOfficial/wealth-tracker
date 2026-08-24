@@ -389,6 +389,41 @@
     }
   }
 
+  /* Semantic financial grading. Green/red are reserved for signed financial
+     meaning; warning represents incomplete or uncertain values. */
+  .semantic-surface-positive-1 {
+    background: linear-gradient(
+      135deg,
+      oklch(0.75 0.16 155 / 0.055),
+      oklch(0.175 0.007 240 / 0.78)
+    );
+    border-color: oklch(0.75 0.16 155 / 0.18);
+  }
+  .semantic-surface-positive-2 {
+    background: linear-gradient(135deg, oklch(0.75 0.16 155 / 0.1), oklch(0.175 0.007 240 / 0.78));
+    border-color: oklch(0.75 0.16 155 / 0.26);
+  }
+  .semantic-surface-positive-3 {
+    background: linear-gradient(135deg, oklch(0.75 0.16 155 / 0.16), oklch(0.175 0.007 240 / 0.78));
+    border-color: oklch(0.75 0.16 155 / 0.34);
+  }
+  .semantic-surface-negative-1 {
+    background: linear-gradient(135deg, oklch(0.65 0.18 25 / 0.055), oklch(0.175 0.007 240 / 0.78));
+    border-color: oklch(0.65 0.18 25 / 0.18);
+  }
+  .semantic-surface-negative-2 {
+    background: linear-gradient(135deg, oklch(0.65 0.18 25 / 0.1), oklch(0.175 0.007 240 / 0.78));
+    border-color: oklch(0.65 0.18 25 / 0.26);
+  }
+  .semantic-surface-negative-3 {
+    background: linear-gradient(135deg, oklch(0.65 0.18 25 / 0.16), oklch(0.175 0.007 240 / 0.78));
+    border-color: oklch(0.65 0.18 25 / 0.34);
+  }
+  .semantic-surface-warning {
+    background: linear-gradient(135deg, oklch(0.8 0.15 80 / 0.065), oklch(0.175 0.007 240 / 0.78));
+    border-color: oklch(0.8 0.15 80 / 0.24);
+  }
+
   /* Chart framing — charts sit in a recessed well so the plot reads as data,
      not as another card. Gives every chart in the product one silhouette. */
   .chart-well {

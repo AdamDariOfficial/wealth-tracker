@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowRight,
   Database,
   Download,
-  Globe2,
   LogOut,
   RotateCcw,
   Save,
-  ShieldCheck,
   Trash2,
   Upload,
   UserRound,
@@ -29,37 +28,58 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { advancedV2Keys, financialV2Keys } from "@/data/query-keys";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
-import { useAuth } from "@/lib/auth-store";
-import { advancedV2Repository, financialV2Repository } from "@/lib/v2-runtime";
 import { describeActionError } from "@/features/wealth-v2/user-message";
+import { useAuth } from "@/lib/auth-store";
+import { useI18n } from "@/lib/use-i18n";
+import { advancedV2Repository, financialV2Repository } from "@/lib/v2-runtime";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
-function SettingsCard({
-  icon: Icon,
-  title,
-  description,
-  children,
-}: {
+type SettingsSectionProps = Readonly<{
+  id: string;
   icon: typeof UserRound;
   title: string;
   description: string;
   children: React.ReactNode;
-}) {
+  destructive?: boolean;
+}>;
+
+function SettingsSection({
+  id,
+  icon: Icon,
+  title,
+  description,
+  children,
+  destructive = false,
+}: SettingsSectionProps) {
+  const { t } = useI18n();
   return (
-    <section className="surface-section p-5 sm:p-6">
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
-          <Icon className="h-4 w-4" aria-hidden="true" />
-        </div>
-        <div className="min-w-0">
-          <h2 className="font-display font-semibold">{title}</h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
-        </div>
+    <section id={id} className="scroll-mt-28 py-7 first:pt-0 sm:py-9">
+      <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10">
+        <header>
+          <div
+            className={
+              destructive
+                ? "flex items-center gap-2 text-destructive"
+                : "flex items-center gap-2 text-foreground"
+            }
+          >
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            <h2 className="font-display text-base font-semibold">{t(title)}</h2>
+          </div>
+          <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">{t(description)}</p>
+        </header>
+        <div className="min-w-0">{children}</div>
       </div>
-      <div className="mt-5">{children}</div>
     </section>
   );
 }
@@ -68,6 +88,7 @@ function SettingsPage() {
   const { profile, signOut, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
   const financial = useFinancialState();
+  const { t } = useI18n();
   const restoreInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState("");
   const [baseCurrency, setBaseCurrency] = useState("EUR");
@@ -83,11 +104,25 @@ function SettingsPage() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  const availableCurrencies = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (financial.data?.state.assets ?? [])
+            .filter((asset) => asset.kind === "fiat" && asset.fiatCurrency !== null)
+            .map((asset) => asset.fiatCurrency?.toString())
+            .filter((currency): currency is string => Boolean(currency)),
+        ),
+      ).sort(),
+    [financial.data?.state.assets],
+  );
+  const selectedCurrencyAvailable = availableCurrencies.includes(baseCurrency);
+
   useEffect(() => {
     if (!profile) return;
     setDisplayName(profile.displayName ?? "");
-    setBaseCurrency(profile.baseCurrency?.toString() ?? "EUR");
-    setLocale(profile.locale ?? "it-IT");
+    setBaseCurrency(profile.baseCurrency?.toString() ?? "");
+    setLocale(profile.locale === "it-IT" ? "it-IT" : "en-US");
   }, [profile]);
 
   const invalidateCanonicalCaches = async () => {
@@ -103,7 +138,7 @@ function SettingsPage() {
       queryClient.removeQueries({ queryKey: financialV2Keys.all });
       queryClient.removeQueries({ queryKey: advancedV2Keys.all });
     } catch (error) {
-      toast.error(describeActionError(error, "Could not sign out"));
+      toast.error(describeActionError(error, t("Could not sign out")));
     }
   };
 
@@ -118,9 +153,9 @@ function SettingsPage() {
       });
       await refreshProfile();
       await invalidateCanonicalCaches();
-      toast.success("Profile saved");
+      toast.success(t("Profile saved"));
     } catch (error) {
-      toast.error(describeActionError(error, "Could not save profile"));
+      toast.error(describeActionError(error, t("Could not save profile")));
     } finally {
       setSaving(false);
     }
@@ -141,9 +176,9 @@ function SettingsPage() {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast.success("Versioned backup exported");
+      toast.success(t("Versioned backup exported"));
     } catch (error) {
-      toast.error(describeActionError(error, "Backup export failed"));
+      toast.error(describeActionError(error, t("Backup export failed")));
     } finally {
       setExporting(false);
     }
@@ -161,7 +196,7 @@ function SettingsPage() {
     } catch (error) {
       setRestoreCandidate(null);
       setRestoreFilename(null);
-      toast.error(describeActionError(error, "Invalid backup file"));
+      toast.error(describeActionError(error, t("Invalid backup file")));
     }
   };
 
@@ -172,11 +207,11 @@ function SettingsPage() {
       await advancedV2Repository.restoreBackup(restoreCandidate);
       await refreshProfile();
       await invalidateCanonicalCaches();
-      toast.success("Backup restored");
+      toast.success(t("Backup restored"));
       setRestoreCandidate(null);
       setRestoreFilename(null);
     } catch (error) {
-      toast.error(describeActionError(error, "Restore failed"));
+      toast.error(describeActionError(error, t("Restore failed")));
     } finally {
       setRestoring(false);
     }
@@ -187,38 +222,58 @@ function SettingsPage() {
     try {
       await advancedV2Repository.resetWorkspace(resetConfirmation);
       await invalidateCanonicalCaches();
-      toast.success("Workspace reset. Your account was preserved.");
+      toast.success(t("Workspace reset. Your account was preserved."));
       setResetConfirmation("");
       setResetDialogOpen(false);
     } catch (error) {
-      toast.error(describeActionError(error, "Reset failed"));
+      toast.error(describeActionError(error, t("Reset failed")));
     } finally {
       setResetting(false);
     }
   };
 
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       <PageHeader
         title="Settings"
-        subtitle="Your profile, currency, backups and workspace controls."
+        subtitle="Your profile, backups and data controls."
         action={
           <Button variant="outline" onClick={() => void handleSignOut()} className="min-h-11">
             <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
-            Sign out
+            {t("Sign out")}
           </Button>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <SettingsCard
+      <nav
+        className="flex gap-1 overflow-x-auto border-b border-border/60 pb-3 text-sm"
+        aria-label={t("Settings sections")}
+      >
+        {[
+          ["#profile", "Profile"],
+          ["#data", "Data & portability"],
+          ["#danger", "Reset workspace"],
+        ].map(([href, label]) => (
+          <a
+            key={href}
+            href={href}
+            className="shrink-0 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {t(label)}
+          </a>
+        ))}
+      </nav>
+
+      <div className="divide-y divide-border/60 border-b border-border/60">
+        <SettingsSection
+          id="profile"
           icon={UserRound}
           title="Profile"
-          description="Used to display every balance, total and chart across the app."
+          description="Your name, base currency and display preferences."
         >
-          <form onSubmit={saveProfile} className="space-y-4">
+          <form onSubmit={saveProfile} className="max-w-3xl space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="settings-display-name">Display name</Label>
+              <Label htmlFor="settings-display-name">{t("Display name")}</Label>
               <Input
                 id="settings-display-name"
                 value={displayName}
@@ -227,118 +282,148 @@ function SettingsPage() {
                 placeholder="Adam"
               />
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="settings-base-currency">Base currency</Label>
-                <Input
-                  id="settings-base-currency"
-                  value={baseCurrency}
-                  onChange={(event) => setBaseCurrency(event.target.value.toUpperCase())}
-                  minLength={3}
-                  maxLength={3}
-                  required
-                  placeholder="EUR"
-                />
+                <Label htmlFor="settings-base-currency">{t("Base currency")}</Label>
+                <Select
+                  value={selectedCurrencyAvailable ? baseCurrency : ""}
+                  onValueChange={setBaseCurrency}
+                  disabled={availableCurrencies.length === 0}
+                >
+                  <SelectTrigger id="settings-base-currency" className="min-h-11">
+                    <SelectValue
+                      placeholder={t(
+                        availableCurrencies.length === 0
+                          ? "No fiat currencies found"
+                          : "Choose a currency",
+                      )}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCurrencies.map((currency) => (
+                      <SelectItem key={currency} value={currency}>
+                        {currency}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {t("Only fiat currencies that already exist in your tracker are available.")}
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="settings-locale">Locale</Label>
-                <Input
-                  id="settings-locale"
-                  value={locale}
-                  onChange={(event) => setLocale(event.target.value)}
-                  required
-                  placeholder="it-IT"
-                />
+                <Label htmlFor="settings-locale">{t("Language & format")}</Label>
+                <Select value={locale} onValueChange={setLocale}>
+                  <SelectTrigger id="settings-locale" className="min-h-11">
+                    <SelectValue>{locale === "it-IT" ? "Italiano" : "English"}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="it-IT">{t("Italiano")}</SelectItem>
+                    <SelectItem value="en-US">{t("English")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {t("Changes interface language, dates and numbers.")}
+                </p>
               </div>
             </div>
             <Button
               type="submit"
-              disabled={saving || baseCurrency.trim().length !== 3 || !locale.trim()}
+              disabled={
+                saving || !selectedCurrencyAvailable || !["it-IT", "en-US"].includes(locale)
+              }
               className="min-h-11 bg-cyan text-background hover:bg-cyan/90"
             >
               <Save className="mr-2 h-4 w-4" aria-hidden="true" />
-              {saving ? "Saving…" : "Save profile"}
+              {saving ? t("Saving…") : t("Save profile")}
             </Button>
           </form>
-        </SettingsCard>
+        </SettingsSection>
 
-        <SettingsCard
-          icon={Globe2}
-          title="Valuation context"
-          description="Unknown market data stays visible instead of becoming a false zero."
-        >
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-              <div className="label-muted">Base currency</div>
-              <div className="mt-2 font-mono text-lg font-semibold">
-                {financial.data?.baseCurrency ?? profile?.baseCurrency?.toString() ?? "—"}
-              </div>
-            </div>
-            <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-              <div className="label-muted">Completeness</div>
-              <div className="mt-2 font-mono text-lg font-semibold">
-                {financial.data
-                  ? `${financial.data.knownPositionCount}/${financial.data.totalPositionCount}`
-                  : "—"}
-              </div>
-            </div>
-          </div>
-        </SettingsCard>
-
-        <SettingsCard
+        <SettingsSection
+          id="data"
           icon={Database}
-          title="Backup and restore"
-          description="Download a complete copy of your data, or restore it in full from an earlier backup."
+          title="Data & portability"
+          description="Import, export and restore your financial data from one place."
         >
-          <div className="space-y-4">
-            <div className="rounded-xl border border-border/50 bg-muted/15 p-4 text-sm text-muted-foreground">
-              Restore validates the backup envelope and database invariants before commit. A
-              rejected restore leaves the previous workspace intact.
+          <div className="max-w-3xl divide-y divide-border/50">
+            <div className="flex flex-col gap-4 pb-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h3 className="font-medium">{t("Import data")}</h3>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {t("Bring transactions in from a CSV file when you need it.")}
+                </p>
+              </div>
+              <Button asChild variant="outline" className="min-h-11 shrink-0">
+                <Link to="/import">
+                  {t("Open import")}
+                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                </Link>
+              </Button>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11"
-                disabled={exporting}
-                onClick={() => void exportBackup()}
-              >
-                <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-                {exporting ? "Exporting…" : "Export backup"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11"
-                onClick={() => restoreInputRef.current?.click()}
-              >
-                <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-                Choose backup
-              </Button>
-              <input
-                ref={restoreInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={(event) => void chooseRestore(event)}
-              />
+
+            <div className="space-y-4 py-6">
+              <div>
+                <h3 className="font-medium">{t("Backup and restore")}</h3>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {t(
+                    "Download a complete copy of your data, or restore it in full from an earlier backup.",
+                  )}
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  disabled={exporting}
+                  onClick={() => void exportBackup()}
+                >
+                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                  {exporting ? t("Exporting…") : t("Export backup")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => restoreInputRef.current?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+                  {t("Choose backup")}
+                </Button>
+                <input
+                  ref={restoreInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={(event) => void chooseRestore(event)}
+                />
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                {t(
+                  "The backup is checked before anything is replaced. If the file is not valid, your current data stays unchanged.",
+                )}
+              </p>
             </div>
           </div>
-        </SettingsCard>
+        </SettingsSection>
 
-        <SettingsCard
+        <SettingsSection
+          id="danger"
           icon={Trash2}
           title="Reset workspace"
           description="Permanently removes your financial data. Your account and sign-in stay intact."
+          destructive
         >
-          <div className="space-y-4">
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-muted-foreground">
-              This removes accounts, assets, ledger history, market observations, goals, trading
-              reviews and import receipts. Export a backup first if you may need the data later.
-            </div>
-            <div className="space-y-2">
+          <div className="max-w-3xl space-y-4">
+            <p className="text-sm leading-6 text-muted-foreground">
+              {t(
+                "This removes accounts, transactions, assets, market data, goals, trading reviews and import history. Export a backup first if you may need the data later.",
+              )}
+            </p>
+            <div className="max-w-md space-y-2">
               <Label htmlFor="reset-confirmation">
-                Type <span className="font-mono text-foreground">RESET WORKSPACE</span>
+                {t("Type")} <span className="font-mono text-foreground">RESET WORKSPACE</span>
               </Label>
               <Input
                 id="reset-confirmation"
@@ -355,28 +440,10 @@ function SettingsPage() {
               onClick={() => setResetDialogOpen(true)}
             >
               <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-              Review reset
+              {t("Review reset")}
             </Button>
           </div>
-        </SettingsCard>
-
-        <SettingsCard
-          icon={ShieldCheck}
-          title="How your data is protected"
-          description="The safeguards that sit behind every change you make."
-        >
-          <div className="space-y-2 text-sm leading-6 text-muted-foreground">
-            <p>
-              Recorded history is never overwritten. Corrections are added as new entries, so you
-              always keep a full audit trail.
-            </p>
-            <p>
-              Restoring a backup or resetting your workspace happens in a single step, behind an
-              explicit confirmation. It either completes fully or not at all.
-            </p>
-            <p>Your data belongs to you. You can export a complete backup at any time.</p>
-          </div>
-        </SettingsCard>
+        </SettingsSection>
       </div>
 
       <AlertDialog
@@ -390,15 +457,13 @@ function SettingsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Restore this backup?</AlertDialogTitle>
+            <AlertDialogTitle>{t("Restore this backup?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {restoreFilename ?? "Selected backup"} will replace everything currently in your
-              workspace in one database transaction. If any restored record violates schema or
-              ledger invariants, the existing workspace remains unchanged.
+              {`${restoreFilename ?? t("Selected backup")} ${t("will replace your current financial data. The file is checked first; if anything is invalid, your current data stays unchanged.")}`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={restoring}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={restoring}>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               disabled={restoring}
               onClick={(event) => {
@@ -407,7 +472,7 @@ function SettingsPage() {
               }}
             >
               <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
-              {restoring ? "Restoring…" : "Restore backup"}
+              {restoring ? t("Restoring…") : t("Restore backup")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -416,14 +481,15 @@ function SettingsPage() {
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reset your workspace?</AlertDialogTitle>
+            <AlertDialogTitle>{t("Reset your workspace?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This destructive action cannot be undone without a valid backup. Your profile remains,
-              but every account, transaction, asset and goal will be permanently removed.
+              {t(
+                "This destructive action cannot be undone without a valid backup. Your profile remains, but every account, transaction, asset and goal will be permanently removed.",
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={resetting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={resetting}>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               disabled={resetting || resetConfirmation !== "RESET WORKSPACE"}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -432,7 +498,7 @@ function SettingsPage() {
                 void resetWorkspace();
               }}
             >
-              {resetting ? "Resetting…" : "Reset workspace"}
+              {resetting ? t("Resetting…") : t("Reset workspace")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

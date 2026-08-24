@@ -4,15 +4,20 @@ import { Label } from "@/components/ui/label";
 import { useAssets, type Asset } from "@/hooks/use-ledger";
 import { AssetFormModal } from "@/components/AssetFormModal";
 import { Plus, Pencil } from "lucide-react";
+import { useI18n } from "@/lib/use-i18n";
 
 export function AssetPicker({
-  value, onChange, assetClass, label = "Asset",
+  value,
+  onChange,
+  assetClass,
+  label = "Asset",
 }: {
   value: string;
   onChange: (id: string) => void;
   assetClass: "crypto" | "etf" | "stock" | "fiat";
   label?: string;
 }) {
+  const { t } = useI18n();
   const { rows: assets } = useAssets();
   const [q, setQ] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -20,8 +25,14 @@ export function AssetPicker({
   const [presetSym, setPresetSym] = useState<string>("");
 
   const filtered = useMemo(
-    () => assets.filter((a) => a.asset_class === assetClass &&
-      (!q || a.symbol.toLowerCase().includes(q.toLowerCase()) || a.name.toLowerCase().includes(q.toLowerCase()))),
+    () =>
+      assets.filter(
+        (a) =>
+          a.asset_class === assetClass &&
+          (!q ||
+            a.symbol.toLowerCase().includes(q.toLowerCase()) ||
+            a.name.toLowerCase().includes(q.toLowerCase())),
+      ),
     [assets, assetClass, q],
   );
   const selected = assets.find((a) => a.id === value);
@@ -29,21 +40,39 @@ export function AssetPicker({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <Label className="text-xs">{label}</Label>
+        <Label className="text-xs">{t(label)}</Label>
         <div className="flex gap-1">
           {selected && (
-            <button type="button" onClick={() => { setEditing(selected); setPresetSym(""); setFormOpen(true); }} className="text-[10px] text-muted-foreground hover:text-cyan flex items-center gap-1">
-              <Pencil className="h-2.5 w-2.5" /> edit
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(selected);
+                setPresetSym("");
+                setFormOpen(true);
+              }}
+              className="text-[10px] text-muted-foreground hover:text-cyan flex items-center gap-1"
+            >
+              <Pencil className="h-2.5 w-2.5" /> {t("Edit")}
             </button>
           )}
-          <button type="button" onClick={() => { setEditing(null); setPresetSym(""); setFormOpen(true); }} className="text-[10px] text-cyan hover:underline flex items-center gap-1">
-            <Plus className="h-2.5 w-2.5" /> new
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setPresetSym("");
+              setFormOpen(true);
+            }}
+            className="text-[10px] text-cyan hover:underline flex items-center gap-1"
+          >
+            <Plus className="h-2.5 w-2.5" /> {t("New")}
           </button>
         </div>
       </div>
       <Input
         className="mt-1"
-        placeholder={selected ? `${selected.symbol} — ${selected.name}` : "Search ticker or symbol"}
+        placeholder={
+          selected ? `${selected.symbol} — ${selected.name}` : t("Search ticker or symbol")
+        }
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
@@ -52,7 +81,10 @@ export function AssetPicker({
           <button
             key={a.id}
             type="button"
-            onClick={() => { onChange(a.id); setQ(""); }}
+            onClick={() => {
+              onChange(a.id);
+              setQ("");
+            }}
             className={`w-full text-left px-3 py-2 hover:bg-muted/30 flex justify-between ${value === a.id ? "bg-cyan/10" : ""}`}
           >
             <span className="font-mono text-cyan">{a.symbol}</span>
@@ -62,10 +94,14 @@ export function AssetPicker({
         {q && filtered.length === 0 && (
           <button
             type="button"
-            onClick={() => { setEditing(null); setPresetSym(q); setFormOpen(true); }}
+            onClick={() => {
+              setEditing(null);
+              setPresetSym(q);
+              setFormOpen(true);
+            }}
             className="w-full text-left px-3 py-2 hover:bg-muted/30 text-cyan"
           >
-            + Create "{q.toUpperCase()}" with full details
+            + {t("Create")} "{q.toUpperCase()}" {t("with full details")}
           </button>
         )}
       </div>
@@ -75,7 +111,10 @@ export function AssetPicker({
         edit={editing}
         presetClass={assetClass}
         presetSymbol={presetSym}
-        onCreated={(id) => { onChange(id); setQ(""); }}
+        onCreated={(id) => {
+          onChange(id);
+          setQ("");
+        }}
       />
     </div>
   );

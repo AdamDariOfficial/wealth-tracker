@@ -9,7 +9,6 @@ import {
   Settings,
   Sparkles,
   Target,
-  Upload,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -26,6 +25,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useCoreUI } from "@/lib/core-ui-store";
+import { useI18n } from "@/lib/use-i18n";
 
 const overviewItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -43,8 +43,6 @@ const planItems = [
   { title: "Trading", url: "/trading", icon: Briefcase },
 ] as const;
 
-const toolItems = [{ title: "Import", url: "/import", icon: Upload }] as const;
-
 function isActive(current: string, url: string) {
   return url === "/" ? current === "/" : current === url || current.startsWith(`${url}/`);
 }
@@ -58,9 +56,10 @@ function Section({
   items: readonly { title: string; url: string; icon: LucideIcon }[];
   current: string;
 }) {
+  const { t } = useI18n();
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="label-muted">{label}</SidebarGroupLabel>
+      <SidebarGroupLabel className="label-muted">{t(label)}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
@@ -72,7 +71,7 @@ function Section({
               >
                 <Link to={item.url} className="flex items-center gap-3">
                   <item.icon className="h-4 w-4" />
-                  <span className="font-medium">{item.title}</span>
+                  <span className="font-medium">{t(item.title)}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -86,6 +85,7 @@ function Section({
 export function AppSidebar() {
   const path = useRouterState({ select: (state) => state.location.pathname });
   const openComposer = useCoreUI((state) => state.openComposer);
+  const { t } = useI18n();
 
   return (
     <Sidebar
@@ -108,7 +108,6 @@ export function AppSidebar() {
         <Section label="Overview" items={overviewItems} current={path} />
         <Section label="Money" items={moneyItems} current={path} />
         <Section label="Plan & Review" items={planItems} current={path} />
-        <Section label="Tools" items={toolItems} current={path} />
       </SidebarContent>
 
       <SidebarFooter className="space-y-2 p-3">
@@ -121,7 +120,7 @@ export function AppSidebar() {
             >
               <Link to="/settings" className="flex items-center gap-3">
                 <Settings className="h-4 w-4" />
-                <span className="font-medium">Settings</span>
+                <span className="font-medium">{t("Settings")}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -132,7 +131,7 @@ export function AppSidebar() {
           className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-cyan px-3 text-sm font-semibold text-background hover:bg-cyan/90"
         >
           <Plus className="h-4 w-4" />
-          <span>Add record</span>
+          <span>{t("Add record")}</span>
         </button>
       </SidebarFooter>
     </Sidebar>

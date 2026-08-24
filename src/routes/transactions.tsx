@@ -1,8 +1,7 @@
-import { MetricCard } from "@/components/MetricCard";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Download, Plus, Search, Undo2 } from "lucide-react";
+import { Download, FilterX, Plus, Search, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { createReversalTransaction } from "@/application/commands";
 import { postValidatedTransaction } from "@/application/services";
@@ -30,27 +29,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FinancialError, FinancialLoading } from "@/features/wealth-v2/FinancialStatePanel";
-import { humanize } from "@/features/wealth-v2/format";
 import { safeEntityId } from "@/features/wealth-v2/form-utils";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { useCoreUI } from "@/lib/core-ui-store";
 import { financialV2Repository } from "@/lib/v2-runtime";
-import { useAuth } from "@/lib/auth-store";
+import { useI18n } from "@/lib/use-i18n";
 import { cn } from "@/lib/utils";
 import { describeActionError } from "@/features/wealth-v2/user-message";
 
-type SearchState = { q: string; state: string };
+type SearchState = { q: string; state: string; account?: string };
 
 export const Route = createFileRoute("/transactions")({
   validateSearch: (search: Record<string, unknown>): SearchState => ({
     q: typeof search.q === "string" ? search.q : "",
     state: typeof search.state === "string" ? search.state : "all",
+    account: typeof search.account === "string" ? search.account : "",
   }),
   component: TransactionsPage,
 });
 
 function TransactionsPage() {
-  const { profile } = useAuth();
+  const { locale, t } = useI18n();
   const queryClient = useQueryClient();
   const query = useFinancialState();
   const search = Route.useSearch();
@@ -64,7 +63,11 @@ function TransactionsPage() {
     if (!query.data) return [];
     const needle = search.q.trim().toLowerCase();
     return query.data.transactions.filter((transaction) => {
-      if (search.state !== "all" && transaction.state !== search.state) return false;
+      if (search.state === "active" && transaction.state !== "active") return false;
+      if (search.state === "adjusted" && transaction.state === "active") return false;
+      if (search.account && !transaction.legs.some((leg) => leg.accountId === search.account)) {
+        return false;
+      }
       if (!needle) return true;
       const haystack = [
         transaction.id,
@@ -113,10 +116,10 @@ function TransactionsPage() {
       });
       await postValidatedTransaction(financialV2Repository, reversal);
       await queryClient.invalidateQueries({ queryKey: financialV2Keys.all });
-      toast.success("Transaction voided. A matching reversal was recorded.");
+      toast.success(t("Transaction undone."));
       setVoidTarget(null);
     } catch (error) {
-      const message = describeActionError(error, "Could not void transaction");
+      const message = describeActionError(error, t("Could not undo transaction"));
       setVoidError(message);
       toast.error(message);
     } finally {
@@ -171,119 +174,163 @@ function TransactionsPage() {
   const selectedVoid = voidTarget
     ? query.data.transactions.find((transaction) => transaction.id === voidTarget)
     : null;
-  const locale = profile?.locale ?? undefined;
+  const accountOptions = query.data.accounts.filter(
+    (account) => account.ownership === "owned" && !account.archived,
+  );
+  const ownedAccountIds = new Set(accountOptions.map((account) => account.id));
+  const dayFormatter = new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const groupedTransactions: Array<{
+    label: string;
+    items: (typeof transactions)[number][];
+  }> = [];
+  for (const transaction of transactions) {
+    const label = dayFormatter.format(new Date(transaction.occurredAt));
+    const current = groupedTransactions[groupedTransactions.length - 1];
+    if (current?.label === label) current.items.push(transaction);
+    else groupedTransactions.push({ label, items: [transaction] });
+  }
+  const hasFilters = Boolean(search.q || search.account || search.state !== "all");
 
   return (
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
         title="Transactions"
-        subtitle="Your recorded activity, kept immutable and easy to scan."
+        subtitle="All your recorded transactions in one place."
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={exportCsv}>
-              <Download className="mr-1.5 h-4 w-4" /> Export
+              <Download className="mr-1.5 h-4 w-4" /> {t("Export")}
             </Button>
             <Button
               onClick={() => openComposer("transaction")}
               className="bg-cyan text-background hover:bg-cyan/90"
             >
-              <Plus className="mr-1.5 h-4 w-4" /> Activity
+              <Plus className="mr-1.5 h-4 w-4" /> {t("Add transaction")}
             </Button>
           </div>
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Metric label="Records" value={String(query.data.transactions.length)} />
-        <Metric
-          label="Active"
-          value={String(
-            query.data.transactions.filter((transaction) => transaction.state === "active").length,
+      <div className="surface-section p-3 sm:p-4">
+        <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_220px_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search.q}
+              onChange={(event) => updateSearch({ q: event.target.value })}
+              placeholder="Search transactions…"
+              className="min-h-11 pl-9"
+            />
+          </div>
+          <Select value={search.state} onValueChange={(state) => updateSearch({ state })}>
+            <SelectTrigger className="min-h-11 w-full" aria-label={t("Transaction status")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="active">Recorded</SelectItem>
+              <SelectItem value="adjusted">Adjusted</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={search.account || "all"}
+            onValueChange={(account) => updateSearch({ account: account === "all" ? "" : account })}
+          >
+            <SelectTrigger className="min-h-11 w-full" aria-label={t("Account filter")}>
+              <SelectValue placeholder="All accounts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All accounts</SelectItem>
+              {accountOptions.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {hasFilters ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-11"
+              onClick={() => updateSearch({ q: "", state: "all", account: "" })}
+            >
+              <FilterX className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t("Clear")}
+            </Button>
+          ) : (
+            <div className="hidden lg:block" />
           )}
-        />
-        <Metric
-          label="Voided"
-          value={String(
-            query.data.transactions.filter((transaction) => transaction.state === "voided").length,
-          )}
-        />
-        <Metric
-          label="Corrections"
-          value={String(
-            query.data.transactions.filter((transaction) => transaction.purpose !== "standard")
-              .length,
-          )}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative w-full sm:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search.q}
-            onChange={(event) => updateSearch({ q: event.target.value })}
-            placeholder="Search activity…"
-            className="pl-9"
-          />
         </div>
-        <Select value={search.state} onValueChange={(state) => updateSearch({ state })}>
-          <SelectTrigger className="w-full sm:w-44" aria-label="Transaction state">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {["all", "active", "voided", "replaced", "reversal", "replacement"].map((state) => (
-              <SelectItem key={state} value={state}>
-                {humanize(state)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="mt-3 text-xs text-muted-foreground">
+          {transactions.length}{" "}
+          {t(transactions.length === 1 ? "transaction shown" : "transactions shown")}
+        </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-6">
         {transactions.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/70 px-4 py-14 text-center text-sm text-muted-foreground">
-            No matching activity.
+            {t("No matching transactions.")}
           </div>
         ) : (
-          transactions.map((transaction) => (
-            <article key={transaction.id} className="surface-section px-3 py-2.5 sm:px-3.5">
-              <TransactionSummaryRow
-                transaction={transaction}
-                locale={locale}
-                maxMovements={1}
-                trailing={
-                  <div className="flex shrink-0 items-center gap-1">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-1 text-[10px] uppercase tracking-wider",
-                        transaction.state === "active"
-                          ? "bg-success/10 text-success"
-                          : "bg-muted/60 text-muted-foreground",
-                      )}
-                    >
-                      {transaction.state}
-                    </span>
-                    {transaction.state === "active" && transaction.purpose === "standard" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={voiding === transaction.id}
-                        onClick={() => {
-                          setVoidError(null);
-                          setVoidTarget(transaction.id);
-                        }}
-                        className="h-11 w-11 text-muted-foreground hover:text-foreground"
-                        aria-label={`Void ${transaction.description}`}
-                        title="Void"
-                      >
-                        <Undo2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                }
-              />
-            </article>
+          groupedTransactions.map((group) => (
+            <section key={group.label} className="space-y-2.5">
+              <div className="flex items-center justify-between gap-3 px-1">
+                <h2 className="text-sm font-semibold capitalize text-foreground/80">
+                  {group.label}
+                </h2>
+                <span className="rounded-full bg-muted/30 px-2 py-0.5 text-[10px] text-muted-foreground">
+                  {group.items.length}
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {group.items.map((transaction) => (
+                  <article
+                    key={transaction.id}
+                    className="surface-quiet px-4 py-3.5 transition-colors hover:bg-muted/20"
+                  >
+                    <TransactionSummaryRow
+                      transaction={transaction}
+                      locale={locale}
+                      maxMovements={2}
+                      ownedAccountIds={ownedAccountIds}
+                      dateMode="time"
+                      trailing={
+                        <div className="flex shrink-0 items-center gap-1">
+                          {transaction.state !== "active" ? (
+                            <span className="rounded-full bg-warning/10 px-2 py-1 text-[10px] uppercase tracking-wider text-warning">
+                              {t("Adjusted")}
+                            </span>
+                          ) : null}
+                          {transaction.state === "active" && transaction.purpose === "standard" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={voiding === transaction.id}
+                              onClick={() => {
+                                setVoidError(null);
+                                setVoidTarget(transaction.id);
+                              }}
+                              className="h-11 w-11 text-muted-foreground hover:text-foreground"
+                              aria-label={`${t("Undo")} ${transaction.description}`}
+                              title={t("Undo")}
+                            >
+                              <Undo2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      }
+                    />
+                  </article>
+                ))}
+              </div>
+            </section>
           ))
         )}
       </div>
@@ -299,11 +346,11 @@ function TransactionsPage() {
       >
         <AlertDialogContent className="motion-reduce:animate-none motion-reduce:transition-none">
           <AlertDialogHeader>
-            <AlertDialogTitle>Void this transaction?</AlertDialogTitle>
+            <AlertDialogTitle>Undo this transaction?</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedVoid
-                ? `“${selectedVoid.description}” will remain in the audit history and a new exact reversal will be posted. This does not delete or edit the original record.`
-                : "The original record will remain in the audit history and a new exact reversal will be posted."}
+                ? `“${selectedVoid.description}” ${t("will be undone while keeping your earlier history intact.")}`
+                : t("This transaction will be undone while keeping your earlier history intact.")}
             </AlertDialogDescription>
             {voidError && (
               <p role="alert" className="text-sm text-destructive">
@@ -321,15 +368,11 @@ function TransactionsPage() {
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {voiding ? "Posting reversal…" : "Post reversal"}
+              {voiding ? t("Undoing…") : t("Undo transaction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return <MetricCard label={label} value={value} />;
 }

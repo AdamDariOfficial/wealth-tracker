@@ -1,3 +1,4 @@
+export * from "./account-value-trend";
 export * from "./calendar-overview";
 export * from "./dashboard-insights";
 export * from "./goals-overview";

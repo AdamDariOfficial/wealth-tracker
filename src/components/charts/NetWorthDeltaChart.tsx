@@ -14,6 +14,7 @@ import type { NetWorthPointView } from "@/application/view-models";
 import { Decimal } from "@/domain/core";
 import { formatMoney } from "@/features/wealth-v2/format";
 import { chartTooltipProps } from "@/lib/chart-style";
+import { normalizeAppLocale, tr } from "@/lib/i18n";
 
 /**
  * Month-over-month change in canonical known net worth.
@@ -35,7 +36,11 @@ export function NetWorthDeltaChart({
     [locale],
   );
   const monthYearLabel = useMemo(
-    () => new Intl.DateTimeFormat(locale ?? "en-US", { month: "long", year: "numeric" }),
+    () =>
+      new Intl.DateTimeFormat(locale ?? "en-US", {
+        month: "long",
+        year: "numeric",
+      }),
     [locale],
   );
 
@@ -76,7 +81,10 @@ export function NetWorthDeltaChart({
         maximumFractionDigits: 1,
       });
     } catch {
-      return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+      return new Intl.NumberFormat("en-US", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      });
     }
   }, [locale]);
 
@@ -112,7 +120,7 @@ export function NetWorthDeltaChart({
                 <div className="font-mono text-sm">{point.display}</div>
                 {!point.complete && (
                   <div className="mt-1 text-[11px] text-muted-foreground">
-                    Based on partially valued month closes
+                    {tr(normalizeAppLocale(locale), "Based on partially valued month closes")}
                   </div>
                 )}
               </div>

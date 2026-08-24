@@ -41,6 +41,10 @@ export class SupabaseV2FinancialRepository implements FinancialRepository {
     await this.#transport.rpc("v2_put_asset", { p_asset: serializeAsset(asset) });
   }
 
+  async deleteAsset(assetId: string): Promise<void> {
+    await this.#transport.rpc("v2_delete_unused_asset", { p_asset_id: assetId });
+  }
+
   async postTransaction(transaction: LedgerTransaction): Promise<void> {
     await this.#transport.rpc("v2_post_transaction", {
       p_transaction: serializeTransaction(transaction),

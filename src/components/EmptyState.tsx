@@ -1,11 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-
-/**
- * Shared empty state. Always explains what is missing, why it matters and
- * offers an existing next action — never a bare "no data" line.
- */
+import { useI18n } from "@/lib/use-i18n";
 export function EmptyState({
   icon: Icon,
   title,
@@ -21,6 +17,7 @@ export function EmptyState({
   className?: string;
   compact?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div
       className={cn(
@@ -34,9 +31,9 @@ export function EmptyState({
           <Icon className="h-5 w-5" aria-hidden="true" />
         </div>
       )}
-      <h3 className="font-display text-base font-semibold text-foreground">{title}</h3>
+      <h3 className="font-display text-base font-semibold text-foreground">{t(title)}</h3>
       {description && (
-        <p className="mt-1.5 max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
+        <p className="mt-1.5 max-w-sm text-sm leading-6 text-muted-foreground">{t(description)}</p>
       )}
       {action && <div className="mt-5 flex flex-wrap justify-center gap-2">{action}</div>}
     </div>

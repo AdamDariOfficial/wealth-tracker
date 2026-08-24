@@ -28,6 +28,7 @@ import { formatMoney, humanize } from "@/features/wealth-v2/format";
 import { useFinancialState } from "@/features/wealth-v2/use-financial-state";
 import { useAuth } from "@/lib/auth-store";
 import { useCoreUI } from "@/lib/core-ui-store";
+import { useI18n } from "@/lib/use-i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,6 +56,7 @@ function Dashboard() {
   const { profile } = useAuth();
   const query = useFinancialState();
   const openComposer = useCoreUI((state) => state.openComposer);
+  const { locale, t } = useI18n();
   const overview = query.data ?? null;
 
   // Derived once per data change. The dashboard never recomputes financial
@@ -69,11 +71,15 @@ function Dashboard() {
     return <FinancialError error={query.error} retry={() => void query.refetch()} />;
   }
 
-  const locale = profile?.locale ?? undefined;
   const recent = overview.transactions.slice(0, 5);
-  const firstName = (profile?.displayName ?? "there").split(" ")[0];
+  const ownedAccountIds = new Set(
+    overview.accounts
+      .filter((account) => account.ownership === "owned")
+      .map((account) => account.id),
+  );
+  const firstName = (profile?.displayName ?? t("there")).split(" ")[0];
   const hasAnything =
-    overview.accounts.some((account) => account.ownership !== "system") ||
+    overview.accounts.some((account) => account.ownership === "owned") ||
     overview.transactions.length > 0;
   const trend = insights.netWorthTrend;
   const topAccounts = insights.accountValues.slice(0, 5);
@@ -117,14 +123,14 @@ function Dashboard() {
   return (
     <div className="space-y-5 sm:space-y-6">
       <PageHeader
-        title={`Welcome back, ${firstName}`}
+        title={`${t("Welcome back")}, ${firstName}`}
         subtitle="Your complete financial position, updated as you record activity."
         action={
           <Button
             onClick={() => openComposer("transaction", "general")}
             className="bg-cyan text-background hover:bg-cyan/90"
           >
-            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Add record
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> {t("Add record")}
           </Button>
         }
       />
@@ -140,10 +146,10 @@ function Dashboard() {
                 onClick={() => openComposer("account")}
                 className="bg-cyan text-background hover:bg-cyan/90"
               >
-                <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Add an account
+                <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> {t("Add an account")}
               </Button>
               <Button variant="outline" asChild>
-                <Link to="/import">Import from a file</Link>
+                <Link to="/import">{t("Import from a file")}</Link>
               </Button>
             </>
           }
@@ -152,7 +158,7 @@ function Dashboard() {
         <>
           {/* One focal value per page, supported by calm secondary metrics. */}
           <section
-            aria-label="Financial summary"
+            aria-label={t("Financial summary")}
             className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)]"
           >
             <MetricCard
@@ -164,10 +170,8 @@ function Dashboard() {
               hint={
                 overview.baseCurrency
                   ? overview.valuationComplete
-                    ? `All positions valued in ${overview.baseCurrency}`
-                    : `${overview.unknownPositionCount} position${
-                        overview.unknownPositionCount === 1 ? "" : "s"
-                      } still need a value`
+                    ? `${t("All positions valued in")} ${overview.baseCurrency}`
+                    : `${overview.unknownPositionCount} ${t(overview.unknownPositionCount === 1 ? "position still needs a value" : "positions still need a value")}`
                   : "Set a base currency in Settings to see totals"
               }
             />
@@ -176,13 +180,13 @@ function Dashboard() {
                 label="Liquidity"
                 value={formatMoney(liquidity, locale)}
                 icon={Landmark}
-                hint={`${shareOfAllocation(liquidityAmount)}% of known allocation`}
+                hint={`${shareOfAllocation(liquidityAmount)}% ${t("of known allocation")}`}
               />
               <MetricCard
                 label="Invested"
                 value={formatMoney(invested, locale)}
                 icon={PieChart}
-                hint={`${shareOfAllocation(investedAmount)}% of known allocation`}
+                hint={`${shareOfAllocation(investedAmount)}% ${t("of known allocation")}`}
               />
             </div>
           </section>
@@ -193,7 +197,7 @@ function Dashboard() {
             title="Known net worth over time"
             description={
               overview.baseCurrency
-                ? `Valued at each month close, in ${overview.baseCurrency}`
+                ? `${t("Valued at each month close, in")} ${overview.baseCurrency}`
                 : "Set a base currency in Settings to see your history"
             }
             icon={LineChart}
@@ -227,7 +231,7 @@ function Dashboard() {
               title="Composition"
               description={
                 overview.baseCurrency
-                  ? `Known invested mix in ${overview.baseCurrency}`
+                  ? `${t("Known invested mix in")} ${overview.baseCurrency}`
                   : "Set a base currency to see your composition"
               }
               icon={PieChart}
@@ -253,11 +257,13 @@ function Dashboard() {
                               <span className="flex min-w-0 items-center gap-2">
                                 <span
                                   className="h-2.5 w-2.5 shrink-0 rounded-full"
-                                  style={{ background: compositionColor(index) }}
+                                  style={{
+                                    background: compositionColor(index),
+                                  }}
                                   aria-hidden="true"
                                 />
                                 <span className="min-w-0 truncate text-sm font-medium">
-                                  {humanize(slice.kind)}
+                                  {t(humanize(slice.kind))}
                                 </span>
                               </span>
                               <span className="shrink-0 text-right">
@@ -272,7 +278,10 @@ function Dashboard() {
                             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/40">
                               <div
                                 className="h-full rounded-full"
-                                style={{ width: `${share}%`, background: compositionColor(index) }}
+                                style={{
+                                  width: `${share}%`,
+                                  background: compositionColor(index),
+                                }}
                               />
                             </div>
                           </li>
@@ -284,7 +293,8 @@ function Dashboard() {
                       search={{ view: "all", q: "", asset: "" }}
                       className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-cyan hover:underline md:min-h-0"
                     >
-                      Open Portfolio <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t("Open Portfolio")}{" "}
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </Link>
                   </div>
                 </div>
@@ -321,9 +331,9 @@ function Dashboard() {
                               {account.name}
                             </span>
                             <span className="mt-0.5 block text-xs text-muted-foreground">
-                              {humanize(account.kind)}
+                              {t(humanize(account.kind))}
                               {account.unknownPositionCount > 0
-                                ? ` · ${account.unknownPositionCount} unvalued`
+                                ? ` · ${account.unknownPositionCount} ${t("unvalued")}`
                                 : ""}
                             </span>
                           </span>
@@ -350,7 +360,7 @@ function Dashboard() {
                     search={{ q: "", archived: false }}
                     className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-cyan hover:underline md:min-h-0"
                   >
-                    All accounts <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t("All accounts")} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </Link>
                 </>
               )}
@@ -389,11 +399,11 @@ function Dashboard() {
                 />
               ) : (
                 <ChartFrame
-                  caption={`${insights.activityTotal} ${
-                    insights.activityTotal === 1 ? "entry" : "entries"
-                  } in the last ${insights.activity.length} ${
-                    insights.activity.length === 1 ? "month" : "months"
-                  }. Corrections are shown in violet.`}
+                  caption={`${insights.activityTotal} ${t(
+                    insights.activityTotal === 1 ? "entry" : "entries",
+                  )} ${t("in the last")} ${insights.activity.length} ${t(
+                    insights.activity.length === 1 ? "month" : "months",
+                  )}. ${t("Corrections are shown in violet.")}`}
                 >
                   <ActivityRhythmChart buckets={insights.activity} locale={locale} />
                 </ChartFrame>
@@ -427,7 +437,11 @@ function Dashboard() {
                       search={{ q: transaction.id, state: "all" }}
                       className="surface-quiet surface-interactive block px-3 py-2.5"
                     >
-                      <TransactionSummaryRow transaction={transaction} locale={locale} />
+                      <TransactionSummaryRow
+                        transaction={transaction}
+                        locale={locale}
+                        ownedAccountIds={ownedAccountIds}
+                      />
                     </Link>
                   ))}
                   <Link
@@ -435,7 +449,8 @@ function Dashboard() {
                     search={{ q: "", state: "all" }}
                     className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-cyan hover:underline md:min-h-0"
                   >
-                    View all transactions <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t("View all transactions")}{" "}
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </Link>
                 </>
               )}

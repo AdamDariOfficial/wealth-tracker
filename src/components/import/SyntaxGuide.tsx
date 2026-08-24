@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/use-i18n";
 
 type Section = { title: string; examples: { label: string; code: string }[] };
 
@@ -76,6 +77,7 @@ const SECTIONS: Section[] = [
 export function SyntaxGuide({ onInsert }: { onInsert?: (code: string) => void }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const { t } = useI18n();
 
   async function copy(code: string) {
     try {
@@ -94,9 +96,9 @@ export function SyntaxGuide({ onInsert }: { onInsert?: (code: string) => void })
           <button className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold hover:bg-muted/20 transition-colors">
             <span className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-cyan" />
-              Syntax guide
+              {t("Syntax guide")}
               <span className="text-[11px] font-normal text-muted-foreground ml-1">
-                — every supported operation, with copy-paste examples
+                — {t("every supported operation, with copy-paste examples")}
               </span>
             </span>
             <ChevronDown
@@ -112,7 +114,7 @@ export function SyntaxGuide({ onInsert }: { onInsert?: (code: string) => void })
             {SECTIONS.map((sec) => (
               <div key={sec.title} className="p-3 space-y-2">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {sec.title}
+                  {t(sec.title)}
                 </div>
                 <div className="space-y-1.5">
                   {sec.examples.map((ex) => (
