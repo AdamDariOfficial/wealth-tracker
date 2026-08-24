@@ -17,7 +17,7 @@ dist-ssr/
 .nitro/
 
 # Local environment files
-.env
+# .env is tracked on purpose: browser-safe VITE_ build-time values only.
 .env.*
 !.env.example
 *.local
