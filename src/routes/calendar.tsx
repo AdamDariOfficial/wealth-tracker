@@ -308,7 +308,7 @@ function CalendarPage() {
           <ChartFrame
             height="compact"
             caption={t(
-              "The line starts from the period opening value and stays flat until a recorded value changes.",
+              "The line starts from the period opening value and follows every recorded value change.",
             )}
           >
             <CalendarValueTrendChart
@@ -320,6 +320,7 @@ function CalendarPage() {
           </ChartFrame>
         </SectionCard>
       ) : null}
+
 
       <Dialog open={diagnosticsOpen} onOpenChange={setDiagnosticsOpen}>
         <DialogContent className="max-h-[85dvh] max-w-xl overflow-y-auto">
