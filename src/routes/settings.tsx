@@ -245,24 +245,8 @@ function SettingsPage() {
         }
       />
 
-      <nav
-        className="flex gap-1 overflow-x-auto border-b border-border/60 pb-3 text-sm"
-        aria-label={t("Settings sections")}
-      >
-        {[
-          ["#profile", "Profile"],
-          ["#data", "Data & portability"],
-          ["#danger", "Reset workspace"],
-        ].map(([href, label]) => (
-          <a
-            key={href}
-            href={href}
-            className="shrink-0 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t(label)}
-          </a>
-        ))}
-      </nav>
+
+
 
       <div className="divide-y divide-border/60 border-b border-border/60">
         <SettingsSection
