@@ -298,10 +298,11 @@ function CalendarPage() {
       {view === "month" ? (
         <MonthGrid buckets={workspace.buckets} locale={locale} onOpen={openBucket} />
       ) : view === "day" ? (
-        <DayPanel events={workspace.events} locale={locale} />
+        <DayPanel events={workspace.events} locale={locale} ownedAccountIds={ownedAccountIds} />
       ) : (
         <BucketGrid scope={view} buckets={workspace.buckets} locale={locale} onOpen={openBucket} />
       )}
+
 
       {showValueTrend && workspace.startValuation ? (
         <SectionCard title="Value trend" description="Portfolio value through the selected period.">
