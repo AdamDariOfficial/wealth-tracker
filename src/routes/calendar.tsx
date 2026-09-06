@@ -358,8 +358,13 @@ function CalendarPage() {
             <DialogDescription>{t("Transactions recorded on this day.")}</DialogDescription>
           </DialogHeader>
           <div className="mt-2">
-            <EventList events={workspace.selectedDayEvents} locale={locale} />
+            <EventList
+              events={workspace.selectedDayEvents}
+              locale={locale}
+              ownedAccountIds={ownedAccountIds}
+            />
           </div>
+
         </DialogContent>
       </Dialog>
     </div>
