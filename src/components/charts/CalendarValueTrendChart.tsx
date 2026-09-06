@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,6 +17,7 @@ import type {
 import { formatMoney } from "@/features/wealth-v2/format";
 import { useI18n } from "@/lib/use-i18n";
 import { chartTooltipProps } from "@/lib/chart-style";
+
 
 function bucketLabel(scope: CalendarScope, date: Date, locale: string): string {
   if (scope === "week" || scope === "month") {
