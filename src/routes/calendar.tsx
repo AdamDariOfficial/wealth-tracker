@@ -599,6 +599,9 @@ function MonthGrid({
   onOpen: (bucket: CalendarBucketView) => void;
 }) {
   const { t } = useI18n();
+  const isMobile = useIsMobile();
+  const [detailed, setDetailed] = useState<boolean | null>(null);
+  const showDetails = detailed ?? !isMobile;
   const first = buckets[0]?.start;
   const offset = first ? (first.getDay() + 6) % 7 : 0;
   const trailing = (7 - ((offset + buckets.length) % 7)) % 7;
@@ -608,122 +611,169 @@ function MonthGrid({
     ...buckets,
     ...Array.from({ length: trailing }, () => null),
   ];
+  const cellHeight = showDetails
+    ? "min-h-[92px] sm:min-h-[112px]"
+    : "min-h-[58px] sm:min-h-[68px]";
 
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-border/55 bg-card/10">
-      <div className="grid grid-cols-7 border-b border-border/55 bg-muted/20 text-center text-[9px] uppercase tracking-[0.12em] text-muted-foreground sm:text-[10px]">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, index) => (
-          <div
-            key={label}
-            className={cn("min-w-0 px-0.5 py-2", index < 6 && "border-r border-border/35")}
-          >
-            {t(label)}
-          </div>
-        ))}
+    <div className="space-y-2.5">
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-h-11"
+          aria-pressed={showDetails}
+          onClick={() => setDetailed(!showDetails)}
+        >
+          {showDetails ? (
+            <Minimize2 className="mr-2 h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Maximize2 className="mr-2 h-4 w-4" aria-hidden="true" />
+          )}
+          {t(showDetails ? "Hide details" : "Show details")}
+        </Button>
       </div>
-      <div className="grid w-full grid-cols-7">
-        {cells.map((bucket, index) => {
-          const lastColumn = index % 7 === 6;
-          const lastRow = index >= cells.length - 7;
-          const cellBorder = cn(
-            !lastColumn && "border-r border-border/35",
-            !lastRow && "border-b border-border/35",
-          );
 
-          if (!bucket) {
-            return (
-              <div
-                key={`blank-${index}`}
-                className={cn("min-h-[92px] bg-muted/[0.012] sm:min-h-[112px]", cellBorder)}
-                aria-hidden="true"
-              />
-            );
-          }
-
-          const showIncome = hasMoney(bucket.knownInflow);
-          const showExpense = hasMoney(bucket.knownOutflow);
-          const showDelta = hasMoney(bucket.knownDelta) || bucket.eventCount > 0;
-          const hasDetails = showIncome || showExpense || showDelta;
-          const visual = calendarDeltaVisual(bucket, heatmapScale);
-
-          return (
-            <button
-              type="button"
-              key={bucket.key}
-              onClick={() => onOpen(bucket)}
-              className={cn(
-                "flex min-h-[92px] min-w-0 flex-col p-1.5 text-left transition-[filter] sm:min-h-[112px] sm:p-2.5",
-                calendarSurfaceClass(visual),
-                cellBorder,
-                bucket.future && "opacity-45",
-                "hover:brightness-110 motion-reduce:transition-none focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan/50",
-              )}
-              title={[
-                `${t("Income")}: ${formatMoney(bucket.knownInflow, locale)}`,
-                `${t("Expense")}: ${formatMoney(bucket.knownOutflow, locale)}`,
-                `${t("Change")}: ${formatMoney(bucket.knownDelta, locale)}`,
-              ].join(" · ")}
+      <div className="w-full overflow-hidden rounded-2xl border border-border/55 bg-card/10">
+        <div className="grid grid-cols-7 border-b border-border/55 bg-muted/20 text-center text-[9px] uppercase tracking-[0.12em] text-muted-foreground sm:text-[10px]">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, index) => (
+            <div
+              key={label}
+              className={cn("min-w-0 px-0.5 py-2", index < 6 && "border-r border-border/35")}
             >
-              <div className="flex w-full items-start justify-between gap-1">
-                <span className="font-mono text-[11px] font-semibold text-foreground sm:text-xs">
-                  {bucket.start.getDate()}
-                </span>
-                <div className="flex items-center gap-1">
-                  {!bucket.future && (!bucket.deltaComplete || !bucket.flowComplete) ? (
-                    <span
-                      className="h-1.5 w-1.5 rounded-full bg-warning"
-                      aria-label={t("Incomplete change data")}
-                    />
-                  ) : null}
-                  {bucket.eventCount > 0 ? (
-                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-muted/60 px-1 font-mono text-[8px] text-muted-foreground">
-                      {bucket.eventCount}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
+              {t(label)}
+            </div>
+          ))}
+        </div>
+        <div className="grid w-full grid-cols-7">
+          {cells.map((bucket, index) => {
+            const lastColumn = index % 7 === 6;
+            const lastRow = index >= cells.length - 7;
+            const cellBorder = cn(
+              !lastColumn && "border-r border-border/35",
+              !lastRow && "border-b border-border/35",
+            );
 
-              {!bucket.future && hasDetails ? (
-                <div className="mt-auto w-full space-y-1 pt-2 font-mono text-[8px] leading-tight sm:text-[10px]">
-                  {showIncome ? (
-                    <div
-                      className={cn(
-                        "truncate",
-                        bucket.flowComplete ? "text-success" : "text-warning",
-                      )}
-                    >
-                      +{formatCompactMoney(bucket.knownInflow, locale)}
-                    </div>
-                  ) : null}
-                  {showExpense ? (
-                    <div
-                      className={cn(
-                        "truncate",
-                        bucket.flowComplete ? "text-destructive" : "text-warning",
-                      )}
-                    >
-                      −{formatCompactMoney(bucket.knownOutflow, locale)}
-                    </div>
-                  ) : null}
-                  {showDelta ? (
-                    <div
-                      className={cn(
-                        "truncate font-medium",
-                        moneyTone(bucket.knownDelta, bucket.deltaComplete),
-                      )}
-                    >
-                      Δ {formatCompactSignedMoney(bucket.knownDelta, locale)}
-                    </div>
-                  ) : null}
+            if (!bucket) {
+              return (
+                <div
+                  key={`blank-${index}`}
+                  className={cn(
+                    "bg-muted/[0.012] transition-[min-height] duration-300 ease-out motion-reduce:transition-none",
+                    cellHeight,
+                    cellBorder,
+                  )}
+                  aria-hidden="true"
+                />
+              );
+            }
+
+            const showIncome = hasMoney(bucket.knownInflow);
+            const showExpense = hasMoney(bucket.knownOutflow);
+            const showDelta = hasMoney(bucket.knownDelta) || bucket.eventCount > 0;
+            const visual = calendarDeltaVisual(bucket, heatmapScale);
+
+            return (
+              <button
+                type="button"
+                key={bucket.key}
+                onClick={() => onOpen(bucket)}
+                className={cn(
+                  "flex min-w-0 flex-col p-1.5 text-left transition-[filter,min-height] duration-300 ease-out sm:p-2.5",
+                  cellHeight,
+                  calendarSurfaceClass(visual),
+                  cellBorder,
+                  bucket.future && "opacity-45",
+                  "hover:brightness-110 motion-reduce:transition-none focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan/50",
+                )}
+                title={[
+                  `${t("Income")}: ${formatMoney(bucket.knownInflow, locale)}`,
+                  `${t("Expense")}: ${formatMoney(bucket.knownOutflow, locale)}`,
+                  `${t("Change")}: ${formatMoney(bucket.knownDelta, locale)}`,
+                ].join(" · ")}
+              >
+                <div className="flex w-full items-start justify-between gap-1">
+                  <span className="font-mono text-[11px] font-semibold text-foreground sm:text-xs">
+                    {bucket.start.getDate()}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {!bucket.future && (!bucket.deltaComplete || !bucket.flowComplete) ? (
+                      <span
+                        className="h-1.5 w-1.5 rounded-full bg-warning"
+                        aria-label={t("Incomplete change data")}
+                      />
+                    ) : null}
+                    {bucket.eventCount > 0 && showDetails ? (
+                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-muted/60 px-1 font-mono text-[8px] text-muted-foreground">
+                        {bucket.eventCount}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              ) : null}
-            </button>
-          );
-        })}
+
+                {!bucket.future && showDelta ? (
+                  <div
+                    className={cn(
+                      "mt-auto w-full truncate pt-1 font-mono text-[10px] font-semibold leading-tight sm:text-xs",
+                      moneyTone(bucket.knownDelta, bucket.deltaComplete),
+                    )}
+                  >
+                    {formatCompactSignedMoney(bucket.knownDelta, locale)}
+                  </div>
+                ) : null}
+
+                {!bucket.future ? (
+                  <div
+                    className={cn(
+                      "grid w-full transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none",
+                      showDetails && (showIncome || showExpense || bucket.eventCount > 0)
+                        ? "grid-rows-[1fr] opacity-100"
+                        : "grid-rows-[0fr] opacity-0",
+                    )}
+                    aria-hidden={!showDetails}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <div className="space-y-0.5 pt-1 font-mono text-[8px] leading-tight sm:text-[10px]">
+                        {showIncome ? (
+                          <div
+                            className={cn(
+                              "truncate",
+                              bucket.flowComplete ? "text-success" : "text-warning",
+                            )}
+                          >
+                            +{formatCompactMoney(bucket.knownInflow, locale)}
+                          </div>
+                        ) : null}
+                        {showExpense ? (
+                          <div
+                            className={cn(
+                              "truncate",
+                              bucket.flowComplete ? "text-destructive" : "text-warning",
+                            )}
+                          >
+                            −{formatCompactMoney(bucket.knownOutflow, locale)}
+                          </div>
+                        ) : null}
+                        {bucket.eventCount > 0 ? (
+                          <div className="truncate text-muted-foreground">
+                            {bucket.eventCount}{" "}
+                            {t(bucket.eventCount === 1 ? "transaction" : "transactions")}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
+
 
 function DayPanel({
   events,
