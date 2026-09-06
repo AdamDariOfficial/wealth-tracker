@@ -470,8 +470,13 @@ const ITALIAN: Readonly<Record<string, string>> = Object.freeze({
     "Il backup viene verificato prima di sostituire qualsiasi dato. Se il file non è valido, i dati attuali restano invariati.",
   "The latest transactions involving this account.":
     "Le transazioni più recenti che coinvolgono questo conto.",
-  "The line starts from the period opening value and stays flat until a recorded value changes.":
-    "La linea parte dal valore iniziale del periodo e resta piatta finché un valore registrato non cambia.",
+  "The line starts from the period opening value and follows every recorded value change.":
+    "La linea parte dal valore iniziale del periodo e segue ogni variazione registrata.",
+  "Compact view": "Vista compatta",
+  "Detailed view": "Vista dettagliata",
+  "Show details": "Mostra dettagli",
+  "Hide details": "Nascondi dettagli",
+
   "The positions currently held across your accounts.":
     "Le posizioni attualmente detenute nei tuoi conti.",
   "Each asset is grouped once, with its distribution across accounts underneath.":

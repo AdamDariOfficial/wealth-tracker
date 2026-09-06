@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,6 +17,7 @@ import type {
 import { formatMoney } from "@/features/wealth-v2/format";
 import { useI18n } from "@/lib/use-i18n";
 import { chartTooltipProps } from "@/lib/chart-style";
+
 
 function bucketLabel(scope: CalendarScope, date: Date, locale: string): string {
   if (scope === "week" || scope === "month") {
@@ -76,7 +77,13 @@ export function CalendarValueTrendChart({
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <defs>
+          <linearGradient id="calendarValueFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-cyan)" stopOpacity={0.28} />
+            <stop offset="100%" stopColor="var(--color-cyan)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
         <CartesianGrid stroke="var(--grid-line)" strokeDasharray="3 6" vertical={false} />
         <XAxis
           dataKey="label"
@@ -84,6 +91,7 @@ export function CalendarValueTrendChart({
           axisLine={false}
           tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
           minTickGap={18}
+          interval="preserveStartEnd"
         />
         <YAxis
           width={46}
@@ -95,6 +103,7 @@ export function CalendarValueTrendChart({
         />
         <Tooltip
           {...chartTooltipProps}
+          cursor={{ stroke: "var(--color-cyan)", strokeOpacity: 0.35, strokeWidth: 1 }}
           animationDuration={reduceMotion ? 0 : chartTooltipProps.animationDuration}
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
@@ -111,18 +120,20 @@ export function CalendarValueTrendChart({
             );
           }}
         />
-        <Line
-          type="stepAfter"
+        <Area
+          type="monotone"
           dataKey="value"
           stroke="var(--color-cyan)"
           strokeWidth={2}
-          dot={{ r: 2.5, fill: "var(--color-background)", strokeWidth: 2 }}
-          activeDot={{ r: 4 }}
-          connectNulls={false}
+          fill="url(#calendarValueFill)"
+          connectNulls
+          dot={false}
+          activeDot={{ r: 4, strokeWidth: 0, fill: "var(--color-cyan)" }}
           isAnimationActive={!reduceMotion}
-          animationDuration={reduceMotion ? 0 : 360}
+          animationDuration={reduceMotion ? 0 : 420}
         />
-      </LineChart>
+      </AreaChart>
     </ResponsiveContainer>
   );
 }
+

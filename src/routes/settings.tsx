@@ -245,24 +245,8 @@ function SettingsPage() {
         }
       />
 
-      <nav
-        className="flex gap-1 overflow-x-auto border-b border-border/60 pb-3 text-sm"
-        aria-label={t("Settings sections")}
-      >
-        {[
-          ["#profile", "Profile"],
-          ["#data", "Data & portability"],
-          ["#danger", "Reset workspace"],
-        ].map(([href, label]) => (
-          <a
-            key={href}
-            href={href}
-            className="shrink-0 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-muted/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t(label)}
-          </a>
-        ))}
-      </nav>
+
+
 
       <div className="divide-y divide-border/60 border-b border-border/60">
         <SettingsSection
@@ -347,20 +331,22 @@ function SettingsPage() {
           description="Import, export and restore your financial data from one place."
         >
           <div className="max-w-3xl divide-y divide-border/50">
-            <div className="flex flex-col gap-4 pb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-4 pb-6">
               <div className="min-w-0">
                 <h3 className="font-medium">{t("Import data")}</h3>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   {t("Bring transactions in from a CSV file when you need it.")}
                 </p>
               </div>
-              <Button asChild variant="outline" className="min-h-11 shrink-0">
+              <Button asChild variant="outline" className="min-h-11 w-fit">
                 <Link to="/import">
+                  <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
                   {t("Open import")}
                   <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Link>
               </Button>
             </div>
+
 
             <div className="space-y-4 py-6">
               <div>
