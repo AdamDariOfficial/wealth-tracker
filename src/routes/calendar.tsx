@@ -725,19 +725,35 @@ function MonthGrid({
   );
 }
 
-function DayPanel({ events, locale }: { events: readonly TransactionView[]; locale: string }) {
+function DayPanel({
+  events,
+  locale,
+  ownedAccountIds,
+}: {
+  events: readonly TransactionView[];
+  locale: string;
+  ownedAccountIds: ReadonlySet<string>;
+}) {
   const { t } = useI18n();
   return (
     <div className="surface-section p-4 sm:p-5">
       <h3 className="font-display font-semibold">{t("Transactions")}</h3>
       <div className="mt-4">
-        <EventList events={events} locale={locale} />
+        <EventList events={events} locale={locale} ownedAccountIds={ownedAccountIds} />
       </div>
     </div>
   );
 }
 
-function EventList({ events, locale }: { events: readonly TransactionView[]; locale: string }) {
+function EventList({
+  events,
+  locale,
+  ownedAccountIds,
+}: {
+  events: readonly TransactionView[];
+  locale: string;
+  ownedAccountIds: ReadonlySet<string>;
+}) {
   const { t } = useI18n();
   if (events.length === 0) {
     return (
@@ -748,21 +764,20 @@ function EventList({ events, locale }: { events: readonly TransactionView[]; loc
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {events.map((event) => (
         <article key={event.id} className="rounded-xl border border-border/50 bg-muted/10 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h4 className="break-words font-medium">{event.description}</h4>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {formatDateTime(event.occurredAt, locale)}
-              </div>
-            </div>
-          </div>
+          <TransactionSummaryRow
+            transaction={event}
+            locale={locale}
+            maxMovements={3}
+            ownedAccountIds={ownedAccountIds}
+          />
         </article>
       ))}
     </div>
   );
+
 }
 
 function hasMoney(value: Money | null): boolean {
