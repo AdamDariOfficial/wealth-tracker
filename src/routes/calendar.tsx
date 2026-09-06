@@ -187,6 +187,12 @@ function CalendarPage() {
 
   const locale = financial.data.state.profile?.locale ?? "en-US";
   const periodStatus = calendarPeriodStatus(workspace, new Date());
+  const ownedAccountIds = new Set(
+    financial.data.accounts
+      .filter((account) => account.ownership === "owned")
+      .map((account) => account.id),
+  );
+
 
   const updateSearch = (patch: Partial<CalendarSearch>) => {
     void navigate({
