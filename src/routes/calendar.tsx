@@ -6,6 +6,8 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
@@ -21,6 +23,8 @@ import {
 import { CalendarValueTrendChart } from "@/components/charts/CalendarValueTrendChart";
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { PageHeader } from "@/components/PageHeader";
+import { TransactionSummaryRow } from "@/components/TransactionSummaryRow";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { SectionCard } from "@/components/SectionCard";
 import { Button } from "@/components/ui/button";
 import {
