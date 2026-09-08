@@ -193,14 +193,17 @@ function RootComponent() {
           <div className="flex min-h-screen w-full">
             <AppSidebar />
             <div className="flex min-w-0 flex-1 flex-col">
-              <AppHeader />
-              <main className="safe-x mx-auto w-full max-w-[1440px] flex-1 py-5 pb-24 sm:py-6 md:pb-6 lg:py-7">
+              <main className="safe-x safe-top mx-auto w-full max-w-[1440px] flex-1 py-5 pb-24 sm:py-6 md:pb-6 lg:py-7">
                 <div className="min-w-0 px-4 sm:px-6 lg:px-8">
+                  <div className="mb-5 flex w-full justify-center sm:mb-6">
+                    <CommandPalette />
+                  </div>
                   <GlobalFinancialWarnings />
                   <Outlet />
                 </div>
               </main>
             </div>
+
           </div>
           <AppMobileNavigation />
           <CoreComposer />
@@ -210,12 +213,3 @@ function RootComponent() {
   );
 }
 
-function AppHeader() {
-  return (
-    <header className="safe-top sticky top-0 z-30 border-b border-border/50 bg-background/70 px-4 pb-3 backdrop-blur-xl sm:px-6 sm:pb-3.5 lg:px-8">
-      <div className="mt-3.5 flex w-full items-center justify-center sm:mt-4">
-        <CommandPalette />
-      </div>
-    </header>
-  );
-}
