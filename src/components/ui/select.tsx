@@ -148,7 +148,7 @@ const SelectTrigger = React.forwardRef<HTMLSelectElement, SelectTriggerProps>(
           disabled={disabled}
           onChange={(event) => setValue(event.target.value)}
           className={cn(
-            "h-11 w-full appearance-none rounded-lg border border-input bg-background px-3 pr-10 text-base text-foreground shadow-sm ring-offset-background outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:text-sm [color-scheme:dark]",
+            "h-11 w-full appearance-none rounded-lg border border-input bg-background pl-3 pr-9 text-base text-foreground shadow-sm ring-offset-background outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:text-sm [color-scheme:dark]",
             !value && "text-muted-foreground",
           )}
           {...props}
@@ -165,9 +165,10 @@ const SelectTrigger = React.forwardRef<HTMLSelectElement, SelectTriggerProps>(
           ))}
         </select>
         <ChevronDown
-          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute inset-y-0 right-3 my-auto h-4 w-4 text-muted-foreground"
           aria-hidden="true"
         />
+
       </div>
     );
   },
