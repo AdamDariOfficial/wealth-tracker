@@ -370,48 +370,123 @@ function ValuationDiagnostics({ issues }: { issues: readonly CalendarValuationIs
   );
 }
 
-function ScopeSwitcher({
-  value,
-  onChange,
+const SCOPES = ["week", "month", "quarter", "year"] as const;
+const SCOPE_LABELS: Record<(typeof SCOPES)[number], string> = {
+  week: "Week",
+  month: "Month",
+  quarter: "Quarter",
+  year: "Year",
+};
+
+function RangeNavigator({
+  view,
+  anchorDate,
+  locale,
+  onScopeChange,
+  onStep,
+  onPick,
+  diagnosticsCount,
+  onDiagnostics,
 }: {
-  value: CalendarScope;
-  onChange: (value: CalendarScope) => void;
+  view: CalendarScope;
+  anchorDate: Date;
+  locale: string;
+  onScopeChange: (scope: CalendarScope) => void;
+  onStep: (direction: -1 | 1) => void;
+  onPick: (date: Date) => void;
+  diagnosticsCount: number;
+  onDiagnostics: () => void;
 }) {
   const { t } = useI18n();
-  const scopes = ["week", "month", "quarter", "year"] as const;
-  const labels: Record<(typeof scopes)[number], string> = {
-    week: "Week",
-    month: "Month",
-    quarter: "Quarter",
-    year: "Year",
-  };
+  const scopeLabel = t(
+    SCOPE_LABELS[(SCOPES as readonly string[]).includes(view) ? (view as never) : "month"],
+  );
 
   return (
-    <div className="grid grid-cols-4 gap-1 rounded-2xl border border-border/50 bg-muted/20 p-1">
-      {scopes.map((scope) => (
-        <button
-          type="button"
-          key={scope}
-          onClick={() => onChange(scope)}
-          className={cn(
-            "min-h-11 min-w-0 rounded-xl px-1 text-[11px] font-medium transition-colors sm:text-sm",
-            value === scope
-              ? "bg-cyan/10 text-cyan ring-1 ring-cyan/30"
-              : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
-          )}
-        >
-          <span className="block truncate">{t(labels[scope])}</span>
-        </button>
-      ))}
-    </div>
+    <section className="surface-section overflow-hidden p-2.5 sm:p-3">
+      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-1.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 shrink-0 rounded-xl"
+            onClick={() => onStep(-1)}
+            aria-label={`${t("Previous")} ${scopeLabel}`}
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <div className="min-w-0 flex-1 text-center lg:text-left">
+            <h2 className="truncate font-display text-lg font-semibold tracking-tight sm:text-xl">
+              {periodTitle(view, anchorDate, locale)}
+            </h2>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 shrink-0 rounded-xl"
+            onClick={() => onStep(1)}
+            aria-label={`${t("Next")} ${scopeLabel}`}
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <label className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/55 bg-card/40 text-muted-foreground">
+            <span className="sr-only">{t("Jump to date")}</span>
+            <input
+              type="date"
+              value={dateKey(anchorDate)}
+              onChange={(event) => {
+                const next = parseDateKey(event.target.value);
+                if (next) onPick(next);
+              }}
+              className="h-full w-full cursor-pointer bg-transparent text-transparent outline-none [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:m-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-datetime-edit]:hidden"
+              aria-label={t("Jump directly to date")}
+            />
+          </label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="grid min-w-0 flex-1 grid-cols-4 gap-1 rounded-xl bg-muted/25 p-1 lg:flex-none">
+            {SCOPES.map((scope) => (
+              <button
+                type="button"
+                key={scope}
+                onClick={() => onScopeChange(scope)}
+                aria-pressed={view === scope}
+                className={cn(
+                  "min-h-10 min-w-0 rounded-lg px-2 text-[11px] font-medium transition-colors sm:text-sm",
+                  view === scope
+                    ? "bg-cyan/12 text-cyan ring-1 ring-cyan/30"
+                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+                )}
+              >
+                <span className="block truncate">{t(SCOPE_LABELS[scope])}</span>
+              </button>
+            ))}
+          </div>
+          {diagnosticsCount > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 shrink-0 border-warning/30 bg-warning/[0.06] text-warning hover:bg-warning/10 hover:text-warning"
+              onClick={onDiagnostics}
+              aria-label={`${t("Incomplete data")} · ${diagnosticsCount}`}
+            >
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </section>
   );
 }
 
-function SummaryGrid({
+function PeriodSummary({
   endNetWorth,
   delta,
   eventCount,
-
   complete,
   deltaComplete,
   locale,
@@ -419,59 +494,53 @@ function SummaryGrid({
   endNetWorth: Money | null;
   delta: Money | null;
   eventCount: number;
-
   complete: boolean;
   deltaComplete: boolean;
   locale: string;
 }) {
+  const { t } = useI18n();
+  const direction = delta?.amount.compare(Decimal.zero()) ?? 0;
+  const DeltaIcon = direction > 0 ? ArrowUpRight : direction < 0 ? ArrowDownRight : null;
+
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <SummaryCard
-        label="Total value"
-        value={formatMoney(endNetWorth, locale)}
-        hint={complete ? "Current portfolio value" : "Some values are missing"}
-      />
-      <SummaryCard
-        label="Change"
-        value={formatMoney(delta, locale)}
-        hint={deltaComplete ? "This period" : "Some values are missing"}
-        tone={moneyTone(delta, deltaComplete)}
-        icon={
-          delta?.amount.compare(Decimal.zero()) === -1
-            ? ArrowDownRight
-            : delta?.amount.compare(Decimal.zero()) === 1
-              ? ArrowUpRight
-              : undefined
-        }
-      />
-      <SummaryCard label="Transactions" value={String(eventCount)} hint="Recorded this period" />
-    </div>
+    <section className="surface-section p-4 sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <div className="label-muted">{t("Total value")}</div>
+          <div className="mt-1 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+            {formatMoney(endNetWorth, locale)}
+          </div>
+          <div className={cn("mt-1 text-xs", complete ? "text-muted-foreground" : "text-warning")}>
+            {t(complete ? "Current portfolio value" : "Some values are missing")}
+          </div>
+        </div>
+        <div className="grid shrink-0 grid-cols-2 gap-4 border-t border-border/45 pt-4 sm:gap-8 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0">
+          <div className="min-w-0">
+            <div className="label-muted">{t("Change")}</div>
+            <div
+              className={cn(
+                "mt-1 flex items-center gap-1 font-mono text-base font-semibold sm:text-lg",
+                moneyTone(delta, deltaComplete),
+              )}
+            >
+              {DeltaIcon ? <DeltaIcon className="h-4 w-4 shrink-0" aria-hidden="true" /> : null}
+              <span className="truncate">{formatMoney(delta, locale)}</span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {t(deltaComplete ? "This period" : "Some values are missing")}
+            </div>
+          </div>
+          <div className="min-w-0">
+            <div className="label-muted">{t("Transactions")}</div>
+            <div className="mt-1 font-mono text-base font-semibold sm:text-lg">{eventCount}</div>
+            <div className="mt-1 text-xs text-muted-foreground">{t("Recorded this period")}</div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-  hint,
-  tone = "text-foreground",
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  tone?: string;
-  icon?: typeof ArrowUpRight;
-}) {
-  return (
-    <MetricCard
-      label={label}
-      value={value}
-      hint={hint}
-      icon={Icon}
-      tone={metricToneFromClass(tone)}
-    />
-  );
-}
 
 function BucketGrid({
   scope,
