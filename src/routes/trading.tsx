@@ -334,29 +334,22 @@ function ReviewRow({
     }
   };
   return (
-    <article className="rounded-xl border border-border/45 bg-muted/10 p-3 sm:p-4">
-      <div className="flex items-center justify-between gap-3">
+    <article className="rounded-xl border border-border/45 bg-muted/10 p-3.5 sm:p-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-medium">
-              {new Intl.DateTimeFormat(locale, {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }).format(new Date(`${review.weekStart}T00:00:00`))}
-            </h3>
-            {review.isDraft && (
-              <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] text-warning">
-                {t("Draft")}
-              </span>
+          <div className="text-xs text-muted-foreground">
+            {new Intl.DateTimeFormat(locale, {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }).format(new Date(`${review.weekStart}T00:00:00`))}
+          </div>
+          <div
+            className={cn(
+              "mt-1 font-mono text-xl font-semibold tracking-tight sm:text-2xl",
+              reviewTone(review.reportedPnl),
             )}
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            {review.tradeCount} {t("trades")} · {review.consistencyScore}/100
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className={cn("mr-2 font-mono text-sm", reviewTone(review.reportedPnl))}>
+          >
             {trading.reviewReportedPnl
               ? formatMoney(
                   Money.of(review.reportedPnl, trading.reviewReportedPnl.currency),
@@ -364,8 +357,18 @@ function ReviewRow({
                 )
               : review.reportedPnl}
           </div>
+          <div className="mt-1.5 text-xs text-muted-foreground">
+            {review.tradeCount} {t("trades")} · {review.consistencyScore}/100
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
           {review.isDraft && (
-            <>
+            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] text-warning">
+              {t("Draft")}
+            </span>
+          )}
+          {review.isDraft && (
+            <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" onClick={onEdit} aria-label={t("Edit")}>
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -378,13 +381,14 @@ function ReviewRow({
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
-            </>
+            </div>
           )}
         </div>
       </div>
     </article>
   );
 }
+
 
 type ReviewForm = {
   id: string;
