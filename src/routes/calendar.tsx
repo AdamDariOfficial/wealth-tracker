@@ -240,63 +240,18 @@ function CalendarPage() {
     <div className="space-y-5 sm:space-y-6">
       <PageHeader title="Calendar" subtitle="See how your portfolio changes over time." />
 
-      <ScopeSwitcher value={view} onChange={setView} />
+      <RangeNavigator
+        view={view}
+        anchorDate={anchorDate}
+        locale={locale}
+        onScopeChange={setView}
+        onStep={stepAnchor}
+        onPick={setAnchor}
+        diagnosticsCount={periodStatus === "partial" ? workspace.diagnostics.length : 0}
+        onDiagnostics={() => setDiagnosticsOpen(true)}
+      />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid w-full grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2 sm:w-auto">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-11 w-11"
-            onClick={() => stepAnchor(-1)}
-            aria-label={`${t("Previous")} ${t(view === "week" ? "Week" : view === "month" ? "Month" : view === "quarter" ? "Quarter" : "Year")}`}
-          >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          </Button>
-          <h2 className="min-w-0 truncate text-center font-display text-xl font-semibold sm:min-w-52 sm:text-2xl">
-            {periodTitle(view, anchorDate, locale)}
-          </h2>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-11 w-11"
-            onClick={() => stepAnchor(1)}
-            aria-label={`${t("Next")} ${t(view === "week" ? "Week" : view === "month" ? "Month" : view === "quarter" ? "Quarter" : "Year")}`}
-          >
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        </div>
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-          {periodStatus === "partial" ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11 border-warning/30 bg-warning/[0.06] text-warning hover:bg-warning/10 hover:text-warning"
-              onClick={() => setDiagnosticsOpen(true)}
-            >
-              <AlertTriangle className="mr-2 h-4 w-4" aria-hidden="true" />
-              {t("Incomplete data")} · {workspace.diagnostics.length}
-            </Button>
-          ) : null}
-          <label className="flex min-h-11 items-center rounded-xl border border-border/60 bg-card/35 px-3 text-sm text-foreground">
-            <span className="sr-only">{t("Jump to date")}</span>
-            <input
-              type="date"
-              value={dateKey(anchorDate)}
-              onChange={(event) => {
-                const next = parseDateKey(event.target.value);
-                if (next) setAnchor(next);
-              }}
-              className="min-h-10 bg-transparent font-medium outline-none [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-80"
-              aria-label={t("Jump directly to date")}
-            />
-          </label>
-        </div>
-      </div>
-
-      <SummaryGrid
+      <PeriodSummary
         endNetWorth={workspace.endValuation?.knownNetWorth ?? null}
         delta={workspace.knownDelta}
         eventCount={workspace.events.length}
@@ -304,6 +259,7 @@ function CalendarPage() {
         deltaComplete={workspace.deltaComplete}
         locale={locale}
       />
+
 
       {view === "month" ? (
         <MonthGrid buckets={workspace.buckets} locale={locale} onOpen={openBucket} />
