@@ -261,15 +261,42 @@ function PortfolioPage() {
         </div>
       ) : null}
 
-      <div className="space-y-3">
-        <div className="scroll-x-snap flex gap-2 pb-1">
+      <section className="surface-section space-y-3 p-3 sm:p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search.q}
+              onChange={(event) => setSearch({ q: event.target.value })}
+              placeholder="Search asset or account…"
+              className="pl-9"
+            />
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button
+              variant="outline"
+              className="min-h-11 flex-1 sm:flex-none"
+              onClick={() => setFxOpen(true)}
+            >
+              {t("FX rates")}
+            </Button>
+            <Button
+              onClick={() => setCreateAssetOpen(true)}
+              className="min-h-11 flex-1 bg-cyan text-background hover:bg-cyan/90 sm:flex-none"
+            >
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              {t("New asset")}
+            </Button>
+          </div>
+        </div>
+        <div className="scroll-x-snap flex gap-2 pb-0.5">
           {views.map((view) => (
             <button
               key={view}
               type="button"
               onClick={() => setSearch({ view })}
               className={cn(
-                "min-h-11 shrink-0 rounded-xl border px-3 text-xs font-medium",
+                "min-h-10 shrink-0 rounded-xl border px-3 text-xs font-medium",
                 search.view === view
                   ? "border-cyan/30 bg-cyan/10 text-cyan"
                   : "border-border/60 bg-card/40 text-muted-foreground",
@@ -279,56 +306,36 @@ function PortfolioPage() {
             </button>
           ))}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative min-w-0 flex-1 sm:max-w-xl">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search.q}
-              onChange={(event) => setSearch({ q: event.target.value })}
-              placeholder="Search asset or account…"
-              className="pl-9"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-            <Button variant="outline" onClick={() => setFxOpen(true)}>
-              {t("FX rates")}
-            </Button>
-            <Button
-              onClick={() => setCreateAssetOpen(true)}
-              className="bg-cyan text-background hover:bg-cyan/90"
-            >
-              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              {t("New asset")}
-            </Button>
-            {positionGroups.length > 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="sm:hidden"
-                onClick={() => {
-                  const allExpanded = positionGroups.every((group) =>
-                    expandedAssetIds.has(group.assetId),
-                  );
-                  setExpandedAssetIds(
-                    allExpanded ? new Set() : new Set(positionGroups.map((group) => group.assetId)),
-                  );
-                }}
-              >
-                {positionGroups.every((group) => expandedAssetIds.has(group.assetId))
-                  ? t("Collapse all")
-                  : t("Expand all")}
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      </section>
 
       <section className="space-y-3">
-        <div>
-          <h2 className="font-display text-lg font-semibold">{t("Portfolio positions")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("Each asset is grouped once, with its distribution across accounts underneath.")}
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-lg font-semibold">
+            {t("Portfolio positions")}{" "}
+            <span className="font-mono text-sm font-normal text-muted-foreground">
+              {positionGroups.length}
+            </span>
+          </h2>
+          {positionGroups.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="min-h-10 sm:hidden"
+              onClick={() => {
+                const allExpanded = positionGroups.every((group) =>
+                  expandedAssetIds.has(group.assetId),
+                );
+                setExpandedAssetIds(
+                  allExpanded ? new Set() : new Set(positionGroups.map((group) => group.assetId)),
+                );
+              }}
+            >
+              {positionGroups.every((group) => expandedAssetIds.has(group.assetId))
+                ? t("Collapse all")
+                : t("Expand all")}
+            </Button>
+          ) : null}
         </div>
         {positionGroups.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/70 px-4 py-12 text-center">
