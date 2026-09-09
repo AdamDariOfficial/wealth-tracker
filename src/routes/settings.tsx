@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/PageHeader";
+import { SectionCard } from "@/components/SectionCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,43 +45,20 @@ import { advancedV2Repository, financialV2Repository } from "@/lib/v2-runtime";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
-type SettingsSectionProps = Readonly<{
-  id: string;
-  icon: typeof UserRound;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-  destructive?: boolean;
-}>;
-
-function SettingsSection({
-  id,
-  icon: Icon,
+function SettingRow({
   title,
   description,
   children,
-  destructive = false,
-}: SettingsSectionProps) {
+}: Readonly<{ title: string; description: string; children: React.ReactNode }>) {
   const { t } = useI18n();
   return (
-    <section id={id} className="scroll-mt-28 py-7 first:pt-0 sm:py-9">
-      <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10">
-        <header>
-          <div
-            className={
-              destructive
-                ? "flex items-center gap-2 text-destructive"
-                : "flex items-center gap-2 text-foreground"
-            }
-          >
-            <Icon className="h-4 w-4" aria-hidden="true" />
-            <h2 className="font-display text-base font-semibold">{t(title)}</h2>
-          </div>
-          <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">{t(description)}</p>
-        </header>
-        <div className="min-w-0">{children}</div>
+    <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="min-w-0">
+        <h3 className="text-sm font-medium">{t(title)}</h3>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{t(description)}</p>
       </div>
-    </section>
+      <div className="flex shrink-0 flex-wrap gap-2">{children}</div>
+    </div>
   );
 }
 
@@ -233,204 +211,187 @@ function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">
       <PageHeader
         title="Settings"
-        subtitle="Your profile, backups and data controls."
-        action={
-          <Button variant="outline" onClick={() => void handleSignOut()} className="min-h-11">
-            <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
-            {t("Sign out")}
-          </Button>
-        }
+        subtitle="Your profile, your data and your account, in one place."
       />
 
-
-
-
-      <div className="divide-y divide-border/60 border-b border-border/60">
-        <SettingsSection
-          id="profile"
-          icon={UserRound}
-          title="Profile"
-          description="Your name, base currency and display preferences."
-        >
-          <form onSubmit={saveProfile} className="max-w-3xl space-y-5">
+      <SectionCard
+        icon={UserRound}
+        title="Profile"
+        description="Your name, base currency and display preferences."
+      >
+        <form onSubmit={saveProfile} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="settings-display-name">{t("Display name")}</Label>
+            <Input
+              id="settings-display-name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              maxLength={120}
+              placeholder="Adam"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="settings-display-name">{t("Display name")}</Label>
-              <Input
-                id="settings-display-name"
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                maxLength={120}
-                placeholder="Adam"
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="settings-base-currency">{t("Base currency")}</Label>
-                <Select
-                  value={selectedCurrencyAvailable ? baseCurrency : ""}
-                  onValueChange={setBaseCurrency}
-                  disabled={availableCurrencies.length === 0}
-                >
-                  <SelectTrigger id="settings-base-currency" className="min-h-11">
-                    <SelectValue
-                      placeholder={t(
-                        availableCurrencies.length === 0
-                          ? "No fiat currencies found"
-                          : "Choose a currency",
-                      )}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableCurrencies.map((currency) => (
-                      <SelectItem key={currency} value={currency}>
-                        {currency}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {t("Only fiat currencies that already exist in your tracker are available.")}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="settings-locale">{t("Language & format")}</Label>
-                <Select value={locale} onValueChange={setLocale}>
-                  <SelectTrigger id="settings-locale" className="min-h-11">
-                    <SelectValue>{locale === "it-IT" ? "Italiano" : "English"}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="it-IT">{t("Italiano")}</SelectItem>
-                    <SelectItem value="en-US">{t("English")}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {t("Changes interface language, dates and numbers.")}
-                </p>
-              </div>
-            </div>
-            <Button
-              type="submit"
-              disabled={
-                saving || !selectedCurrencyAvailable || !["it-IT", "en-US"].includes(locale)
-              }
-              className="min-h-11 bg-cyan text-background hover:bg-cyan/90"
-            >
-              <Save className="mr-2 h-4 w-4" aria-hidden="true" />
-              {saving ? t("Saving…") : t("Save profile")}
-            </Button>
-          </form>
-        </SettingsSection>
-
-        <SettingsSection
-          id="data"
-          icon={Database}
-          title="Data & portability"
-          description="Import, export and restore your financial data from one place."
-        >
-          <div className="max-w-3xl divide-y divide-border/50">
-            <div className="space-y-4 pb-6">
-              <div className="min-w-0">
-                <h3 className="font-medium">{t("Import data")}</h3>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {t("Bring transactions in from a CSV file when you need it.")}
-                </p>
-              </div>
-              <Button asChild variant="outline" className="min-h-11 w-fit">
-                <Link to="/import">
-                  <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-                  {t("Open import")}
-                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Link>
-              </Button>
-            </div>
-
-
-            <div className="space-y-4 py-6">
-              <div>
-                <h3 className="font-medium">{t("Backup and restore")}</h3>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {t(
-                    "Download a complete copy of your data, or restore it in full from an earlier backup.",
-                  )}
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11"
-                  disabled={exporting}
-                  onClick={() => void exportBackup()}
-                >
-                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-                  {exporting ? t("Exporting…") : t("Export backup")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11"
-                  onClick={() => restoreInputRef.current?.click()}
-                >
-                  <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-                  {t("Choose backup")}
-                </Button>
-                <input
-                  ref={restoreInputRef}
-                  type="file"
-                  accept="application/json,.json"
-                  className="hidden"
-                  onChange={(event) => void chooseRestore(event)}
-                />
-              </div>
+              <Label htmlFor="settings-base-currency">{t("Base currency")}</Label>
+              <Select
+                value={selectedCurrencyAvailable ? baseCurrency : ""}
+                onValueChange={setBaseCurrency}
+                disabled={availableCurrencies.length === 0}
+              >
+                <SelectTrigger id="settings-base-currency">
+                  <SelectValue
+                    placeholder={t(
+                      availableCurrencies.length === 0
+                        ? "No fiat currencies found"
+                        : "Choose a currency",
+                    )}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCurrencies.map((currency) => (
+                    <SelectItem key={currency} value={currency}>
+                      {currency}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs leading-5 text-muted-foreground">
-                {t(
-                  "The backup is checked before anything is replaced. If the file is not valid, your current data stays unchanged.",
-                )}
+                {t("Only fiat currencies that already exist in your tracker are available.")}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="settings-locale">{t("Language & format")}</Label>
+              <Select value={locale} onValueChange={setLocale}>
+                <SelectTrigger id="settings-locale">
+                  <SelectValue>{locale === "it-IT" ? "Italiano" : "English"}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="it-IT">{t("Italiano")}</SelectItem>
+                  <SelectItem value="en-US">{t("English")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs leading-5 text-muted-foreground">
+                {t("Changes interface language, dates and numbers.")}
               </p>
             </div>
           </div>
-        </SettingsSection>
+          <Button
+            type="submit"
+            disabled={saving || !selectedCurrencyAvailable || !["it-IT", "en-US"].includes(locale)}
+            className="min-h-11 w-full bg-cyan text-background hover:bg-cyan/90 sm:w-auto"
+          >
+            <Save className="mr-2 h-4 w-4" aria-hidden="true" />
+            {saving ? t("Saving…") : t("Save profile")}
+          </Button>
+        </form>
+      </SectionCard>
 
-        <SettingsSection
-          id="danger"
-          icon={Trash2}
-          title="Reset workspace"
-          description="Permanently removes your financial data. Your account and sign-in stay intact."
-          destructive
+      <SectionCard
+        icon={Database}
+        title="Your data"
+        description="Bring data in, take a full copy out, or restore an earlier copy."
+        bodyClassName="divide-y divide-border/50"
+      >
+        <SettingRow
+          title="Import data"
+          description="Bring transactions in from a CSV file when you need it."
         >
-          <div className="max-w-3xl space-y-4">
-            <p className="text-sm leading-6 text-muted-foreground">
-              {t(
-                "This removes accounts, transactions, assets, market data, goals, trading reviews and import history. Export a backup first if you may need the data later.",
-              )}
-            </p>
-            <div className="max-w-md space-y-2">
-              <Label htmlFor="reset-confirmation">
-                {t("Type")} <span className="font-mono text-foreground">RESET WORKSPACE</span>
-              </Label>
-              <Input
-                id="reset-confirmation"
-                value={resetConfirmation}
-                onChange={(event) => setResetConfirmation(event.target.value)}
-                autoComplete="off"
-              />
-            </div>
-            <Button
-              type="button"
-              variant="destructive"
-              className="min-h-11"
-              disabled={resetConfirmation !== "RESET WORKSPACE"}
-              onClick={() => setResetDialogOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-              {t("Review reset")}
-            </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link to="/import">
+              <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t("Open import")}
+              <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        </SettingRow>
+
+        <SettingRow
+          title="Export backup"
+          description="Download a complete copy of everything you have recorded."
+        >
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            disabled={exporting}
+            onClick={() => void exportBackup()}
+          >
+            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+            {exporting ? t("Exporting…") : t("Export backup")}
+          </Button>
+        </SettingRow>
+
+        <SettingRow
+          title="Restore backup"
+          description="The file is checked first. If anything is invalid, your current data stays unchanged."
+        >
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => restoreInputRef.current?.click()}
+          >
+            <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+            {t("Choose backup")}
+          </Button>
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => void chooseRestore(event)}
+          />
+        </SettingRow>
+      </SectionCard>
+
+      <SectionCard
+        icon={LogOut}
+        title="Account"
+        description="End your session on this device."
+        bodyClassName="divide-y divide-border/50"
+      >
+        <SettingRow title="Sign out" description="You can sign back in at any time.">
+          <Button variant="outline" className="min-h-11" onClick={() => void handleSignOut()}>
+            <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
+            {t("Sign out")}
+          </Button>
+        </SettingRow>
+      </SectionCard>
+
+      <SectionCard
+        icon={Trash2}
+        title="Reset workspace"
+        description="Permanently removes accounts, transactions, assets, prices, goals, trading reviews and import history. Your account and sign-in stay intact."
+        className="border-destructive/25"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="reset-confirmation">
+              {t("Type")} <span className="font-mono text-foreground">RESET WORKSPACE</span>
+            </Label>
+            <Input
+              id="reset-confirmation"
+              value={resetConfirmation}
+              onChange={(event) => setResetConfirmation(event.target.value)}
+              autoComplete="off"
+              className="max-w-sm"
+            />
           </div>
-        </SettingsSection>
-      </div>
+          <Button
+            type="button"
+            variant="destructive"
+            className="min-h-11 w-full sm:w-auto"
+            disabled={resetConfirmation !== "RESET WORKSPACE"}
+            onClick={() => setResetDialogOpen(true)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+            {t("Review reset")}
+          </Button>
+        </div>
+      </SectionCard>
 
       <AlertDialog
         open={restoreCandidate !== null}
