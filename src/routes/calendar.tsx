@@ -733,8 +733,8 @@ function MonthGrid({
                         aria-label={t("Incomplete change data")}
                       />
                     ) : null}
-                    {bucket.eventCount > 0 && showDetails ? (
-                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-muted/60 px-1 font-mono text-[8px] text-muted-foreground">
+                    {bucket.eventCount > 0 ? (
+                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-muted/60 px-1 font-mono text-[9px] text-muted-foreground sm:text-[10px]">
                         {bucket.eventCount}
                       </span>
                     ) : null}
@@ -744,7 +744,7 @@ function MonthGrid({
                 {!bucket.future && showDelta ? (
                   <div
                     className={cn(
-                      "mt-auto w-full truncate pt-1 font-mono text-[10px] font-semibold leading-tight sm:text-xs",
+                      "mt-auto w-full truncate pt-1 font-mono text-[13px] font-semibold leading-tight sm:text-base",
                       moneyTone(bucket.knownDelta, bucket.deltaComplete),
                     )}
                   >
@@ -756,14 +756,14 @@ function MonthGrid({
                   <div
                     className={cn(
                       "grid w-full transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none",
-                      showDetails && (showIncome || showExpense || bucket.eventCount > 0)
+                      showDetails && (showIncome || showExpense)
                         ? "grid-rows-[1fr] opacity-100"
                         : "grid-rows-[0fr] opacity-0",
                     )}
                     aria-hidden={!showDetails}
                   >
                     <div className="min-h-0 overflow-hidden">
-                      <div className="space-y-0.5 pt-1 font-mono text-[8px] leading-tight sm:text-[10px]">
+                      <div className="space-y-0.5 pt-1 font-mono text-[9px] leading-tight sm:text-[10px]">
                         {showIncome ? (
                           <div
                             className={cn(
@@ -782,12 +782,6 @@ function MonthGrid({
                             )}
                           >
                             −{formatCompactMoney(bucket.knownOutflow, locale)}
-                          </div>
-                        ) : null}
-                        {bucket.eventCount > 0 ? (
-                          <div className="truncate text-muted-foreground">
-                            {bucket.eventCount}{" "}
-                            {t(bucket.eventCount === 1 ? "transaction" : "transactions")}
                           </div>
                         ) : null}
                       </div>
