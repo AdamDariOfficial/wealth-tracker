@@ -197,7 +197,6 @@ function CalendarPage() {
       .map((account) => account.id),
   );
 
-
   const updateSearch = (patch: Partial<CalendarSearch>) => {
     void navigate({
       search: (previous: CalendarSearch) => ({ ...previous, ...patch }),
@@ -260,7 +259,6 @@ function CalendarPage() {
         locale={locale}
       />
 
-
       {view === "month" ? (
         <MonthGrid buckets={workspace.buckets} locale={locale} onOpen={openBucket} />
       ) : view === "day" ? (
@@ -268,7 +266,6 @@ function CalendarPage() {
       ) : (
         <BucketGrid scope={view} buckets={workspace.buckets} locale={locale} onOpen={openBucket} />
       )}
-
 
       {showValueTrend && workspace.startValuation ? (
         <SectionCard title="Value trend" description="Portfolio value through the selected period.">
@@ -287,7 +284,6 @@ function CalendarPage() {
           </ChartFrame>
         </SectionCard>
       ) : null}
-
 
       <Dialog open={diagnosticsOpen} onOpenChange={setDiagnosticsOpen}>
         <DialogContent className="max-h-[85dvh] max-w-xl overflow-y-auto">
@@ -330,7 +326,6 @@ function CalendarPage() {
               ownedAccountIds={ownedAccountIds}
             />
           </div>
-
         </DialogContent>
       </Dialog>
     </div>
@@ -541,7 +536,6 @@ function PeriodSummary({
   );
 }
 
-
 function BucketGrid({
   scope,
   buckets,
@@ -640,9 +634,7 @@ function MonthGrid({
     ...buckets,
     ...Array.from({ length: trailing }, () => null),
   ];
-  const cellHeight = showDetails
-    ? "min-h-[92px] sm:min-h-[112px]"
-    : "min-h-[58px] sm:min-h-[68px]";
+  const cellHeight = showDetails ? "min-h-[92px] sm:min-h-[112px]" : "min-h-[58px] sm:min-h-[68px]";
 
   return (
     <div className="space-y-2.5">
@@ -797,7 +789,6 @@ function MonthGrid({
   );
 }
 
-
 function DayPanel({
   events,
   locale,
@@ -850,7 +841,6 @@ function EventList({
       ))}
     </div>
   );
-
 }
 
 function hasMoney(value: Money | null): boolean {

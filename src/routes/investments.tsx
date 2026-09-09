@@ -273,7 +273,11 @@ function PortfolioPage() {
             />
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button variant="outline" className="min-h-11 flex-1 sm:flex-none" onClick={() => setFxOpen(true)}>
+            <Button
+              variant="outline"
+              className="min-h-11 flex-1 sm:flex-none"
+              onClick={() => setFxOpen(true)}
+            >
               {t("FX rates")}
             </Button>
             <Button
