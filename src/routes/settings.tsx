@@ -41,7 +41,25 @@ import { useAuth } from "@/lib/auth-store";
 import { useI18n } from "@/lib/use-i18n";
 import { advancedV2Repository, financialV2Repository } from "@/lib/v2-runtime";
 
-export const Route = createFileRoute("/settings")({ component: SettingsPage });
+export const Route = createFileRoute("/settings")({
+  head: () => ({
+    meta: [
+      { title: "Settings — Nebula Wealth Hub" },
+      {
+        name: "description",
+        content: "Manage your profile, imports, backups and account settings.",
+      },
+      { property: "og:title", content: "Settings — Nebula Wealth Hub" },
+      {
+        property: "og:description",
+        content: "Manage your profile, imports, backups and account settings.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: SettingsPage,
+});
 
 function SettingRow({
   title,
