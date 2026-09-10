@@ -68,8 +68,8 @@ export function CoreComposer() {
         if (!next) closeComposer();
       }}
     >
-      <DialogContent className="max-h-[min(90dvh,860px)] w-[min(720px,calc(100vw-2rem))] overflow-y-auto p-0 sm:max-w-2xl">
-        <div className="sticky top-0 z-10 border-b border-border/60 bg-background/95 px-5 py-4 backdrop-blur-xl sm:px-6">
+      <DialogContent className="flex max-h-[min(90dvh,860px)] w-[min(720px,calc(100vw-2rem))] grid-rows-none flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <div className="relative z-10 shrink-0 border-b border-border/60 bg-background/95 px-5 py-4 pr-16 backdrop-blur-xl sm:px-6 sm:pr-16">
           <DialogHeader className="text-left">
             <DialogTitle>{t(mode === "general" ? "Add record" : copy.title)}</DialogTitle>
             <DialogDescription>
@@ -82,7 +82,7 @@ export function CoreComposer() {
           </DialogHeader>
         </div>
 
-        <div className="px-5 py-5 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
           {mode === "general" ? (
             <Tabs
               value={tab}

@@ -193,10 +193,12 @@ function RootComponent() {
           <div className="flex min-h-screen w-full">
             <AppSidebar />
             <div className="flex min-w-0 flex-1 flex-col">
-              <main className="safe-x safe-top mx-auto w-full max-w-[1440px] flex-1 py-5 pb-24 sm:py-6 md:pb-6 lg:py-7">
+              <main className="safe-x mx-auto w-full max-w-[1440px] flex-1 pb-24 md:pb-6">
                 <div className="min-w-0 px-4 sm:px-6 lg:px-8">
-                  <div className="mb-5 flex w-full justify-center sm:mb-6">
-                    <CommandPalette />
+                  <div className="sticky top-0 z-40 -mx-4 mb-5 flex justify-center border-b border-border/40 bg-background/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl sm:-mx-6 sm:mb-6 sm:px-6 sm:pb-4 sm:pt-4 lg:-mx-8 lg:px-8">
+                    <div className="w-full max-w-2xl">
+                      <CommandPalette />
+                    </div>
                   </div>
                   <GlobalFinancialWarnings />
                   <Outlet />
