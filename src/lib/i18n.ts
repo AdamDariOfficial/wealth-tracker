@@ -27,6 +27,17 @@ const ITALIAN: Readonly<Record<string, string>> = Object.freeze({
   "Search asset or account…": "Cerca asset o conto…",
   "Search assets…": "Cerca asset…",
   "Your profile, backups and data controls.": "Profilo, backup e gestione dei dati.",
+  "Your profile, your data and your account, in one place.":
+    "Profilo, dati e account in un unico posto.",
+  "Your data": "I tuoi dati",
+  "Bring data in, take a full copy out, or restore an earlier copy.":
+    "Importa dati, esporta una copia completa o ripristina un backup precedente.",
+  "Bring transactions in from a CSV file when you need it.":
+    "Importa le transazioni da un file CSV quando ne hai bisogno.",
+  "End your session on this device.": "Termina la sessione su questo dispositivo.",
+  "You can sign back in at any time.": "Potrai accedere di nuovo in qualsiasi momento.",
+  "Permanently removes accounts, transactions, assets, prices, goals, trading reviews and import history. Your account and sign-in stay intact.":
+    "Rimuove definitivamente conti, transazioni, asset, prezzi, obiettivi, review di trading e storico importazioni. Account e accesso restano attivi.",
   "Your assets and positions across every account.": "Asset e posizioni in tutti i tuoi conti.",
   "See how your portfolio changes over time.": "Osserva come cambia il tuo portafoglio nel tempo.",
   "Track what you are saving towards. Progress is calculated from your real balances, always up to date.":
