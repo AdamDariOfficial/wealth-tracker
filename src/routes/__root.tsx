@@ -205,7 +205,6 @@ function RootComponent() {
                 </div>
               </main>
             </div>
-
           </div>
           <AppMobileNavigation />
           <CoreComposer />
@@ -214,4 +213,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-

@@ -215,12 +215,19 @@ function SettingsPage() {
         subtitle="Your profile, your data and your account, in one place."
       />
 
-      <section className="border-b border-border/60 py-7 first:pt-2 sm:py-9" aria-labelledby="settings-profile">
+      <section
+        className="border-b border-border/60 py-7 first:pt-2 sm:py-9"
+        aria-labelledby="settings-profile"
+      >
         <div className="mb-6 flex items-start gap-3">
           <UserRound className="mt-0.5 h-5 w-5 shrink-0 text-cyan" aria-hidden="true" />
           <div>
-            <h2 id="settings-profile" className="font-display text-lg font-semibold">{t("Profile")}</h2>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("Your name, base currency and display preferences.")}</p>
+            <h2 id="settings-profile" className="font-display text-lg font-semibold">
+              {t("Profile")}
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {t("Your name, base currency and display preferences.")}
+            </p>
           </div>
         </div>
         <form onSubmit={saveProfile} className="space-y-5 sm:pl-8">
@@ -294,78 +301,94 @@ function SettingsPage() {
         <div className="mb-6 flex items-start gap-3">
           <Database className="mt-0.5 h-5 w-5 shrink-0 text-cyan" aria-hidden="true" />
           <div>
-            <h2 id="settings-data" className="font-display text-lg font-semibold">{t("Your data")}</h2>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("Bring data in, take a full copy out, or restore an earlier copy.")}</p>
+            <h2 id="settings-data" className="font-display text-lg font-semibold">
+              {t("Your data")}
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {t("Bring data in, take a full copy out, or restore an earlier copy.")}
+            </p>
           </div>
         </div>
         <div className="sm:pl-8">
           <div className="border-b border-border/50 pb-6">
             <h3 className="text-sm font-medium">{t("Import data")}</h3>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("Bring transactions in from a CSV file when you need it.")}</p>
-            <Button asChild className="mt-4 min-h-11 w-full bg-cyan text-background hover:bg-cyan/90 sm:w-auto">
-            <Link to="/import">
-              <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-              {t("Open import")}
-            </Link>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {t("Bring transactions in from a CSV file when you need it.")}
+            </p>
+            <Button
+              asChild
+              className="mt-4 min-h-11 w-full bg-cyan text-background hover:bg-cyan/90 sm:w-auto"
+            >
+              <Link to="/import">
+                <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+                {t("Open import")}
+              </Link>
             </Button>
           </div>
 
           <div className="divide-y divide-border/50 pt-1">
-          <SettingRow
-          title="Export backup"
-          description="Download a complete copy of everything you have recorded."
-        >
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11"
-            disabled={exporting}
-            onClick={() => void exportBackup()}
-          >
-            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-            {exporting ? t("Exporting…") : t("Export backup")}
-          </Button>
-        </SettingRow>
+            <SettingRow
+              title="Export backup"
+              description="Download a complete copy of everything you have recorded."
+            >
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                disabled={exporting}
+                onClick={() => void exportBackup()}
+              >
+                <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                {exporting ? t("Exporting…") : t("Export backup")}
+              </Button>
+            </SettingRow>
 
-          <SettingRow
-          title="Restore backup"
-          description="The file is checked first. If anything is invalid, your current data stays unchanged."
-        >
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11"
-            onClick={() => restoreInputRef.current?.click()}
-          >
-            <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-            {t("Choose backup")}
-          </Button>
-          <input
-            ref={restoreInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(event) => void chooseRestore(event)}
-          />
-          </SettingRow>
+            <SettingRow
+              title="Restore backup"
+              description="The file is checked first. If anything is invalid, your current data stays unchanged."
+            >
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => restoreInputRef.current?.click()}
+              >
+                <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+                {t("Choose backup")}
+              </Button>
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(event) => void chooseRestore(event)}
+              />
+            </SettingRow>
           </div>
         </div>
       </section>
 
-      <section className="border-b border-border/60 py-7 sm:py-9" aria-labelledby="settings-account">
+      <section
+        className="border-b border-border/60 py-7 sm:py-9"
+        aria-labelledby="settings-account"
+      >
         <div className="mb-6 flex items-start gap-3">
           <LogOut className="mt-0.5 h-5 w-5 shrink-0 text-cyan" aria-hidden="true" />
           <div>
-            <h2 id="settings-account" className="font-display text-lg font-semibold">{t("Account")}</h2>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("End your session on this device.")}</p>
+            <h2 id="settings-account" className="font-display text-lg font-semibold">
+              {t("Account")}
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {t("End your session on this device.")}
+            </p>
           </div>
         </div>
         <div className="sm:pl-8">
           <SettingRow title="Sign out" description="You can sign back in at any time.">
-          <Button variant="outline" className="min-h-11" onClick={() => void handleSignOut()}>
-            <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
-            {t("Sign out")}
-          </Button>
+            <Button variant="outline" className="min-h-11" onClick={() => void handleSignOut()}>
+              <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t("Sign out")}
+            </Button>
           </SettingRow>
         </div>
       </section>
@@ -374,8 +397,14 @@ function SettingsPage() {
         <div className="mb-6 flex items-start gap-3">
           <Trash2 className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
           <div>
-            <h2 id="settings-reset" className="font-display text-lg font-semibold">{t("Reset workspace")}</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{t("Permanently removes accounts, transactions, assets, prices, goals, trading reviews and import history. Your account and sign-in stay intact.")}</p>
+            <h2 id="settings-reset" className="font-display text-lg font-semibold">
+              {t("Reset workspace")}
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {t(
+                "Permanently removes accounts, transactions, assets, prices, goals, trading reviews and import history. Your account and sign-in stay intact.",
+              )}
+            </p>
           </div>
         </div>
         <div className="space-y-4 sm:pl-8">
