@@ -73,7 +73,7 @@ export function CommandPalette() {
     financial.data?.accounts.filter((account) => account.ownership === "owned").slice(0, 20) ?? [];
 
   return (
-    <Command className="w-full max-w-2xl overflow-visible rounded-xl bg-transparent [&_[cmdk-input-wrapper]]:h-11 [&_[cmdk-input-wrapper]]:rounded-xl [&_[cmdk-input-wrapper]]:border [&_[cmdk-input-wrapper]]:border-border/70 [&_[cmdk-input-wrapper]]:bg-card/80 [&_[cmdk-input-wrapper]]:px-3 [&_[cmdk-input-wrapper]]:shadow-sm [&_[cmdk-input-wrapper]]:transition-colors focus-within:[&_[cmdk-input-wrapper]]:border-cyan/45 focus-within:[&_[cmdk-input-wrapper]]:bg-card">
+    <Command className="mx-auto w-full max-w-2xl overflow-visible rounded-2xl bg-transparent [&_[cmdk-input-wrapper]]:h-12 [&_[cmdk-input-wrapper]]:rounded-2xl [&_[cmdk-input-wrapper]]:border [&_[cmdk-input-wrapper]]:border-border/80 [&_[cmdk-input-wrapper]]:bg-card/95 [&_[cmdk-input-wrapper]]:px-4 [&_[cmdk-input-wrapper]]:shadow-xl [&_[cmdk-input-wrapper]]:backdrop-blur-xl [&_[cmdk-input-wrapper]]:transition-colors focus-within:[&_[cmdk-input-wrapper]]:border-cyan/55 focus-within:[&_[cmdk-input-wrapper]]:bg-card focus-within:[&_[cmdk-input-wrapper]]:shadow-cyan/10">
       <Popover open={open} onOpenChange={(next) => togglePalette(next)}>
         <PopoverAnchor asChild>
           <div ref={anchorRef} className="relative w-full">
