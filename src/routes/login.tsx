@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, ArrowRight, Lock, Mail } from "lucide-react";
+import { AlertCircle, ArrowRight, Mail } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AuthShell } from "@/components/AuthShell";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
