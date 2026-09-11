@@ -278,8 +278,6 @@ const ITALIAN: Readonly<Record<string, string>> = Object.freeze({
   "Banks & cash": "Banche e liquidità",
   "Base currency needed": "Valuta base necessaria",
   Batch: "Lotto",
-  "Bring transactions in from a CSV file when you need it.":
-    "Importa le transazioni da un file CSV quando necessario.",
   "CSV format details": "Dettagli formato CSV",
   "CSV import": "Importazione CSV",
   "Choose a .csv file": "Scegli un file .csv",
