@@ -31,6 +31,8 @@ type AuthState = {
   loading: boolean;
   init: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  /** Redirects to Google; the session arrives back on the app origin. */
+  signInWithGoogle: () => Promise<void>;
   /**
    * Resolves with whether the project requires the address to be confirmed
    * before a session can exist, so the UI can give accurate next steps
@@ -169,6 +171,17 @@ export const useAuth = create<AuthState>((set, get) => ({
       }
     }
     throw lastError instanceof Error ? lastError : new Error("Sign in failed");
+  },
+
+  signInWithGoogle: async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+        queryParams: { prompt: "select_account" },
+      },
+    });
+    if (error) throw error;
   },
 
   signUp: async (email, password, displayName) => {
