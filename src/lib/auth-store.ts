@@ -173,6 +173,17 @@ export const useAuth = create<AuthState>((set, get) => ({
     throw lastError instanceof Error ? lastError : new Error("Sign in failed");
   },
 
+  signInWithGoogle: async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/`,
+        queryParams: { prompt: "select_account" },
+      },
+    });
+    if (error) throw error;
+  },
+
   signUp: async (email, password, displayName) => {
     const { data, error } = await supabase.auth.signUp({
       email,
