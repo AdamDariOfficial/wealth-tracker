@@ -102,23 +102,15 @@ function LoginPage() {
 
         <div className="space-y-1.5">
           <Label htmlFor="login-password">Password</Label>
-          <div className="relative">
-            <Lock
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              id="login-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              autoComplete="current-password"
-              required
-              minLength={6}
-              className="pl-9"
-              placeholder="••••••••"
-            />
-          </div>
+          <PasswordInput
+            id="login-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+            required
+            minLength={6}
+            placeholder="••••••••"
+          />
         </div>
 
         <Button
@@ -136,6 +128,16 @@ function LoginPage() {
           )}
         </Button>
       </form>
+
+      <div className="mt-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-border" aria-hidden="true" />
+        <span className="text-xs text-muted-foreground">or</span>
+        <span className="h-px flex-1 bg-border" aria-hidden="true" />
+      </div>
+
+      <div className="mt-4">
+        <GoogleSignInButton label="Continue with Google" />
+      </div>
     </AuthShell>
   );
 }
